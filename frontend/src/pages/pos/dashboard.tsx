@@ -286,8 +286,10 @@ export default function POSDashboard() {
       // 1. Currently active (time-wise)
       // 2. Not cancelled
       // 3. Not completed
+      // 4. Not a quick sale
       const status = (b.bookingStatus || b.status || '').toUpperCase();
-      return now >= start && now <= end && status !== 'CANCELLED' && status !== 'COMPLETED';
+      const source = (b as any).bookingSource || b.source || '';
+      return now >= start && now <= end && status !== 'CANCELLED' && status !== 'COMPLETED' && source !== 'QUICK_SALE';
     });
   }, [bookings]);
 
@@ -364,7 +366,7 @@ export default function POSDashboard() {
                 onClick={async () => {
                   try {
                     const booking = await createQuickSale();
-                    navigate(`/pos/bookings/${booking.id}`);
+                    navigate(`/pos/booking/${booking.id}`);
                   } catch (err: any) {
                     alert(err.message || 'Failed to create quick sale');
                   }
@@ -873,7 +875,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
 
                 {/* Room Rows */}
                 {rooms.map((room, roomIdx) => {
-                  const roomBookings = filterBookingsByStatus(dayBookings.filter(b => b.roomId === room.id));
+                  const roomBookings = filterBookingsByStatus(dayBookings.filter(b => b.roomId === room.id && (b as any).bookingSource !== 'QUICK_SALE'));
                   const roomColor = roomColors[roomIdx % roomColors.length];
                   const currentTimePos = getCurrentTimePosition(day);
 

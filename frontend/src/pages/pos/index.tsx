@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import POSDashboard from './dashboard';
 import POSBookingDetail from './booking-detail';
@@ -46,11 +46,19 @@ export default function POSRoutes() {
   return (
     <Routes>
       <Route path="dashboard" element={<POSDashboard />} />
-      <Route path="booking/:id" element={<POSBookingDetail />} />
+      <Route path="booking/:id" element={<BookingDetailWrapper />} />
       <Route path="menu" element={<MenuManagementWrapper />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
+}
+
+// Wrapper to extract route param and provide onBack navigation
+function BookingDetailWrapper() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  if (!id) return <Navigate to="/pos/dashboard" replace />;
+  return <POSBookingDetail bookingId={id} onBack={() => navigate('/pos/dashboard')} />;
 }
 
 // Wrapper to provide onBack navigation
