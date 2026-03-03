@@ -39,7 +39,7 @@ export async function getMonthlyReport(month: number, year: number): Promise<Mon
 
   const dateFilter = { gte: startDate, lt: endDate };
 
-  // 1. Payment type breakdown from paid invoices
+  // ── 1. PAID INVOICES — single source of truth for revenue ──
   const invoices = await prisma.invoice.findMany({
     where: { status: 'PAID', paidAt: dateFilter },
     select: {
@@ -48,10 +48,12 @@ export async function getMonthlyReport(month: number, year: number): Promise<Mon
       subtotal: true,
       tax: true,
       tip: true,
-      status: true,
+      bookingId: true,
+      seatIndex: true,
     },
   });
 
+  // Payment type breakdown
   const paymentMap = new Map<string, { count: number; amount: number }>();
   for (const inv of invoices) {
     const method = inv.paymentMethod || 'OTHER';
@@ -65,29 +67,40 @@ export async function getMonthlyReport(month: number, year: number): Promise<Mon
     ...data,
   }));
 
-  // 2. Sales breakdown
-  const completedBookings = await prisma.booking.findMany({
-    where: {
-      bookingStatus: 'COMPLETED',
-      completedAt: dateFilter,
-    },
+  // ── 2. SALES BREAKDOWN — derived from paid invoices → bookings → orders ──
+  // Build set of (bookingId:seatIndex) for paid invoices so we only count
+  // orders that actually belong to a paid seat
+  const paidBookingIds = [
+    ...new Set(invoices.map((inv) => inv.bookingId).filter((id): id is string => !!id)),
+  ];
+  const paidSeatSet = new Set(invoices.map((inv) => `${inv.bookingId}:${inv.seatIndex}`));
+
+  const paidBookings = await prisma.booking.findMany({
+    where: { id: { in: paidBookingIds } },
     select: { id: true, price: true, customerPhone: true },
   });
 
-  const roomRevenue = completedBookings.reduce((sum, b) => sum + Number(b.price), 0);
-
-  // Menu item sales by category
-  const bookingIds = completedBookings.map((b) => b.id);
-  const orders = await prisma.order.findMany({
-    where: {
-      bookingId: { in: bookingIds },
-      discountType: null, // Exclude discount orders
-    },
+  // Get ALL orders for those bookings, then filter to paid seats only
+  const allOrders = await prisma.order.findMany({
+    where: { bookingId: { in: paidBookingIds } },
     include: { menuItem: { select: { category: true } } },
   });
+  const paidSeatOrders = allOrders.filter((o) =>
+    paidSeatSet.has(`${o.bookingId}:${o.seatIndex}`)
+  );
 
+  // Separate non-discount and discount orders
+  const orders = paidSeatOrders.filter((o) => !o.discountType);
+  const discountOrders = paidSeatOrders.filter((o) => !!o.discountType);
+
+  // Separate HOURS (room) orders from menu orders for category breakdown
+  const menuOrders = orders.filter(
+    (o) => (o.menuItem?.category || '').toUpperCase() !== 'HOURS'
+  );
+
+  // Menu item sales by category (excluding HOURS since roomRevenue is separate)
   const categoryMap = new Map<string, { count: number; amount: number }>();
-  for (const order of orders) {
+  for (const order of menuOrders) {
     const category = order.menuItem?.category || 'CUSTOM';
     const entry = categoryMap.get(category) || { count: 0, amount: 0 };
     entry.count += order.quantity;
@@ -99,46 +112,48 @@ export async function getMonthlyReport(month: number, year: number): Promise<Mon
     ...data,
   }));
 
-  // Discount orders
-  const discountOrders = await prisma.order.findMany({
-    where: {
-      bookingId: { in: bookingIds },
-      discountType: { not: null },
-    },
-  });
-
   const totalDiscounts = Math.abs(
     discountOrders.reduce((sum, o) => sum + Number(o.totalPrice), 0)
   );
 
-  const menuTotal = orders.reduce((sum, o) => sum + Number(o.totalPrice), 0);
-  const grossSales = roomRevenue + menuTotal;
-  const netSales = grossSales - totalDiscounts;
+  const menuTotal = menuOrders.reduce((sum, o) => sum + Number(o.totalPrice), 0);
 
-  // 3. Tax summary
+  // Use invoice subtotals as authoritative net sales to guarantee
+  // Grand Total = Payment Types Total (both derive from the same invoices)
+  const netSales = invoices.reduce((sum, inv) => sum + Number(inv.subtotal), 0);
+
+  // Derive room revenue so the breakdown always adds up:
+  // roomRevenue = netSales + discounts - menuTotal
+  // This captures both tracked HOURS orders AND untracked room charges
+  // that went directly into invoices without an order row.
+  const roomRevenue = Math.max(0, netSales + totalDiscounts - menuTotal);
+  const grossSales = roomRevenue + menuTotal;
+
+  // ── 3. TAX ──
   const taxRate = await getGlobalTaxRate();
   const totalTax = invoices.reduce((sum, inv) => sum + Number(inv.tax), 0);
 
-  // 4. Tips summary
+  // ── 4. TIPS ──
   const tippedInvoices = invoices.filter((inv) => inv.tip && Number(inv.tip) > 0);
   const totalTips = invoices.reduce((sum, inv) => sum + Number(inv.tip || 0), 0);
   const averageTip = tippedInvoices.length > 0 ? totalTips / tippedInvoices.length : 0;
 
-  // 5. Operational stats
-  const uniqueCustomers = new Set(completedBookings.map((b) => b.customerPhone)).size;
-  const settledInvoices = invoices; // already filtered to PAID
+  // ── 5. OPERATIONAL STATS ──
+  const uniqueCustomers = new Set(paidBookings.map((b) => b.customerPhone)).size;
+
+  // Open (unpaid) invoices for completed bookings in this month
   const openInvoices = await prisma.invoice.findMany({
     where: {
       status: 'UNPAID',
-      booking: { completedAt: dateFilter, bookingStatus: 'COMPLETED' },
+      booking: { startTime: dateFilter, bookingStatus: 'COMPLETED' },
     },
     select: { totalAmount: true },
   });
 
-  const settledAmount = settledInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+  const settledAmount = invoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
   const openAmount = openInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
 
-  // 6. Discount detail by type
+  // ── 6. DISCOUNT DETAIL ──
   const discountMap = new Map<string, { count: number; amount: number }>();
   for (const d of discountOrders) {
     const type = d.discountType || 'UNKNOWN';
@@ -159,12 +174,12 @@ export async function getMonthlyReport(month: number, year: number): Promise<Mon
     taxSummary: { taxRate, totalTax },
     tipsSummary: { totalTips, averageTip, tippedCount: tippedInvoices.length },
     operationalStats: {
-      totalBookings: completedBookings.length,
+      totalBookings: paidBookings.length,
       totalCustomers: uniqueCustomers,
       totalInvoices: invoices.length,
-      averageBookingValue: completedBookings.length > 0 ? netSales / completedBookings.length : 0,
+      averageBookingValue: paidBookings.length > 0 ? netSales / paidBookings.length : 0,
       averageCustomerSpend: uniqueCustomers > 0 ? netSales / uniqueCustomers : 0,
-      settledCount: settledInvoices.length,
+      settledCount: invoices.length,
       settledAmount,
       openCount: openInvoices.length,
       openAmount,
