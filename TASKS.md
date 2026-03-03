@@ -3654,8 +3654,36 @@ npm run test:e2e
 
 ---
 
-**Last Updated:** 2026-02-28
+**Last Updated:** 2026-03-03
 **Version:** 1.2 (Updated: Frontend build path simplification)
+
+<details>
+<summary>Monthly PDF Report Fix & Quick Sale Feature - 2026-03-03</summary>
+
+**Monthly PDF Report Number Mismatch Fix:**
+[x] Root cause: report used `completedAt` filter but most completed bookings had `completedAt=NULL` → Sales Breakdown showed $0
+[x] Also: old logic used `booking.price` for room revenue causing double-counting with HOURS orders
+[x] Fix: rewrote `monthlyReportRepo.ts` to derive everything from paid invoices (single source of truth)
+[x] Sales breakdown now traces paid invoices → bookings → orders (only paid seats counted)
+[x] Room revenue = invoice subtotals - menu orders (captures both tracked and untracked room charges)
+[x] Net sales from `sum(invoice.subtotal)` guarantees Grand Total = Payment Types Total
+[x] Open invoices query uses `startTime` instead of `completedAt`
+[x] Verified against production: Grand Total ($13,997.96) = Payment Types Total ($13,997.96) — $0 difference
+
+**Quick Sale Feature (POS):**
+[x] Backend: `POST /api/bookings/simple/quick-sale` — auto-creates $0 booking under admin account, `bookingSource: 'QUICK_SALE'`, no conflict check
+[x] Frontend: Quick Sale button (purple, ShoppingBag icon) on POS dashboard
+[x] Frontend: `BookingDetailWrapper` component to pass route params to `POSBookingDetail`
+[x] Fix: Navigate path `/pos/booking/:id` (singular, not `/pos/bookings/`)
+[x] Hide QUICK_SALE bookings from Room Status and timeline bars
+[x] Exclude QUICK_SALE from total hours badge calculation
+
+**Responsive Layout Fixes:**
+[x] Admin tabs: `flex flex-wrap h-auto gap-1`, smaller text on mobile
+[x] POS header: `flex-col` on mobile → `flex-row` on sm, buttons `size="sm"`
+
+Commits: `5f354cf` (quick sale), `a795b3d` (bug fixes), `3f75a15` (responsive), `380ecf7` (report fix)
+</details>
 
 <details>
 <summary>Daily Report & Gift Card Display - 2026-02-28</summary>
