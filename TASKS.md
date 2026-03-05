@@ -148,6 +148,30 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - Remove "via gmail.com" notice from sent emails
   - Alternative: Consider using SendGrid (already integrated in DNS)
 
+## 🎉 Recently Completed (2026-03-05)
+- [x] **Monthly PDF Report Fix** - Grand total now matches payment types total exactly
+  - [x] Derived revenue from paid invoices only (consistent with daily report)
+  - [x] Verified against prod: $13,997.96 = $13,997.96 (0 diff)
+- [x] **PDF Report Simplification** - Removed 3 sections from generated PDF
+  - [x] Removed 'Average Tip' from Tips Summary
+  - [x] Removed entire 'Operational Statistics' section
+  - [x] Removed 'Total Revenue' from Report Totals
+- [x] **Gift Card Report Audit** - Verified GIFT_CARD across all 6 report surfaces
+  - [x] Monthly Revenue Chart, Revenue History API, Daily Report (backend+frontend), Monthly Report Repo, PDF Report
+- [x] **Quick Sale Prod Bug Fix** - Fixed admin phone mismatch on production
+  - [x] Updated admin@konegolf.ca phone from `+14165551000` to `+11111111111` in prod DB
+- [x] **Production Log Audit** - Checked 72h of backend logs
+  - [x] 0 errors (level 50), 3 warnings (all normal 401s pre-login)
+  - [x] All response times fast (2-67ms)
+- [x] **1GB Swap File on Droplet** - Safety net for memory spikes
+  - [x] Created `/swapfile` (1GB), enabled, persisted via `/etc/fstab`
+  - [x] Droplet now: 969MB RAM + 1GB swap
+- [x] **Docker Log Rotation** - Added to `docker-compose.prod.yml`
+  - [x] `db` and `backend` services: json-file driver, max-size 50m, max-file 5
+  - [x] `docker-compose.release.yml` already had log rotation (15m/10)
+- [x] **SERVER_STATUS.md Update** - Refreshed all resource metrics
+  - [x] Updated memory (swap info), disk (14GB/56%), resource consumers, SSL cert status
+
 ## 🎉 Recently Completed (2026-02-23)
 - [x] **Coupon Status Management** `01a7416` - Admin can change coupon status from detail modal
   - [x] New `PATCH /api/coupons/:id/status` endpoint (ACTIVE/REDEEMED/EXPIRED)

@@ -5,6 +5,11 @@ services:
     image: postgres:16
     container_name: kgolf-postgres
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     environment:
       POSTGRES_USER: kgolf
       POSTGRES_PASSWORD: kgolf_password
@@ -37,6 +42,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       db:
         condition: service_healthy
