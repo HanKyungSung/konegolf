@@ -10,6 +10,7 @@ import { requireStaffOrAdmin } from '../middleware/requireRole';
 const router = Router();
 
 // Admin-only account used for quick sales (no real customer)
+const QUICK_SALE_EMAIL = 'admin@konegolf.ca';
 const QUICK_SALE_PHONE = '+11111111111';
 
 // Admin check middleware
@@ -228,13 +229,15 @@ router.post('/create', requireAuth, requireAdmin, async (req, res) => {
  */
 router.post('/quick-sale', requireAuth, requireStaffOrAdmin, async (req, res) => {
   try {
-    // Find the admin account by phone
+    // Find the admin account by email (primary) or phone (fallback)
     const adminUser = await prisma.user.findUnique({
+      where: { email: QUICK_SALE_EMAIL },
+    }) ?? await prisma.user.findUnique({
       where: { phone: QUICK_SALE_PHONE },
     });
 
     if (!adminUser) {
-      return res.status(500).json({ error: 'Quick sale admin account not found. Ensure admin@konegolf.ca exists with phone +11111111111.' });
+      return res.status(500).json({ error: 'Quick sale admin account not found. Ensure admin@konegolf.ca exists.' });
     }
 
     // Pick the first active room

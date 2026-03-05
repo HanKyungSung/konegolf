@@ -120,7 +120,7 @@ async function main() {
 	const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@konegolf.ca';
 	const adminName = process.env.SEED_ADMIN_NAME || 'Admin User';
 	const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
-	const adminPhone = process.env.SEED_ADMIN_PHONE || '+14165551000'; // Canadian phone format (Toronto area code)
+	const adminPhone = process.env.SEED_ADMIN_PHONE || '+11111111111'; // Quick Sale lookup phone
 	
 	const existingAdmin = await prisma.user.findFirst({ 
 		where: { 
@@ -148,18 +148,7 @@ async function main() {
 		});
 		console.log(`Seeded admin user: ${adminEmail} / ${adminPhone} / ${adminPassword} (role: ADMIN)`);
 	} else {
-		// Only update phone if needed — do NOT override role (it may have been manually changed)
-		if ((existingAdmin as any).phone !== adminPhone) {
-			await prisma.user.update({
-				where: { id: existingAdmin.id },
-				data: { 
-					phone: adminPhone,
-				},
-			});
-			console.log(`Updated existing user phone: ${adminEmail} / ${adminPhone} (role unchanged: ${(existingAdmin as any).role})`);
-		} else {
-			console.log(`Admin user already exists: ${adminEmail} / ${adminPhone} (role: ${(existingAdmin as any).role})`);
-		}
+		console.log(`Admin user already exists: ${adminEmail} / ${(existingAdmin as any).phone} (role: ${(existingAdmin as any).role})`);
 	}
 
 	// Create superadmin account (idempotent by email)
