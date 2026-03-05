@@ -174,51 +174,6 @@ export function generateMonthlyReportPdf(data: MonthlyReportData): PDFKit.PDFDoc
     { x: MARGIN, width: 300, text: 'Total Tips' },
     { x: MARGIN + 320, width: 150, align: 'right', text: formatCurrency(data.tipsSummary.totalTips) },
   ]);
-  y = drawTableRow(doc, y, [
-    { x: MARGIN, width: 300, text: `Average Tip (${data.tipsSummary.tippedCount} tipped)` },
-    { x: MARGIN + 320, width: 150, align: 'right', text: formatCurrency(data.tipsSummary.averageTip) },
-  ]);
-  y += 12;
-
-  // ── Operational Stats ──
-  if (y > 620) {
-    doc.addPage();
-    y = MARGIN;
-  }
-  y = drawSectionHeader(doc, y, 'Operational Statistics');
-  const stats = data.operationalStats;
-  const statRows = [
-    ['Total Bookings (Completed)', stats.totalBookings.toString()],
-    ['Total Customers', stats.totalCustomers.toString()],
-    ['Total Invoices', stats.totalInvoices.toString()],
-    ['Average Booking Value', formatCurrency(stats.averageBookingValue)],
-    ['Average Customer Spend', formatCurrency(stats.averageCustomerSpend)],
-  ];
-  for (const [label, value] of statRows) {
-    y = drawTableRow(doc, y, [
-      { x: MARGIN, width: 300, text: label },
-      { x: MARGIN + 320, width: 150, align: 'right', text: value },
-    ]);
-  }
-  y += 8;
-
-  // Settlement
-  y = drawHr(doc, y);
-  y = drawTableRow(doc, y, [
-    { x: MARGIN, width: 200, text: 'Settlement' },
-    { x: MARGIN + 200, width: 100, align: 'right', text: 'Count' },
-    { x: MARGIN + 320, width: 150, align: 'right', text: 'Amount' },
-  ], { bold: true });
-  y = drawTableRow(doc, y, [
-    { x: MARGIN, width: 200, text: 'Settled (Paid)' },
-    { x: MARGIN + 200, width: 100, align: 'right', text: stats.settledCount.toString() },
-    { x: MARGIN + 320, width: 150, align: 'right', text: formatCurrency(stats.settledAmount) },
-  ]);
-  y = drawTableRow(doc, y, [
-    { x: MARGIN, width: 200, text: 'Open (Unpaid)' },
-    { x: MARGIN + 200, width: 100, align: 'right', text: stats.openCount.toString() },
-    { x: MARGIN + 320, width: 150, align: 'right', text: formatCurrency(stats.openAmount) },
-  ]);
   y += 12;
 
   // ── Discount Detail ──
@@ -246,7 +201,6 @@ export function generateMonthlyReportPdf(data: MonthlyReportData): PDFKit.PDFDoc
     ['Net Sales', formatCurrency(data.salesBreakdown.netSales)],
     ['Tax Collected', formatCurrency(data.taxSummary.totalTax)],
     ['Tips', formatCurrency(data.tipsSummary.totalTips)],
-    ['Total Revenue (Sales + Tax)', formatCurrency(data.salesBreakdown.netSales + data.taxSummary.totalTax)],
   ];
   for (const [label, value] of reportTotals) {
     y = drawTableRow(doc, y, [
