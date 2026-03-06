@@ -134,13 +134,24 @@ export function generateMonthlyReportPdf(data: MonthlyReportData): PDFKit.PDFDoc
     { ...sbCols[2], text: formatCurrency(data.salesBreakdown.roomRevenue) },
   ]);
 
-  for (const ms of data.salesBreakdown.menuSales) {
+  // Separate Custom from regular menu categories
+  const regularMenuSales = data.salesBreakdown.menuSales.filter(ms => ms.category !== 'CUSTOM');
+  const customSales = data.salesBreakdown.menuSales.find(ms => ms.category === 'CUSTOM');
+
+  for (const ms of regularMenuSales) {
     y = drawTableRow(doc, y, [
       { ...sbCols[0], text: ms.category },
       { ...sbCols[1], text: ms.count.toString() },
       { ...sbCols[2], text: formatCurrency(ms.amount) },
     ]);
   }
+
+  // Always show Custom row
+  y = drawTableRow(doc, y, [
+    { ...sbCols[0], text: 'Custom' },
+    { ...sbCols[1], text: (customSales?.count ?? 0).toString() },
+    { ...sbCols[2], text: formatCurrency(customSales?.amount ?? 0) },
+  ]);
 
   y = drawHr(doc, y);
   y = drawTableRow(doc, y, [
