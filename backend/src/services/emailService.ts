@@ -646,7 +646,7 @@ export interface CouponEmailParams {
 function getCouponEmailContent(type: string): { emoji: string; heading: string; subtext: string } {
   switch (type) {
     case 'birthday':
-      return { emoji: '🎂', heading: 'Happy Birthday!', subtext: 'We have a special gift for you to celebrate your birthday!' };
+      return { emoji: '🎂', heading: 'Happy Birthday!', subtext: 'Here\'s a birthday coupon from K one Golf.' };
     case 'loyalty':
       return { emoji: '⭐', heading: 'Thank You for Your Loyalty!', subtext: 'You\'ve reached a milestone and earned a reward!' };
     default:
@@ -675,7 +675,7 @@ export async function sendCouponEmail(params: CouponEmailParams) {
     : '';
 
   const subject = couponType === 'birthday'
-    ? `${emoji} Happy Birthday, ${customerName}! Here's a gift from K one Golf!`
+    ? `${emoji} Happy Birthday, ${customerName}! Birthday Coupon from K one Golf`
     : couponType === 'loyalty'
       ? `${emoji} Thank you, ${customerName}! You've earned a reward from K one Golf!`
       : `${emoji} ${customerName}, you've received a coupon from K one Golf!`;
