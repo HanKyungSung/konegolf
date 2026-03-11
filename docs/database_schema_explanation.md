@@ -1,6 +1,7 @@
 # Database Schema Explanation
 
 **Created:** October 12, 2025  
+**Last Updated:** March 11, 2026  
 **Purpose:** Explain existing and proposed database relationships
 
 ---
@@ -552,6 +553,17 @@ const adminRevenue = await prisma.booking.groupBy({
 - ✨ `Booking.bookingSource` - How booking was created
 - ✨ `Booking.createdBy` - Which admin created it
 - ✨ `Booking.isGuestBooking` - Flag for guests
+
+### **Payment Model** *(Added 2026-03-11)*
+- ✨ `Payment` - Tracks individual payment records per Invoice
+  - `id` (PK, uuid)
+  - `invoiceId` (FK → Invoice)
+  - `method` (CARD / CASH / GIFT_CARD)
+  - `amount` (Decimal — amount paid in this payment)
+  - `createdAt` (DateTime)
+- Supports incremental/split payments (multiple payments per invoice)
+- When `sum(payments.amount) >= invoice.totalAmount` → invoice marked PAID
+- When multiple payment methods → `invoice.paymentMethod = 'SPLIT'`
 
 ### **Benefits**
 - 📊 Marketing analytics (which channel works best)

@@ -121,8 +121,7 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
     - [x] Clears redeemed fields when reverting coupon to ACTIVE
     - [x] Deleting a coupon discount order reverts coupon back to ACTIVE automatically
     - [x] Seeded 5 default coupon types in production (birthday, loyalty, referral, seasonal, custom)
-- When pay button clicks
-  - per seat payment closure 
+- [x] ~~When pay button clicks — per seat payment closure~~ **Incremental Collect Payment System** (see 2026-03-11)
 - User signup
   - phone number duplication
   - If that happens how user can find the email address associate with it?
@@ -147,6 +146,22 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - Set up Gmail "Send As" with k-golf.ca SMTP credentials
   - Remove "via gmail.com" notice from sent emails
   - Alternative: Consider using SendGrid (already integrated in DNS)
+
+## 🎉 Recently Completed (2026-03-11)
+- [x] **Incremental Collect Payment System** - Replace old split payment UI with collect payment dialog `a0dc92b`
+  - [x] New `Payment` model in Prisma schema (id, invoiceId, method, amount, createdAt)
+  - [x] Migration `20260311054101_add_payment_model` applied to prod
+  - [x] `POST /api/invoices/:id/add-payment` endpoint — incremental partial payments
+  - [x] `addSinglePayment()` in invoiceRepo — auto-marks PAID when total reaches invoice amount, detects SPLIT method
+  - [x] Frontend: Collect Payment dialog with payment history, remaining balance, tip (% buttons), method select, amount (Full/Half)
+  - [x] Removed old split payment UI, accordion payment controls, and related state
+  - [x] Daily/monthly report repos updated to aggregate from Payment records
+  - [x] Prod backfill: 667 Payment records created for existing paid invoices (INSERT only, no data modified)
+  - [x] Booking paymentStatus correctly checks all seats before marking PAID
+- [x] **Screen Capture Score Integration Plan** - Added `screen_capture/` directory
+  - [x] `capture.py` v4.1 — DXGI screen capture + EasyOCR scorecard detection
+  - [x] `PLAN.md` — 6-part integration plan (capture → collection → customer → deploy → monitoring → health)
+  - [x] Bay PC setup scripts (setup.bat, run.bat, config.json, requirements.txt)
 
 ## 🎉 Recently Completed (2026-03-05)
 - [x] **Monthly PDF Report Fix** - Grand total now matches payment types total exactly

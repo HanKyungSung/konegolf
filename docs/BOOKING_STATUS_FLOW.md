@@ -1,8 +1,8 @@
 # Booking Status Flow - Simplified Model
 
-> **Last Updated:** November 30, 2025
-> **Status:** Phase 1.3.6 Complete - Frontend Components Ready, Testing Next
-> **Version:** 2.0 (Simplified from 1.0)
+> **Last Updated:** March 11, 2026
+> **Status:** Phase 1.3.7 - Incremental Payment Model Added
+> **Version:** 2.1 (Added Payment model for incremental/split payments)
 
 ---
 
@@ -80,7 +80,8 @@ This document defines the **simplified booking lifecycle** used in K-Golf POS sy
                             │ paymentMethod│         │
                             │ paidAt       │         ▼
                             │              │   ┌──────────────┐
-                            │ orders (1:N) │──┼──│ MENU ITEM    │
+                            │ payments(1:N)│   │ MENU ITEM    │
+                            │ orders (1:N) │──┼──│──────────────│
                             │ ──────────── │  │  │──────────────│
                             │ Use orders as│  │  │ id (PK)      │
                             │ line items   │  │  │ name         │
@@ -192,6 +193,35 @@ Example:
                              ├─ Order #1 (Booking #1, Seat 1) × 1
                              ├─ Order #2 (Booking #2, Seat 3) × 2
                              └─ Order #3 (Booking #3, Seat 2) × 1
+```
+
+#### **INVOICE → PAYMENT (One-to-Many)** *(Added 2026-03-11)*
+```
+One INVOICE can have many PAYMENTs (incremental/split payments)
+Each PAYMENT belongs to ONE INVOICE
+
+Payment model:
+  id        String   (PK, uuid)
+  invoiceId String   (FK → Invoice)
+  method    String   (CARD / CASH / GIFT_CARD)
+  amount    Decimal  (amount paid in this payment)
+  createdAt DateTime
+
+When sum(payments.amount) >= invoice.totalAmount → invoice status = PAID
+When multiple payment methods used → invoice.paymentMethod = SPLIT
+
+Example (single payment):
+  Invoice (Seat 1, $55.00) ──┐
+                             └─ Payment: CARD $55.00 ✅ PAID
+
+Example (split/incremental):
+  Invoice (Seat 2, $39.90) ──┐
+                             ├─ Payment: CARD  $20.00
+                             └─ Payment: CASH  $19.90 ✅ PAID (SPLIT)
+
+Booking paymentStatus:
+  All seats PAID → booking.paymentStatus = PAID
+  Otherwise → booking.paymentStatus = UNPAID
 ```
 
 ---

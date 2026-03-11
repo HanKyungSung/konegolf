@@ -91,3 +91,9 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Screen capture (bay PC runtime files)
+screen_capture/captures/
+screen_capture/*.log
+screen_capture/Pipfile
+screen_capture/Pipfile.lock
