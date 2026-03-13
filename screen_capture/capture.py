@@ -18,7 +18,7 @@ from datetime import datetime
 # Config
 # ---------------------------------------------------------------------------
 CONFIG_FILE = "config.json"
-SCRIPT_VERSION = "2026-03-12-v5.2-google-drive"
+SCRIPT_VERSION = "2026-03-13-v5.4-paddleocr"
 
 def load_config():
     defaults = {
@@ -80,6 +80,39 @@ def crop_region(frame, region):
     return frame[y1:y2, x1:x2]
 
 
+def ocr_read(ocr_engine, image, detail=False):
+    """Unified OCR interface for PaddleOCR.
+    image: numpy array (H, W, C)
+    detail=False → returns list of text strings
+    detail=True  → returns list of (bbox, text, confidence) matching EasyOCR format
+    """
+    try:
+        results = ocr_engine.predict(image)
+    except Exception:
+        return [] if not detail else []
+
+    texts, scores, polys = [], [], []
+    for item in results:
+        if isinstance(item, dict):
+            texts = item.get("rec_texts", [])
+            scores = item.get("rec_scores", [])
+            polys = item.get("rec_polys", [])
+        elif hasattr(item, "rec_texts"):
+            texts = item.rec_texts
+            scores = item.rec_scores
+            polys = getattr(item, "rec_polys", [])
+
+    if not detail:
+        return texts
+
+    # Convert to (bbox, text, confidence) tuples for parse functions
+    out = []
+    for i, (txt, score) in enumerate(zip(texts, scores)):
+        bbox = polys[i].tolist() if i < len(polys) else [[0, 0], [0, 0], [0, 0], [0, 0]]
+        out.append((bbox, txt, score))
+    return out
+
+
 NAME_SKIP_WORDS = {
     "HOLE",
     "PAR",
@@ -89,7 +122,14 @@ NAME_SKIP_WORDS = {
     "IN",
     "SCORE",
     "CARD",
+    "MAUNA",
+    "OCEAN",
+    "MEADOW",
+    "FOREST",
 }
+
+# Level badge prefixes from Golfzon (Amateur, Semi-pro, Pro, etc.)
+LEVEL_BADGE_PATTERN = re.compile(r"^[AaSsBbPp]\s+(?=[A-Za-z가-힣])")
 
 
 def is_name_like(text):
@@ -115,11 +155,12 @@ def detect_stableford_icons(frame):
     return False
 
 
-def parse_name_candidates(name_results, strip_icon=False):
+def parse_name_candidates(name_results, strip_icon=False, crop_height=None):
     """Parse name candidates from EasyOCR detail results.
     name_results: list of (bbox, text, confidence) tuples from readtext(detail=1)
     strip_icon: if True, remove leading I/S/s/5 artifacts from Stableford icon OCR
-    Returns list of (cleaned_name, confidence) tuples.
+    crop_height: if provided, compute row_index (0-based) for each name based on y-position
+    Returns list of (cleaned_name, confidence, row_index) tuples sorted by row.
     """
     names = []
     seen = set()
@@ -128,6 +169,11 @@ def parse_name_candidates(name_results, strip_icon=False):
         raw = text.strip()
         if strip_icon:
             raw = re.sub(r"^[ISis5]\s*(?=[a-z])", "", raw)
+        # Strip level badge prefix (e.g. "A h" → "h", "S kim" → "kim")
+        raw = LEVEL_BADGE_PATTERN.sub("", raw)
+        # Also handle merged badge+name like "Ah" → "h", "Ac" → "c"
+        if len(raw) == 2 and raw[0] in "AaSsBbPp" and raw[1].isalpha():
+            raw = raw[1:]
         cleaned = re.sub(r"[^0-9A-Za-z가-힣]+", "", raw)
         if cleaned.upper().startswith("SPLAYER"):
             cleaned = cleaned[1:]
@@ -135,12 +181,25 @@ def parse_name_candidates(name_results, strip_icon=False):
             continue
         if cleaned.upper() in NAME_SKIP_WORDS:
             continue
-        if len(cleaned) < 2 or not is_name_like(cleaned):
+        # Skip standalone level badge / icon letters confirmed as OCR artifacts
+        if len(cleaned) == 1 and cleaned.upper() in "AS":
             continue
+        if not is_name_like(cleaned):
+            continue
+
+        # Compute row index from bbox y-center
+        row_idx = 0
+        if crop_height and crop_height > 0:
+            # bbox = [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+            y_center = sum(pt[1] for pt in bbox) / len(bbox)
+            row_height = crop_height / 4.0
+            row_idx = min(int(y_center / row_height), 3)
+
         if cleaned not in seen:
-            names.append((cleaned, round(conf, 3)))
+            names.append((cleaned, round(conf, 3), row_idx))
             seen.add(cleaned)
 
+    names.sort(key=lambda x: x[2])
     return names
 
 
@@ -155,7 +214,8 @@ def parse_score_candidates(score_results):
         without_paren = re.sub(r"\([^)]*\)", " ", text)
         candidates = re.findall(r"\d{1,3}", without_paren)
         if not candidates:
-            candidates = re.findall(r"\d{1,3}", text)
+            # If removing parens left nothing, the entire text was a delta like "(+15)" — skip
+            continue
         line_scores = []
         for candidate in candidates:
             score = int(candidate)
@@ -178,28 +238,30 @@ def parse_score_candidates(score_results):
 # ---------------------------------------------------------------------------
 # Stage 1A: Scorecard screen detection
 # ---------------------------------------------------------------------------
-def detect_scorecard(frame, reader, region, log):
-    """Check if 'SCORE CARD' text is visible in the detection region."""
+def detect_scorecard(frame, ocr_engine, region, log):
+    """Check if 'SCORE CARD' text is visible in the detection region.
+    Returns (detected: bool, text: str) — text is the raw OCR for course fallback.
+    """
     cropped = crop_region(frame, region)
     try:
-        results = reader.readtext(cropped, detail=0, paragraph=False)
-        text = " ".join(results).upper()
+        texts = ocr_read(ocr_engine, cropped, detail=False)
+        text = " ".join(texts).upper()
         log.debug(f"Detection OCR text: {text}")
         if "SCORE CARD" in text or "SCORECARD" in text or "SCORE  CARD" in text:
-            return True
+            return True, text
     except Exception as e:
         log.error(f"Detection OCR error: {e}")
-    return False
+    return False, ""
 
 # ---------------------------------------------------------------------------
 # Stage 1B: Game completion detection
 # ---------------------------------------------------------------------------
-def detect_game_complete(frame, reader, region, log):
+def detect_game_complete(frame, ocr_engine, region, log):
     """Check if game is complete by looking for STROKE/STABLEFORD buttons."""
     cropped = crop_region(frame, region)
     try:
-        results = reader.readtext(cropped, detail=0, paragraph=False)
-        text = " ".join(results).upper()
+        texts = ocr_read(ocr_engine, cropped, detail=False)
+        text = " ".join(texts).upper()
         log.debug(f"Completion check OCR text: {text}")
         if "STROKE" in text or "STABLEFORD" in text or "PERIO" in text:
             log.info("Game completion confirmed (STROKE/STABLEFORD buttons found)")
@@ -211,23 +273,31 @@ def detect_game_complete(frame, reader, region, log):
 # ---------------------------------------------------------------------------
 # Stage 2: Score extraction (full OCR)
 # ---------------------------------------------------------------------------
-def extract_scores(frame, reader, cfg, log):
+def extract_scores(frame, ocr_engine, cfg, log, detection_text=""):
     """Extract player names, total scores, and confidence from scorecard."""
+    from PIL import Image
+    import numpy as np
     results = {"course": "", "players": []}
 
-    # OCR the name region (detail=1 returns (bbox, text, confidence))
+    # OCR the name region — upscale 5x for better small-text detection
     name_crop = crop_region(frame, cfg["name_region"])
     try:
-        name_results = reader.readtext(name_crop, detail=1, paragraph=False)
+        pil_crop = Image.fromarray(name_crop)
+        upscaled = pil_crop.resize(
+            (pil_crop.width * 5, pil_crop.height * 5), Image.LANCZOS
+        )
+        name_input = np.array(upscaled)
+        name_results = ocr_read(ocr_engine, name_input, detail=True)
         log.info(f"Name region raw OCR: {[(t, round(c, 3)) for _, t, c in name_results]}")
     except Exception as e:
         log.error(f"Name OCR error: {e}")
         name_results = []
+        name_input = name_crop
 
     # OCR the score region
     score_crop = crop_region(frame, cfg["score_region"])
     try:
-        score_results = reader.readtext(score_crop, detail=1, paragraph=False)
+        score_results = ocr_read(ocr_engine, score_crop, detail=True)
         log.info(f"Score region raw OCR: {[(t, round(c, 3)) for _, t, c in score_results]}")
     except Exception as e:
         log.error(f"Score OCR error: {e}")
@@ -238,15 +308,34 @@ def extract_scores(frame, reader, cfg, log):
     if has_icons:
         log.info("Stableford icons detected — will strip S/I artifacts from names")
 
-    names = parse_name_candidates(name_results, strip_icon=has_icons)
+    names = parse_name_candidates(
+        name_results, strip_icon=has_icons,
+        crop_height=name_input.shape[0] if len(name_results) > 0 else None,
+    )
     scores = parse_score_candidates(score_results)
     log.info(f"Parsed name candidates: {names}")
     log.info(f"Parsed score candidates: {scores}")
 
-    # Pair names with scores (both now carry confidence)
-    for i in range(min(len(names), len(scores))):
-        name, name_conf = names[i]
+    # Build a row_index → name mapping for positional alignment
+    # Merge multiple names in the same row (e.g. "b" + "mollon" → "b mollon")
+    name_by_row = {}
+    for entry in names:
+        name, conf, row_idx = entry
+        if row_idx in name_by_row:
+            prev_name, prev_conf = name_by_row[row_idx]
+            name_by_row[row_idx] = (f"{prev_name} {name}", min(prev_conf, conf))
+        else:
+            name_by_row[row_idx] = (name, conf)
+
+    # Pair scores with names using row alignment
+    for i in range(len(scores)):
         score, score_conf = scores[i]
+        if score == 0:
+            continue
+        if i in name_by_row:
+            name, name_conf = name_by_row[i]
+        else:
+            name, name_conf = f"Player {i + 1}", 0.0
         results["players"].append({
             "seat_index": i + 1,
             "name": name,
@@ -255,16 +344,26 @@ def extract_scores(frame, reader, cfg, log):
             "score_confidence": score_conf,
         })
 
-    # Course name
+    # Course name — try OCR first, fall back to detection text
     try:
         course_crop = crop_region(frame, cfg["course_region"])
-        course_results = reader.readtext(course_crop, detail=0, paragraph=False)
-        course_text = " ".join(course_results)
+        course_texts = ocr_read(ocr_engine, course_crop, detail=False)
+        course_text = " ".join(course_texts)
         if course_text:
             results["course"] = course_text
             log.info(f"Course name raw OCR: {course_text}")
     except Exception as e:
         log.debug(f"Course OCR error: {e}")
+
+    # Fallback: extract course from detection text (e.g. "MAUNA OCEAN C.C SCORE CARD")
+    if not results["course"] and detection_text:
+        dt = detection_text.upper()
+        for marker in ["SCORE CARD", "SCORECARD", "SCORE  CARD"]:
+            idx = dt.find(marker)
+            if idx > 0:
+                results["course"] = detection_text[:idx].strip()
+                log.info(f"Course from detection text: {results['course']}")
+                break
 
     return results
 
@@ -490,19 +589,22 @@ def main():
         log.error("dxcam not installed. Run: pip install dxcam")
         sys.exit(1)
 
-    log.info("Loading EasyOCR (this may take a minute on first run)...")
+    log.info("Loading PaddleOCR (this may take a minute on first run)...")
     # Workaround: some bay PCs lack root CA certs, causing SSL errors
-    # when EasyOCR downloads its detection models on first run.
+    # when models are downloaded on first run.
     try:
         import ssl
         ssl._create_default_https_context = ssl._create_unverified_context
         log.debug("SSL certificate verification disabled (bay PC workaround)")
     except Exception:
         pass
+
     try:
-        import easyocr
+        import os as _os
+        _os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
+        from paddleocr import PaddleOCR
     except ImportError:
-        log.error("easyocr not installed. Run: pip install easyocr")
+        log.error("paddleocr not installed. Run: pip install paddlepaddle paddleocr")
         sys.exit(1)
 
     # Initialize
@@ -514,17 +616,13 @@ def main():
         log.error(f"Failed to create DXGI camera: {e}")
         sys.exit(1)
 
-    log.info(f"Initializing EasyOCR with languages: {cfg['ocr_language']}...")
+    log.info("Initializing PaddleOCR (lang=en)...")
     try:
-        reader = easyocr.Reader(cfg["ocr_language"], gpu=True)
-        log.info("EasyOCR ready (GPU enabled)")
-    except Exception:
-        try:
-            reader = easyocr.Reader(cfg["ocr_language"], gpu=False)
-            log.info("EasyOCR ready (CPU mode)")
-        except Exception as e:
-            log.error(f"Failed to initialize EasyOCR: {e}")
-            sys.exit(1)
+        reader = PaddleOCR(lang="en")
+        log.info("PaddleOCR ready")
+    except Exception as e:
+        log.error(f"Failed to initialize PaddleOCR: {e}")
+        sys.exit(1)
 
     log.info("Capture loop started. Watching for scorecard...")
     log.info("Strategy: rolling capture — each scorecard sighting overwrites previous.")
@@ -533,6 +631,7 @@ def main():
     frame_count = 0
     # Rolling capture state
     pending_frame = None       # The latest scorecard frame (not yet finalized)
+    pending_detection_text = "" # Detection OCR text from last scorecard frame
     scorecard_streak = 0       # How many consecutive scorecard frames
     last_finalized_time = 0    # When we last finalized a capture (cooldown anchor)
     MIN_STREAK = 2             # Need at least 2 consecutive detections before tracking
@@ -552,6 +651,7 @@ def main():
                 frame_count += 1
                 scorecard_streak = 0
                 pending_frame = None
+                pending_detection_text = ""
                 gone_count = 0
                 continue
 
@@ -565,7 +665,7 @@ def main():
                 continue
 
             # Detect scorecard
-            is_scorecard = detect_scorecard(
+            is_scorecard, det_text = detect_scorecard(
                 frame, reader, cfg["detect_region"], log
             )
 
@@ -577,6 +677,7 @@ def main():
                 scorecard_streak += 1
                 if scorecard_streak >= MIN_STREAK:
                     pending_frame = frame
+                    pending_detection_text = det_text
                     if scorecard_streak == MIN_STREAK:
                         log.info(f"Scorecard detected — tracking (streak={scorecard_streak})")
                     elif scorecard_streak % 5 == 0:
@@ -599,7 +700,10 @@ def main():
 
                         # Full OCR extraction on the last scorecard frame
                         log.info("Running OCR extraction...")
-                        results = extract_scores(pending_frame, reader, cfg, log)
+                        results = extract_scores(
+                            pending_frame, reader, cfg, log,
+                            detection_text=pending_detection_text,
+                        )
 
                         log.info("-" * 40)
                         log.info("EXTRACTION RESULTS:")
@@ -632,6 +736,7 @@ def main():
 
                         # Reset state
                         pending_frame = None
+                        pending_detection_text = ""
                         scorecard_streak = 0
                         gone_count = 0
                     else:

@@ -1,6 +1,7 @@
 dxcam
 opencv-python
-easyocr
+paddlepaddle
+paddleocr
 requests
 Pillow
 google-auth
