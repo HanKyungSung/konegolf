@@ -527,7 +527,7 @@ export default function POSDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {rooms.map((room) => {
-                    const roomTodayBookings = todayBookings.filter(b => b.roomId === room.id);
+                    const roomTodayBookings = todayBookings.filter(b => b.roomId === room.id && (b as any).bookingSource !== 'QUICK_SALE');
 
                     return (
                       <Card key={room.id} className="bg-slate-700/30 border-slate-600">
@@ -831,7 +831,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
             const filteredDayBookings = filterBookingsByStatus(dayBookings);
             const nonQuickSaleBookings = filteredDayBookings.filter(b => (b as any).bookingSource !== 'QUICK_SALE');
             const totalHours = nonQuickSaleBookings.reduce((sum, b) => sum + (b.duration || 0), 0);
-            const subtotal = filteredDayBookings.reduce((sum, b) => sum + (b.price || 0), 0);
+            const subtotal = nonQuickSaleBookings.reduce((sum, b) => sum + (b.price || 0), 0);
             const totalRevenue = subtotal * (1 + taxRate / 100);
 
             return (
@@ -854,7 +854,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
                     {totalHours} hour{totalHours !== 1 ? 's' : ''}
                   </Badge>
                   <Badge className="bg-slate-700/60 text-slate-300">
-                    {filteredDayBookings.length} booking{filteredDayBookings.length !== 1 ? 's' : ''}
+                    {nonQuickSaleBookings.length} booking{nonQuickSaleBookings.length !== 1 ? 's' : ''}
                   </Badge>
                 </div>
 
