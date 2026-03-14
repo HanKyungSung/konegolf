@@ -4,11 +4,11 @@
   "ingest_secret": "",
   "google_drive_client_secret": "client_secret.json",
   "google_drive_folder_id": "",
-  "capture_interval_seconds": 3,
+  "capture_interval_seconds": 0.5,
   "ocr_language": ["en"],
   "log_file": "score_capture.log",
   "save_captures": true,
   "capture_save_dir": "captures",
-  "cooldown_seconds": 300,
+  "cooldown_seconds": 120,
   "confidence_threshold": 0.7
 }

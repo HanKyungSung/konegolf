@@ -1,6 +1,6 @@
 dxcam
 opencv-python
-paddlepaddle
+paddlepaddle==3.0.0
 paddleocr
 requests
 Pillow
