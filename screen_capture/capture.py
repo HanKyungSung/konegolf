@@ -18,7 +18,7 @@ from datetime import datetime
 # Config
 # ---------------------------------------------------------------------------
 CONFIG_FILE = "config.json"
-SCRIPT_VERSION = "2026-03-14-v5.7-capture-first"
+SCRIPT_VERSION = open(os.path.join(os.path.dirname(__file__), "VERSION.txt")).read().strip()
 
 def load_config():
     defaults = {
