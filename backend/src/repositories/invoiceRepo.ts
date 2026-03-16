@@ -245,10 +245,12 @@ export async function addSinglePayment(
 }
 
 export async function checkAllInvoicesPaid(bookingId: string): Promise<boolean> {
+  // Only count invoices with actual charges — empty seats (subtotal=0) don't need payment
   const unpaidCount = await prisma.invoice.count({
     where: {
       bookingId,
       status: 'UNPAID',
+      subtotal: { gt: 0 },
     },
   });
 
