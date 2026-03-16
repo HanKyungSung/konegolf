@@ -20,7 +20,13 @@ function computeEnd(startTime: Date, hours: number): Date {
 }
 
 const HOURLY_RATE = 35; // $35 per hour (room rate, not per player)
-const TAX_RATE = 0.1; // 10% tax
+
+async function getGlobalTaxRate(): Promise<number> {
+  const setting = await prisma.setting.findUnique({
+    where: { key: 'global_tax_rate' },
+  });
+  return setting ? parseFloat(setting.value) / 100 : 0.13; // Default 13% if not set
+}
 
 export async function findConflict(roomId: string, startTime: Date, endTime: Date) {
   return prisma.booking.findFirst({
@@ -108,7 +114,7 @@ export async function addBookingOrderToSeat1(bookingId: string, hours: number): 
   });
   
   const subtotal = orders.reduce((sum, o) => sum + Number(o.totalPrice), 0);
-  const taxRate = TAX_RATE; // Use the same tax rate
+  const taxRate = await getGlobalTaxRate();
   const tax = subtotal * taxRate;
   const totalAmount = subtotal + tax;
   

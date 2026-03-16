@@ -739,7 +739,7 @@ async function getGlobalTaxRate(): Promise<number> {
   const setting = await prisma.setting.findUnique({
     where: { key: 'global_tax_rate' },
   });
-  return setting ? parseFloat(setting.value) : 0.13; // Default 13%
+  return setting ? parseFloat(setting.value) / 100 : 0.13; // Default 13%
 }
 
 // Helper: Calculate price with tax
