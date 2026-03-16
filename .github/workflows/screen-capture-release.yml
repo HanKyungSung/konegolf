@@ -1,0 +1,102 @@
+name: Screen Capture Release
+
+on:
+  push:
+    tags:
+      - 'screen-capture-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 2.1.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Package & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for screen_capture changes
+        id: check_changes
+        run: |
+          # Compare the tagged commit against its parent
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- screen_capture/ | wc -l)
+          if [ "$CHANGED" -eq "0" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "No changes in screen_capture/. Skipping release."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "screen_capture/ changes detected ($CHANGED files). Proceeding."
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set version
+        if: steps.check_changes.outputs.skip != 'true'
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag=screen-capture-v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/screen-capture-v}" >> $GITHUB_OUTPUT
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify VERSION.txt matches tag
+        if: steps.check_changes.outputs.skip != 'true'
+        run: |
+          FILE_VERSION=$(cat screen_capture/VERSION.txt | tr -d '[:space:]')
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          if [ "$FILE_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::VERSION.txt ($FILE_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "Version verified: $TAG_VERSION"
+
+      - name: Create update zip
+        if: steps.check_changes.outputs.skip != 'true'
+        working-directory: screen_capture
+        run: |
+          zip -r ../konegolf-screen-capture-update.zip \
+            capture.py \
+            updater.py \
+            run.bat \
+            run_hidden.vbs \
+            setup.bat \
+            requirements.txt \
+            config.json.example \
+            VERSION.txt \
+            README.md \
+            samples/
+
+      - name: Create GitHub Release
+        if: steps.check_changes.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Score Capture v${{ steps.version.outputs.version }}
+          body: |
+            ## Konegolf Score Capture v${{ steps.version.outputs.version }}
+
+            ### Auto-update
+            Bay PCs with the updater will download this automatically on next startup.
+
+            ### Manual install
+            1. Download `konegolf-screen-capture-update.zip`
+            2. Extract to your screen_capture folder
+            3. Run `setup.bat`
+            4. Edit `config.json` with your bay number and Drive folder ID
+            5. Run `run.bat`
+
+            **Note**: `config.json`, `token.json`, and `client_secret.json` are NOT included — your local config is preserved.
+          files: konegolf-screen-capture-update.zip
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
