@@ -2387,8 +2387,11 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
             const invoice = invoices.find((inv) => inv.seatIndex === paymentDialogSeat);
             const existingPayments = invoice?.payments || [];
             const paidSoFar = existingPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-            const invoiceTotal = Number(invoice?.subtotal || 0) + Number(invoice?.tax || 0) + Number(invoice?.tip || 0);
-            const remaining = Math.max(0, Math.round((invoiceTotal - paidSoFar) * 100) / 100);
+            const baseTotal = Number(invoice?.subtotal || 0) + Number(invoice?.tax || 0);
+            const existingTip = Number(invoice?.tip || 0);
+            const newTipVal = parseFloat(tipAmountBySeat[paymentDialogSeat] || '0') || 0;
+            const totalWithTip = baseTotal + existingTip + newTipVal;
+            const remaining = Math.max(0, Math.round((totalWithTip - paidSoFar) * 100) / 100);
 
             return (
               <div className="space-y-4">
@@ -2413,6 +2416,29 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   </div>
                 )}
 
+                {/* Invoice breakdown */}
+                <div className="space-y-1 p-3 bg-slate-900/60 rounded-lg border border-slate-700 text-sm">
+                  <div className="flex justify-between text-slate-300">
+                    <span>Subtotal</span>
+                    <span>${Number(invoice?.subtotal || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span>Tax</span>
+                    <span>${Number(invoice?.tax || 0).toFixed(2)}</span>
+                  </div>
+                  {(existingTip > 0 || newTipVal > 0) && (
+                    <div className="flex justify-between text-slate-300">
+                      <span>Tip</span>
+                      <span>${(existingTip + newTipVal).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <Separator className="bg-slate-600" />
+                  <div className="flex justify-between font-bold text-white">
+                    <span>Total</span>
+                    <span className="text-amber-400">${totalWithTip.toFixed(2)}</span>
+                  </div>
+                </div>
+
                 {/* Remaining balance */}
                 <div className="flex justify-between items-center p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                   <span className="text-amber-300 font-medium">Remaining</span>
@@ -2421,7 +2447,10 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
                 {/* Tip Input */}
                 <div className="space-y-2">
-                  <Label className="text-slate-300 text-sm">Add Tip (optional)</Label>
+                  <Label className="text-slate-300 text-sm">
+                    Add Tip (optional)
+                    {existingTip > 0 && <span className="text-slate-500 ml-1">(${existingTip.toFixed(2)} already added)</span>}
+                  </Label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
@@ -2431,7 +2460,16 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         min="0"
                         placeholder="0.00"
                         value={tipAmountBySeat[paymentDialogSeat] || ''}
-                        onChange={(e) => setTipAmountBySeat({ ...tipAmountBySeat, [paymentDialogSeat!]: e.target.value })}
+                        onChange={(e) => {
+                          const seat = paymentDialogSeat!;
+                          const val = e.target.value;
+                          setTipAmountBySeat({ ...tipAmountBySeat, [seat]: val });
+                          // Auto-update payment amount to match new remaining
+                          const tipNum = parseFloat(val) || 0;
+                          const newTotal = baseTotal + existingTip + tipNum;
+                          const newRemaining = Math.max(0, Math.round((newTotal - paidSoFar) * 100) / 100);
+                          setPaymentDialogAmount(newRemaining.toFixed(2));
+                        }}
                         className="pl-7 bg-slate-700 border-slate-600 text-white placeholder:text-slate-500"
                       />
                     </div>
@@ -2447,6 +2485,10 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                             const sub = Number(inv.subtotal);
                             const tipVal = (sub * pct) / 100;
                             setTipAmountBySeat({ ...tipAmountBySeat, [seat]: tipVal.toFixed(2) });
+                            // Auto-update payment amount
+                            const newTotal = baseTotal + existingTip + tipVal;
+                            const newRemaining = Math.max(0, Math.round((newTotal - paidSoFar) * 100) / 100);
+                            setPaymentDialogAmount(newRemaining.toFixed(2));
                           }
                         }}
                         className="bg-slate-700 border-slate-600 hover:bg-amber-500 hover:text-black text-white text-xs px-2"
@@ -2542,7 +2584,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           tip: tipVal > 0 ? tipVal : undefined,
                         });
 
-                        // Reset tip after first payment that includes it
+                        // Reset tip after payment that includes it
                         if (tipVal > 0) {
                           setTipAmountBySeat({ ...tipAmountBySeat, [seat]: '' });
                         }

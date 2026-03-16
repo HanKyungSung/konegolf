@@ -190,11 +190,13 @@ export async function addSinglePayment(
     throw new Error(`Invoice not found for booking ${bookingId}, seat ${seatIndex}`);
   }
 
-  // Update tip if provided (accumulates with any existing tip)
+  // Update tip if provided (accumulates with any existing tip).
+  // The tip is stored on the invoice for reporting, but the payment amount
+  // from the frontend already includes the tip in the total.
   const newTip = tip && tip > 0 ? (Number(invoice.tip) || 0) + tip : Number(invoice.tip) || 0;
   const invoiceTotal = Number(invoice.subtotal) + Number(invoice.tax) + newTip;
 
-  // Check existing payments
+  // Check existing payments against the new total (which includes tip)
   const existingPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const remaining = Math.round((invoiceTotal - existingPaid) * 100) / 100;
 
@@ -205,7 +207,7 @@ export async function addSinglePayment(
   // Clamp to remaining (handle rounding)
   const clampedAmount = Math.min(amount, remaining);
 
-  // Create the payment record
+  // Create a single payment record for the full amount (includes tip)
   await prisma.payment.create({
     data: {
       invoiceId: invoice.id,
