@@ -7,6 +7,13 @@
 
 - **Task tracking:** Always update `TASKS.md` after every task completion. Never touch the "Personal note (Do not touch)" section.
 - **Docs:** Do not create new markdown files unless explicitly requested. Prefer visual explanations inline.
+- **Markdown maintenance:** When planning or implementing changes to `screen_capture/`, always update ALL related markdown files to keep them in sync:
+  - `screen_capture/TASKS.md` — Update task status, add new tasks
+  - `screen_capture/DEPLOYMENT_PLAN.md` — Update architecture, flows, implementation status
+  - `screen_capture/README.md` — Update file structure, setup instructions, version history
+  - `screen_capture/PLAN.md` — Update part status if a major milestone is completed
+  - Root `TASKS.md` — Update if the change affects the broader project
+  If a planning or implementation session touches any of these docs, check all of them before committing.
 - **Git:** Use standard git commands with conventional commits (`feat:`, `fix:`, `docs:`, `chore:`). Do not use MCP git tools unless asked.
 - **Commands:** Always explain terminal commands before running them.
 - **Versioning:** `backend/VERSION.txt` and `pos/VERSION.txt`

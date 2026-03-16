@@ -115,12 +115,18 @@ Player names on Golfzon scorecards can be very small (sometimes single character
 ```
 screen_capture/
 ├── capture.py              # Main capture script
+├── updater.py              # Auto-update checker (GitHub Releases)
 ├── config.json             # Bay-specific config (gitignored)
 ├── config.json.example     # Config template
 ├── requirements.txt        # Python dependencies
-├── VERSION.txt             # Version number
+├── VERSION.txt             # Version number (used by updater)
 ├── run.bat                 # Start capture (Windows)
-├── setup.bat               # Install dependencies (Windows)
+├── run_hidden.vbs          # Hidden launcher for Task Scheduler autostart
+├── setup.bat               # Install deps + register autostart (Windows)
+├── DEPLOYMENT_PLAN.md      # Deployment & auto-update plan
+├── TASKS.md                # Feature task tracker
+├── PLAN.md                 # Full score integration roadmap (Parts 1-6)
+├── README.md               # This file
 ├── samples/                # Sample scorecard images for testing
 │   ├── sample_v1.jpg       # Bay 2 — single-char names (h, c, z, k)
 │   ├── sample_v2.png       # Bay 4 — captured via v5.6
@@ -140,9 +146,13 @@ screen_capture/
 
 ### Installation
 
-1. Extract the zip file to a folder on the bay PC
-2. Run `setup.bat` (installs Python dependencies)
-3. Copy `config.json.example` to `config.json` and edit:
+1. Extract the zip file (or clone repo) to a folder on the bay PC
+2. Place `client_secret.json` (Google OAuth credentials) in the folder
+3. Run `setup.bat`:
+   - Installs Python dependencies
+   - Creates `config.json` from template
+   - Registers Task Scheduler autostart (runs hidden on login)
+4. Edit `config.json`:
 
 ```json
 {
@@ -154,9 +164,34 @@ screen_capture/
 }
 ```
 
-4. Place `client_secret.json` (Google OAuth credentials) in the same folder
-5. Run `run.bat` — first run will open a browser for Google Drive authentication
+5. Run `run.bat` — first run opens a browser for Google Drive authentication
 6. After auth, `token.json` is saved locally for future runs
+7. Reboot to verify — script auto-starts hidden, no shortcut needed
+
+### Auto-Update
+
+On each startup, `run.bat` calls `updater.py` which checks the GitHub Releases API for a newer version. If found, it downloads the update zip, applies it (preserving config/auth), and restarts automatically.
+
+**Files preserved during updates:** `config.json`, `token.json`, `client_secret.json`, `captures/`, logs
+
+**To release an update:**
+```
+# Edit files, then:
+echo "2.1.0" > screen_capture/VERSION.txt
+git add -A && git commit -m "Fix OCR detection"
+git tag screen-capture-v2.1.0
+git push && git push --tags
+# GitHub Actions packages and publishes the release
+# Bay PCs auto-download on next startup
+```
+
+### Autostart
+
+`setup.bat` registers a Windows Task Scheduler entry (`KonegolfScoreCapture`) that runs `run_hidden.vbs` on user login. This launches `run.bat --background` in a hidden window.
+
+- **Background mode** skips interactive prompts and pauses
+- If `token.json` is missing, background mode exits silently (first auth must be manual)
+- To remove autostart: `schtasks /delete /tn "KonegolfScoreCapture" /f`
 
 ### Config Options
 
@@ -254,3 +289,4 @@ Check the log for `OCR predict exception`. If present, it's a PaddlePaddle compa
 | Version | Date | Changes |
 |---------|------|---------|
 | 2.0.0 | 2026-03-14 | Capture-first strategy, PaddleOCR, color pre-filter, 0.5s polling |
+| 2.0.1 | 2026-03-16 | Auto-update (updater.py + GitHub Releases), autostart (Task Scheduler), hidden launch (run_hidden.vbs), GitHub Actions release workflow |

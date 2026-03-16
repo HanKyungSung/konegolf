@@ -23,9 +23,23 @@
 | 8 | Part 1: Score Capture (OCR + Drive upload) | ✅ Done | `capture.py` working |
 | 9 | Part 2: Score Collection (POS Integration) | ⬜ TODO | Backend ingest endpoint exists, capture.py submission not wired |
 | 10 | Part 3: Customer Connection | ⬜ TODO | Player identification, booking matching |
-| 11 | Part 4: Auto-Deploy to Bay PCs | 🔧 In Progress | This task group (items 1-7) |
-| 12 | Part 5: Remote Monitoring | ⬜ TODO | Heartbeats, health checks, dashboard |
-| 13 | Part 6: Bay Health Check | ⬜ TODO | Hardware/software status reporting |
+| 11 | Part 4: Auto-Deploy to Bay PCs | ✅ Done | Auto-update + autostart implemented (items 1-6) |
+| 12 | Part 5: Remote Monitoring | ⬜ TODO | Heartbeat thread, backend endpoint, admin dashboard |
+| 13 | Part 6: Bay Health Check | ⬜ TODO | Stuck detection (frozen screen), alerts |
+
+## Remote Monitoring & Health Check (Parts 5-6)
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 16 | Add heartbeat thread to `capture.py` | ⬜ TODO | Background daemon thread, POST every 60s |
+| 17 | Add `read_recent_logs()` helper | ⬜ TODO | Tail last 50 lines from log file |
+| 18 | Track shared state dict in capture loop | ⬜ TODO | status, captures_today, errors_today, etc. |
+| 19 | Add `POST /api/bays/heartbeat` endpoint | ⬜ TODO | Backend receives bay status |
+| 20 | Add `GET /api/bays` endpoint | ⬜ TODO | Returns latest heartbeat per bay (FE polls every 30s) |
+| 21 | Add BayHeartbeat Prisma model + migration | ⬜ TODO | Database schema for heartbeat storage |
+| 22 | Build bay status dashboard (`/admin/bays`) | ⬜ TODO | 🟢🟡🔴 status per bay, log viewer, polls GET /api/bays every 30s |
+| 23 | Add stuck detection (frozen screen) | ⬜ TODO | Compare consecutive frames, alert after 3+ min |
+| 24 | (Future) Upgrade to WebSocket push | ⬜ TODO | socket.io broadcast on heartbeat — only if polling feels too slow |
 
 ## Backend
 

@@ -1,6 +1,6 @@
 # Konegolf Score Capture — Deployment & Auto-Update Plan
 
-> **Last updated**: Session active
+> **Last updated**: 2026-03-16
 > **Approach**: Enhance existing `setup.bat` / `run.bat` — no Inno Setup installer
 
 ---
@@ -434,3 +434,222 @@ Day 1 evening (or next day):
 4. **`run.bat`** — Enhance with `--background` flag and updater call (depends on updater.py)
 5. **`screen-capture-release.yml`** — GitHub Actions release workflow (depends on updater.py existing)
 6. **Test on a real bay PC** — Validate the full flow end to end
+
+---
+
+## Planned: Heartbeat & Remote Monitoring
+
+### Architecture
+
+```
+capture.py process (single Python process on each bay PC)
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Main Thread                    Heartbeat Thread (daemon)   │
+│  ─────────────                  ──────────────────────────  │
+│                                                             │
+│  ┌──────────────────┐           ┌──────────────────────┐   │
+│  │ Capture Loop     │           │ Every 60 seconds:    │   │
+│  │                  │           │                      │   │
+│  │ 1. Grab frame    │  reads    │ 1. Read shared state │   │
+│  │ 2. Run OCR       │ ──────►  │ 2. Read last 50 log  │   │
+│  │ 3. Detect score  │  state    │    lines from file   │   │
+│  │ 4. Upload result │  dict     │ 3. POST heartbeat    │   │
+│  │ 5. Sleep 0.5s    │           │    to backend server │   │
+│  │ 6. Repeat        │           │ 4. Sleep 60s         │   │
+│  └──────────────────┘           └──────────────────────┘   │
+│                                                             │
+│  state = {                                                  │
+│    "status": "watching",                                    │
+│    "captures_today": 5,                                     │
+│    "errors_today": 0,                                       │
+│    "last_capture_at": "2026-03-10T08:14:02",               │
+│    "simulator_running": true                                │
+│  }                                                          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+         │
+         │ POST /api/bays/heartbeat (every 60s)
+         │ ~1 KB JSON payload
+         ▼
+┌──────────────────────────┐
+│  Backend Server          │
+│  ┌────────────────────┐  │
+│  │ Bay Status Table    │  │
+│  │ Bay 1: 🟢 12s ago  │  │
+│  │ Bay 2: 🟢 8s ago   │  │
+│  │ Bay 3: 🔴 2h ago   │  │
+│  │ Bay 4: 🟡 5s ago   │  │
+│  └────────────────────┘  │
+│                          │
+│  Admin: /admin/bays      │
+└──────────────────────────┘
+```
+
+### Will This Affect the Golf Simulator?
+
+**Short answer: No.** Here's why:
+
+```
+Resource comparison — Bay PC (Intel i5 + RTX 3060, 16GB RAM)
+
+┌────────────────────────┬──────────────────┬──────────────────┐
+│ Resource               │ Golf Simulator   │ Heartbeat Thread │
+├────────────────────────┼──────────────────┼──────────────────┤
+│ CPU                    │ 40-70% (GPU heavy│ ~0.01%           │
+│                        │ + physics)       │ (one tiny HTTP   │
+│                        │                  │  POST per minute)│
+├────────────────────────┼──────────────────┼──────────────────┤
+│ Memory                 │ 2-4 GB           │ ~0 MB extra      │
+│                        │                  │ (reuses existing │
+│                        │                  │  Python process) │
+├────────────────────────┼──────────────────┼──────────────────┤
+│ Network                │ ~0 (offline game)│ ~1 KB every 60s  │
+│                        │                  │ (smaller than a  │
+│                        │                  │  single ping)    │
+├────────────────────────┼──────────────────┼──────────────────┤
+│ GPU                    │ 80-100%          │ 0%               │
+│                        │ (rendering game) │ (no GPU use)     │
+├────────────────────────┼──────────────────┼──────────────────┤
+│ Disk I/O               │ Occasional loads │ Read 50 lines    │
+│                        │                  │ from log file    │
+│                        │                  │ (negligible)     │
+└────────────────────────┴──────────────────┴──────────────────┘
+```
+
+**The heartbeat is essentially invisible:**
+- Runs once per **60 seconds** (not per frame)
+- Sends ~1 KB of JSON (status + 50 log lines)
+- No GPU involvement — pure Python dict read + HTTP POST
+- Uses a daemon thread — if it crashes, capture keeps running
+- The capture loop itself (OCR every 0.5s) is already far heavier than the heartbeat
+
+**For comparison**, the existing capture loop already does:
+- DXGI screen grab (GPU read) — every 0.5s
+- PaddleOCR inference (CPU/GPU) — every 0.5s
+- Google Drive upload (network) — on each detection
+
+The heartbeat (1 tiny HTTP call per minute) is a rounding error next to that.
+
+### What the Heartbeat Sends
+
+```json
+{
+  "bay_number": 1,
+  "version": "2.1.0",
+  "status": "watching",
+  "uptime_seconds": 3600,
+  "last_capture_at": "2026-03-10T08:14:02.000Z",
+  "captures_today": 5,
+  "errors_today": 0,
+  "simulator_running": true,
+  "recent_logs": [
+    "08:14:03 INFO  Player: MATT12 | Score: 92",
+    "08:14:02 INFO  COMPLETED SCORECARD DETECTED!",
+    "..."
+  ]
+}
+```
+
+### Failure Behavior
+
+| Scenario | What happens |
+|----------|--------------|
+| Backend server is down | Heartbeat silently fails. Capture keeps running. |
+| Network disconnected | Heartbeat times out (10s). Capture keeps running. |
+| Heartbeat thread crashes | Daemon thread dies silently. Capture keeps running. |
+| Backend sees no heartbeat for 2+ min | Dashboard shows bay as 🔴 Offline |
+
+**Key principle**: heartbeat is fire-and-forget. It never blocks or interrupts the capture loop.
+
+### Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `starting` | Script just launched, initializing |
+| `waiting` | Waiting for simulator process to start |
+| `watching` | Capture loop running, monitoring screen |
+| `cooldown` | Just detected a scorecard, waiting before next capture |
+| `stuck` | Screen frozen for 3+ minutes (Part 6: Health Check) |
+| `error` | Something went wrong |
+
+### Implementation Status
+
+- [ ] Add heartbeat thread to capture.py
+- [ ] Add `read_recent_logs()` helper
+- [ ] Track shared state dict in capture loop
+- [ ] Add `POST /api/bays/heartbeat` backend endpoint
+- [ ] Add `GET /api/bays` endpoint for dashboard
+- [ ] Add BayHeartbeat Prisma model
+- [ ] Build bay status dashboard page
+- [ ] Add stuck detection (Part 6)
+
+### How Heartbeats Reach the Dashboard (Frontend)
+
+Two approaches — start with polling, upgrade to WebSocket later if needed.
+
+#### Option A: Polling (recommended to start)
+
+```
+Bay PCs                      Backend                        Admin Dashboard (FE)
+                                                            (browser at /admin/bays)
+
+┌──────┐  POST /api/bays/   ┌──────────────────┐           ┌──────────────────┐
+│Bay 1 │──── heartbeat ────►│                  │           │                  │
+│      │     every 60s      │  1. Validate      │  GET      │  setInterval     │
+└──────┘                    │     payload       │ /api/bays │  every 30s:      │
+┌──────┐  POST /api/bays/   │                  │◄──────────│                  │
+│Bay 2 │──── heartbeat ────►│  2. Upsert to DB  │           │  fetch('/api/    │
+│      │     every 60s      │     (latest per   │  JSON     │    bays')        │
+└──────┘                    │      bay)         │──────────►│                  │
+┌──────┐  POST /api/bays/   │                  │           │  Re-render       │
+│Bay 3 │──── heartbeat ────►│  3. Return 200 OK │  [{bay:1, │  status table    │
+│      │     every 60s      │                  │  status:   │                  │
+└──────┘                    │                  │  "watching"│  🟢 Bay 1 12s ago│
+┌──────┐  POST /api/bays/   │                  │  ...},     │  🟢 Bay 2 8s ago │
+│Bay 4 │──── heartbeat ────►│                  │  ...]      │  🔴 Bay 3 2h ago │
+│      │     every 60s      │                  │           │  🟡 Bay 4 5s ago │
+└──────┘                    └──────────────────┘           └──────────────────┘
+```
+
+**How it works:**
+1. Bay PCs POST heartbeat every 60s → backend saves to DB (one row per bay, upserted)
+2. Dashboard FE polls `GET /api/bays` every 30s → backend returns latest heartbeat per bay
+3. FE renders the status table with 🟢🟡🔴 indicators
+
+**Pros:** Dead simple. No WebSocket. Just a REST endpoint and `setInterval`.
+**Cons:** Dashboard data is up to 30s stale — totally fine for monitoring 4 bays.
+
+#### Option B: WebSocket push (future upgrade)
+
+```
+Bay PCs                      Backend                        Admin Dashboard (FE)
+
+┌──────┐  POST /api/bays/   ┌──────────────────┐  ws push  ┌──────────────────┐
+│Bay 1 │──── heartbeat ────►│                  │──────────►│                  │
+│Bay 2 │──── heartbeat ────►│  On each POST:    │  instant  │  socket.on(      │
+│Bay 3 │──── heartbeat ────►│  1. Save to DB    │  event    │    'bay:update', │
+│Bay 4 │──── heartbeat ────►│  2. Broadcast via │           │    (data) =>     │
+└──────┘                    │     socket.io to  │           │    updateTable() │
+                            │     all connected │           │  )               │
+                            │     dashboard     │           │                  │
+                            │     clients       │           │  Instant update  │
+                            └──────────────────┘           └──────────────────┘
+```
+
+**How it works:**
+1. Bay PCs POST heartbeat (same as Option A — bay PCs don't need WebSocket)
+2. Backend saves to DB AND broadcasts to all connected dashboard WebSocket clients
+3. FE updates instantly when a heartbeat arrives
+
+**Pros:** Real-time. Dashboard updates the moment a bay reports in.
+**Cons:** Requires socket.io setup (though backend already uses it for print-server).
+
+#### Decision
+
+**Start with Option A (polling).** Reasons:
+- Simpler to implement and debug
+- 30s staleness is perfectly acceptable for bay monitoring
+- Bay PCs only need HTTP (no WebSocket client needed in Python)
+- Can upgrade to Option B later without changing the bay PC side at all
+- The backend already has socket.io — adding broadcast is a one-liner upgrade when needed
