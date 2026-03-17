@@ -728,3 +728,88 @@ export async function sendCouponEmail(params: CouponEmailParams) {
     }],
   });
 }
+
+// ── Uncompleted Bookings Report Email ──────────────────────────
+
+export interface UncompletedBookingsEmailParams {
+  to: string;
+  date: string; // e.g. "Mon, Mar 16, 2026"
+  bookings: {
+    customerName: string;
+    customerPhone: string;
+    roomName: string;
+    startTime: string;
+    endTime: string;
+    bookingId: string;
+  }[];
+}
+
+export async function sendUncompletedBookingsEmail({ to, date, bookings }: UncompletedBookingsEmailParams) {
+  const count = bookings.length;
+  const subject = `[Kone Golf] ${count} Uncompleted Booking${count > 1 ? 's' : ''} from ${date}`;
+
+  const rows = bookings.map((b, i) => `
+    <tr style="border-bottom:1px solid #e2e8f0">
+      <td style="padding:10px 12px;color:#334155">${i + 1}</td>
+      <td style="padding:10px 12px;color:#334155;font-weight:600">${b.customerName}</td>
+      <td style="padding:10px 12px;color:#334155">${b.customerPhone}</td>
+      <td style="padding:10px 12px;color:#334155">${b.roomName}</td>
+      <td style="padding:10px 12px;color:#334155">${b.startTime} – ${b.endTime}</td>
+    </tr>`).join('');
+
+  const html = `<!doctype html>
+<html>
+<body style="font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;margin:0;padding:20px">
+  <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+    <div style="background:#1e293b;padding:24px 32px">
+      <h1 style="margin:0;color:#f59e0b;font-size:20px">⚠️ Uncompleted Bookings Report</h1>
+      <p style="margin:6px 0 0;color:#94a3b8;font-size:14px">${date} — ${count} booking${count > 1 ? 's' : ''} still in BOOKED status</p>
+    </div>
+    <div style="padding:24px 32px">
+      <p style="color:#475569;font-size:14px;margin:0 0 16px">
+        The following booking${count > 1 ? 's were' : ' was'} not marked as completed or cancelled yesterday.
+        Please review and update ${count > 1 ? 'their' : 'its'} status.
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0">
+            <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">#</th>
+            <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Customer</th>
+            <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Phone</th>
+            <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Room</th>
+            <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0">
+      <p style="margin:0;color:#94a3b8;font-size:12px">
+        This is an automated report from Kone Golf POS. 
+        <a href="https://pos.konegolf.ca" style="color:#f59e0b">Open POS →</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Uncompleted Bookings Report — ${date}\n\n${count} booking(s) still in BOOKED status:\n\n` +
+    bookings.map((b, i) => `${i + 1}. ${b.customerName} | ${b.customerPhone} | ${b.roomName} | ${b.startTime} – ${b.endTime}`).join('\n') +
+    '\n\nPlease review and update their status at https://pos.konegolf.ca';
+
+  const transport = getTransport();
+  if (!transport) {
+    log.info({ to, count }, 'Dev-log: uncompleted bookings email (no transport)');
+    return;
+  }
+
+  await transport.sendMail({
+    from: process.env.EMAIL_FROM || 'K one Golf <no-reply@konegolf.ca>',
+    to,
+    subject,
+    text,
+    html,
+  });
+}
