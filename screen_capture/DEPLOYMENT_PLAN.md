@@ -428,12 +428,16 @@ Day 1 evening (or next day):
 
 ## Implementation Order
 
-1. **`run_hidden.vbs`** — Create the VBS hidden launcher (no dependencies)
-2. **`updater.py`** — Build the GitHub release checker/downloader (no dependencies)
-3. **`setup.bat`** — Enhance with Task Scheduler registration (depends on VBS being defined)
-4. **`run.bat`** — Enhance with `--background` flag and updater call (depends on updater.py)
-5. **`screen-capture-release.yml`** — GitHub Actions release workflow (depends on updater.py existing)
-6. **Test on a real bay PC** — Validate the full flow end to end
+1. ✅ **`run_hidden.vbs`** — Create the VBS hidden launcher (no dependencies)
+2. ✅ **`updater.py`** — Build the GitHub release checker/downloader (no dependencies)
+3. ✅ **`setup.bat`** — Enhance with Task Scheduler registration (depends on VBS being defined)
+4. ✅ **`run.bat`** — Enhance with `--background` flag and updater call (depends on updater.py)
+5. ✅ **`screen-capture-release.yml`** — GitHub Actions release workflow (depends on updater.py existing)
+6. ✅ **Test on a real bay PC** — Full flow validated on Bay 1 (2026-03-17):
+   - `setup.bat` installs deps, Task Scheduler needs admin
+   - Autostart on reboot works (hidden window via VBS)
+   - Auto-update: updater detected v2.0.1 > v1.0.0, downloaded zip, applied update, preserved config
+   - SSL workaround verified (bay PCs lack root CAs)
 
 ---
 

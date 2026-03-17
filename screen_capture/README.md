@@ -291,4 +291,4 @@ Check the log for `OCR predict exception`. If present, it's a PaddlePaddle compa
 | Version | Date | Changes |
 |---------|------|---------|
 | 2.0.0 | 2026-03-14 | Capture-first strategy, PaddleOCR, color pre-filter, 0.5s polling |
-| 2.0.1 | 2026-03-16 | Auto-update (updater.py + GitHub Releases), autostart (Task Scheduler), hidden launch (run_hidden.vbs), GitHub Actions release workflow |
+| 2.0.1 | 2026-03-17 | Auto-update (updater.py + GitHub Releases), autostart (Task Scheduler), hidden launch (run_hidden.vbs), GitHub Actions release workflow. Tested end-to-end on Bay 1 |

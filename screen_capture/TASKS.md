@@ -1,6 +1,6 @@
 # Konegolf Score Capture — Task Tracker
 
-> **Last updated**: 2026-03-16
+> **Last updated**: 2026-03-17
 
 ---
 
@@ -14,7 +14,7 @@
 | 4 | Enhance `run.bat` — add `--background` + updater call | ✅ Done | `run.bat` |
 | 5 | Create GitHub Actions release workflow | ✅ Done | `.github/workflows/screen-capture-release.yml` |
 | 6 | Update `DEPLOYMENT_PLAN.md` | ✅ Done | `DEPLOYMENT_PLAN.md` |
-| 7 | Test full flow on a real bay PC | ⬜ TODO | — |
+| 7 | Test full flow on a real bay PC | ✅ Done | Tested on Bay 1: setup.bat, autostart, auto-update all working |
 
 ## Score Integration (from PLAN.md)
 
@@ -23,7 +23,7 @@
 | 8 | Part 1: Score Capture (OCR + Drive upload) | ✅ Done | `capture.py` working |
 | 9 | Part 2: Score Collection (POS Integration) | ⬜ TODO | Backend ingest endpoint exists, capture.py submission not wired |
 | 10 | Part 3: Customer Connection | ⬜ TODO | Player identification, booking matching |
-| 11 | Part 4: Auto-Deploy to Bay PCs | ✅ Done | Auto-update + autostart implemented (items 1-6) |
+| 11 | Part 4: Auto-Deploy to Bay PCs | ✅ Done | Auto-update + autostart fully tested on Bay 1 (items 1-7) |
 | 12 | Part 5: Remote Monitoring | ⬜ TODO | Heartbeat thread, backend endpoint, admin dashboard |
 | 13 | Part 6: Bay Health Check | ⬜ TODO | Stuck detection (frozen screen), alerts |
 
