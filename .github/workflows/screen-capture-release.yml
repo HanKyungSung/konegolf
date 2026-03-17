@@ -23,23 +23,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
-
-      - name: Check for screen_capture changes
-        id: check_changes
-        run: |
-          # Compare the tagged commit against its parent
-          CHANGED=$(git diff --name-only HEAD~1 HEAD -- screen_capture/ | wc -l)
-          if [ "$CHANGED" -eq "0" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
-            echo "No changes in screen_capture/. Skipping release."
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "screen_capture/ changes detected ($CHANGED files). Proceeding."
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
+          fetch-depth: 1
 
       - name: Set version
-        if: steps.check_changes.outputs.skip != 'true'
         id: version
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
@@ -51,7 +37,6 @@ jobs:
           fi
 
       - name: Verify VERSION.txt matches tag
-        if: steps.check_changes.outputs.skip != 'true'
         run: |
           FILE_VERSION=$(cat screen_capture/VERSION.txt | tr -d '[:space:]')
           TAG_VERSION="${{ steps.version.outputs.version }}"
@@ -62,7 +47,6 @@ jobs:
           echo "Version verified: $TAG_VERSION"
 
       - name: Create update zip
-        if: steps.check_changes.outputs.skip != 'true'
         working-directory: screen_capture
         run: |
           zip -r ../konegolf-screen-capture-update.zip \
@@ -78,7 +62,6 @@ jobs:
             samples/
 
       - name: Create GitHub Release
-        if: steps.check_changes.outputs.skip != 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -100,6 +83,5 @@ jobs:
           files: konegolf-screen-capture-update.zip
           draft: false
           prerelease: false
-          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
