@@ -116,6 +116,7 @@ Player names on Golfzon scorecards can be very small (sometimes single character
 screen_capture/
 ├── capture.py              # Main capture script
 ├── updater.py              # Auto-update checker (GitHub Releases)
+├── analyze_scores.py       # Download + analyze scores from Google Drive
 ├── config.json             # Bay-specific config (gitignored)
 ├── config.json.example     # Config template
 ├── requirements.txt        # Python dependencies
@@ -132,7 +133,8 @@ screen_capture/
 │   ├── sample_v2.png       # Bay 4 — captured via v5.6
 │   ├── sample_v3.png       # Bay 4 — captured via v5.6
 │   └── sample_v4.png       # Bay 4 — captured via v5.6
-└── captures/               # Local screenshot storage (gitignored)
+├── captures/               # Local screenshot storage (gitignored)
+└── drive_data/             # Cached Drive data for analysis (gitignored)
 ```
 
 ## Setup

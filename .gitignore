@@ -101,3 +101,4 @@ screen_capture/konegolf-*.json
 screen_capture/token.json
 screen_capture/client_secret*.json
 screen_capture/config.json
+screen_capture/drive_data/

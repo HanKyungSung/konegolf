@@ -57,17 +57,21 @@ if not exist "config.json" (
 )
 
 echo [5/5] Registering autostart with Task Scheduler...
-set VBS_PATH=%~dp0run_hidden.vbs
+set "VBS_PATH=%~dp0run_hidden.vbs"
+REM Remove any trailing backslash issues and verify file exists
 if not exist "%VBS_PATH%" (
-    echo   WARNING: run_hidden.vbs not found. Skipping autostart registration.
+    echo   WARNING: run_hidden.vbs not found at %VBS_PATH%. Skipping autostart registration.
     goto :done
 )
-schtasks /create /tn "KonegolfScoreCapture" /tr "wscript.exe \"%VBS_PATH%\"" /sc onlogon /rl highest /f >nul 2>nul
+echo   VBS path: %VBS_PATH%
+schtasks /create /tn "KonegolfScoreCapture" /tr "wscript.exe \"%VBS_PATH%\"" /sc onlogon /rl highest /f
 if %errorlevel%==0 (
     echo   Registered: KonegolfScoreCapture (runs on login)
 ) else (
     echo   WARNING: Could not register Task Scheduler entry.
     echo   You may need to run setup.bat as Administrator.
+    echo   Or register manually:
+    echo     schtasks /create /tn "KonegolfScoreCapture" /tr "wscript.exe \"%VBS_PATH%\"" /sc onlogon /rl highest /f
 )
 
 :done

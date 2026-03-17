@@ -47,3 +47,42 @@
 |---|------|--------|-------|
 | 14 | Harden backend deployment | ⬜ TODO | Clean up env handling, docs, obsolete paths |
 | 15 | Rename k-golf → konegolf in backend/workflows | ⬜ Low Priority | Functional impact is minimal |
+
+## Email Scorecard to Booking Owner
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 25 | Choose email service | ⬜ TODO | SendGrid recommended (free: 100/day) |
+| 26 | Add email field to Customer/User model | ⬜ TODO | If not already present |
+| 27 | Create email template | ⬜ TODO | Minimal HTML with screenshot image attached |
+| 28 | Add email sending after ingest + booking match | ⬜ TODO | Depends on Part 2 (score ingest) |
+| 29 | Add config flag to enable/disable email | ⬜ TODO | Per-environment toggle |
+
+## Admin Push Notification (Low Confidence)
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 30 | Add socket.io emit on NEEDS_REVIEW scores | ⬜ TODO | Backend emits 'score:needs-review' event |
+| 31 | Add toast notification to POS frontend | ⬜ TODO | Shows bay #, issue, link to review |
+| 32 | Add notification badge on score review nav | ⬜ TODO | Counter of pending reviews |
+| 33 | Add optional sound alert | ⬜ TODO | Configurable on/off |
+
+## Konegolf Tag System (Player Identification)
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 34 | Add PlayerTag + PlayerAlias Prisma models | ⬜ TODO | Migration for tag + alias tables |
+| 35 | Build tag generation API (`POST /api/tags`) | ⬜ TODO | Name prefix + unique number |
+| 36 | Build tag lookup API (`GET /api/tags/:tag`) | ⬜ TODO | Used by ingest pipeline + check-in |
+| 37 | Add tag-based matching to score ingest | ⬜ TODO | Highest priority in matching pipeline |
+| 38 | Add alias learning on manual staff linking | ⬜ TODO | Auto-creates PlayerAlias entries |
+| 39 | Build QR check-in mobile page (`/checkin?bay=N`) | ⬜ TODO | Phone lookup → seat pick → show tag |
+| 40 | Build customer score history page | ⬜ TODO | `/admin/customers/:id/scores` |
+| 41 | Print QR code stickers for each bay | ⬜ TODO | Physical setup at the shop |
+
+## Score Data Analysis
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 42 | Create `analyze_scores.py` | ✅ Done | Downloads from Drive + analyzes confidence, names, scores, courses |
+| 43 | Run analysis on real collected data | ⬜ TODO | `python analyze_scores.py --download` |

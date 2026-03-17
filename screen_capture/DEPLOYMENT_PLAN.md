@@ -653,3 +653,258 @@ Bay PCs                      Backend                        Admin Dashboard (FE)
 - Bay PCs only need HTTP (no WebSocket client needed in Python)
 - Can upgrade to Option B later without changing the bay PC side at all
 - The backend already has socket.io — adding broadcast is a one-liner upgrade when needed
+
+---
+
+## Planned: Email Scorecard to Booking Owner
+
+### Goal
+
+After a scorecard is captured, automatically email the screenshot image to the person who booked the bay. No text summary — just the image.
+
+### Flow
+
+```
+Bay PC captures scorecard
+       │
+       ▼
+POST /api/scores/ingest (screenshot + OCR data)
+       │
+       ▼
+Backend:
+  1. Save score + screenshot to DB (existing Part 2 flow)
+  2. Auto-match to Booking via bay → room → time window
+  3. Booking found?
+       │
+       ├─ Yes → Look up booker's email
+       │         │
+       │         ├─ Email exists → Send email with screenshot attached
+       │         │                 Subject: "Your Konegolf scorecard — Bay 3"
+       │         │
+       │         └─ No email → Skip (log it)
+       │
+       └─ No booking match → Skip email (score still saved)
+```
+
+### Email Content
+
+```
+┌─────────────────────────────────────────┐
+│  From: scores@konegolf.ca               │
+│  To: customer@email.com                 │
+│  Subject: Your Konegolf scorecard       │
+│                                         │
+│  ┌───────────────────────────────┐      │
+│  │                               │      │
+│  │   [Scorecard Screenshot]      │      │
+│  │   (attached JPEG image)       │      │
+│  │                               │      │
+│  └───────────────────────────────┘      │
+│                                         │
+│  Thanks for playing at Konegolf!        │
+│  Bay 3 · March 16, 2026                │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### Dependencies
+
+- Requires **Part 2 (Score Collection)** — ingest endpoint + booking auto-match
+- Requires an email service (options: SendGrid, AWS SES, Nodemailer + SMTP)
+- Requires customers to have email on file in the POS
+
+### Implementation Steps
+
+- [ ] Choose email service (SendGrid recommended — free tier: 100 emails/day)
+- [ ] Add email field to Customer/User model if not present
+- [ ] Create email template (minimal HTML with embedded screenshot)
+- [ ] Add email sending logic after successful ingest + booking match
+- [ ] Add config flag to enable/disable email notifications
+- [ ] Test with a real booking
+
+---
+
+## Planned: Admin Push Notification on Low Confidence
+
+### Goal
+
+When OCR confidence is low (< 0.7), push a notification to the POS/admin dashboard so staff can review immediately — not wait until they check the score review page.
+
+### Flow
+
+```
+Bay PC captures scorecard
+       │
+       ▼
+POST /api/scores/ingest
+       │
+       ▼
+Backend:
+  1. Save score (status = NEEDS_REVIEW if confidence < 0.7)
+  2. If NEEDS_REVIEW:
+       │
+       ▼
+  ┌──────────────────────────────────────────────────┐
+  │  Push notification to all connected POS clients  │
+  │  via socket.io                                   │
+  │                                                  │
+  │  Event: 'score:needs-review'                     │
+  │  Data: {                                         │
+  │    bay: 3,                                       │
+  │    captureId: "abc-123",                         │
+  │    issue: "Low name confidence (0.45)",          │
+  │    timestamp: "2026-03-16T14:30:00Z"             │
+  │  }                                               │
+  └──────────────────────────────────────────────────┘
+       │
+       ▼
+  ┌──────────────────────────────────────────────────┐
+  │  POS Dashboard (browser)                         │
+  │                                                  │
+  │  🔔 Toast notification:                         │
+  │  ┌──────────────────────────────────────┐        │
+  │  │ ⚠️ Bay 3: Score needs review         │        │
+  │  │ Low name confidence (0.45)           │        │
+  │  │ [View →]                             │        │
+  │  └──────────────────────────────────────┘        │
+  │                                                  │
+  │  Clicking "View" opens score detail with         │
+  │  screenshot side-by-side for correction          │
+  └──────────────────────────────────────────────────┘
+```
+
+### Confidence Thresholds
+
+| Confidence | Status | Action |
+|------------|--------|--------|
+| ≥ 0.7 for all fields | `ACTIVE` ✅ | No notification |
+| < 0.7 for any field | `NEEDS_REVIEW` ⚠️ | Push notification to dashboard |
+| Name unreadable (empty) | `NEEDS_REVIEW` ⚠️ | Push notification + flag "unreadable" |
+
+### Dependencies
+
+- Requires **Part 2 (Score Collection)** — confidence scoring in ingest
+- Requires **socket.io** on backend (already exists for print-server)
+- Frontend needs toast notification component
+
+### Implementation Steps
+
+- [ ] Add socket.io emit in score ingest when status = NEEDS_REVIEW
+- [ ] Add toast notification component to POS frontend
+- [ ] Add socket.io listener in POS dashboard for 'score:needs-review'
+- [ ] Add notification badge/counter on score review nav item
+- [ ] Add sound alert option (configurable)
+
+---
+
+## Planned: Konegolf Tag System (Player Identification)
+
+### Goal
+
+Give each player a unique, OCR-friendly tag (e.g., `MATT12`) they type into the simulator as their player name. The system reads it via OCR and **deterministically matches** it to a customer — no guessing, no staff work.
+
+### How It Works
+
+```
+FIRST VISIT:
+  ┌──────────────────────────────────────────────────────────┐
+  │  Customer checks in (QR code at bay or staff assists)    │
+  │       │                                                  │
+  │       ▼                                                  │
+  │  System generates tag: MATT12                            │
+  │  (first name prefix + unique number)                     │
+  │       │                                                  │
+  │       ▼                                                  │
+  │  "Your Konegolf Tag is MATT12.                          │
+  │   Type this as your player name in the simulator!"       │
+  │       │                                                  │
+  │       ▼                                                  │
+  │  Customer plays as "MATT12"                              │
+  │       │                                                  │
+  │       ▼                                                  │
+  │  OCR reads "MATT12" → exact match → Matt Johnson ✅      │
+  └──────────────────────────────────────────────────────────┘
+
+RETURN VISIT:
+  ┌──────────────────────────────────────────────────────────┐
+  │  Customer types "MATT12" again                           │
+  │       │                                                  │
+  │       ▼                                                  │
+  │  OCR reads → tag lookup → instant match ✅               │
+  │  No staff, no QR, nothing. Just works.                   │
+  └──────────────────────────────────────────────────────────┘
+
+FORGOT TAG (types real name "matthew"):
+  ┌──────────────────────────────────────────────────────────┐
+  │  OCR reads "matthew" → no tag match                      │
+  │       │                                                  │
+  │       ▼                                                  │
+  │  Alias lookup → "matthew" mapped to Matt Johnson         │
+  │  from previous visit → still matched ✅                  │
+  └──────────────────────────────────────────────────────────┘
+```
+
+### Tag Format
+
+```
+Format:    [NAME PREFIX][UNIQUE NUMBER]
+Examples:  MATT12, DONNIE7, JPARK03, 민수42
+Length:    4–10 characters
+Charset:  A-Z, 0-9, Korean Hangul (OCR-friendly, no special chars)
+```
+
+**Why this format:**
+- Short uppercase alphanumeric → near-perfect OCR accuracy
+- The capture script already strips special chars: `re.sub(r'[^0-9A-Za-z가-힣]+', '', raw)`
+- Fits in Golfzon's player name field
+- Easy for customers to remember
+
+### Matching Pipeline (on each score capture)
+
+```
+OCR extracts player name
+       │
+       ▼
+  ┌─────────────┐
+  │ Tag Lookup   │── match ──► Customer identified ✅ (confidence: 1.0)
+  │ (PlayerTag)  │
+  └──────┬──────┘
+         │ no match
+         ▼
+  ┌─────────────┐
+  │ Alias Lookup │── match ──► Customer identified ✅ (learned from history)
+  │ (PlayerAlias)│
+  └──────┬──────┘
+         │ no match
+         ▼
+  ┌─────────────┐
+  │ Booking Link │── match ──► Group identified ⚠️ (know group, not individual)
+  │ (bay + time) │
+  └──────┬──────┘
+         │ no match
+         ▼
+     UNMATCHED 🔴 (staff reviews later)
+```
+
+### Dependencies
+
+- Requires **Part 2 (Score Collection)** — score ingest + storage
+- Requires customer records in DB (already exist in POS)
+- QR check-in page is optional but recommended for tag generation
+
+### Database Models
+
+- `PlayerTag` — tag ↔ customer mapping (e.g., MATT12 → Matt Johnson)
+- `PlayerAlias` — OCR name ↔ customer alias (e.g., "matthew" → Matt Johnson)
+- Both already designed in detail in `PLAN.md` Part 3
+
+### Implementation Steps
+
+- [ ] Add PlayerTag + PlayerAlias Prisma models + migration
+- [ ] Build tag generation API (`POST /api/tags`)
+- [ ] Build tag lookup API (`GET /api/tags/:tag`)
+- [ ] Add tag-based matching to score ingest pipeline (highest priority)
+- [ ] Add alias learning: when staff links an OCR name to a customer, save alias
+- [ ] Build QR check-in mobile page (`/checkin?bay=N`)
+- [ ] Build customer score history page (`/admin/customers/:id/scores`)
+- [ ] Print QR code stickers for each bay

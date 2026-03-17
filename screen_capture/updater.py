@@ -17,10 +17,17 @@ import json
 import shutil
 import logging
 import tempfile
+import ssl
 import zipfile
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
+
+# Workaround: some bay PCs lack root CA certs, causing SSL errors
+try:
+    ssl._create_default_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
 
 # ---------------------------------------------------------------------------
 # Config
