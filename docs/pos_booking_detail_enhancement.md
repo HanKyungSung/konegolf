@@ -23,7 +23,7 @@ Successfully integrated advanced POS features from the reference file into the K
 
 ### 3. **Per-Seat Billing**
 - Individual seat subtotals
-- Per-seat tax calculation (8%)
+- Per-seat tax calculation (rate read from DB `Setting.global_tax_rate`)
 - Per-seat total display
 - Grand total including all seats + room booking fee
 

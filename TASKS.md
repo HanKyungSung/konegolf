@@ -51,6 +51,15 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 
 ### 🔄 Ongoing Tasks
 - Dashboard for the users
+- [x] **Daily Morning Email Report for Uncompleted Bookings** (2025-03-17)
+  - [x] New cron job at 7:00 AM Atlantic Time (`backend/src/jobs/bookingReportScheduler.ts`)
+  - [x] Queries bookings with `bookingStatus='BOOKED'` and `startTime` within the previous day (Atlantic TZ)
+  - [x] Sends HTML email with booking table (customer, room, time, seats, payment status)
+  - [x] Added `sendUncompletedBookingsEmail()` to `emailService.ts`
+  - [x] Wired into `server.ts` alongside existing coupon scheduler
+  - [x] Recipient: `REPORT_EMAIL` env var or default `konegolf.general@gmail.com`
+  - [x] DST-aware date math using `Intl.DateTimeFormat` with `America/Halifax`
+  - [x] Commit: `dce9d68`
 - [x] **Custom/Wild card menu item** - Can enter item name and price on-the-fly in POS
   - [x] Database schema updated (Order.customItemName, Order.customItemPrice)
   - [x] Backend API supports custom items (menuItemId nullable with XOR validation)
@@ -1039,6 +1048,54 @@ k-golf.inviteyou.ca (Legacy)  → Nginx → Docker:8082 → K-Golf App (backward
 ## 🐛 Active Issues & Bugs
 
 ### Priority: CRITICAL 🔥
+
+**0a. Hardcoded 10% Tax Rate in Booking Invoice Calculation** ✅ FIXED
+- **Status:** 🟢 RESOLVED (2025-03-17)
+- **Reported:** 2025-03-17
+- **Component:** Backend booking repository (`backend/src/repositories/bookingRepo.ts`, `backend/src/routes/booking.ts`)
+- **Issue:**
+  - `bookingRepo.ts` had `const TAX_RATE = 0.1` (10%) hardcoded instead of reading the 14% rate from the DB `Setting` table
+  - `booking.ts` `getGlobalTaxRate()` was missing `/100` division — returned `14` instead of `0.14`
+  - All invoices created since the tax rate change were calculated at 10% instead of 14%
+- **Root Cause:**
+  - Original code hardcoded `TAX_RATE = 0.1` in bookingRepo and never updated it when DB tax rate changed
+  - Secondary bug: `getGlobalTaxRate()` in booking.ts read from DB but forgot to divide by 100
+- **Fix Applied:** (2025-03-17)
+  - Added `async getGlobalTaxRate()` to bookingRepo that reads `global_tax_rate` from Setting table, divides by 100, defaults to 0.13
+  - Fixed booking.ts to also divide by 100
+  - Corrected 45 UNPAID invoices on prod via SQL UPDATE (recalculated tax and totalAmount at 14%)
+  - Commit: `794757d`
+- **Impact:** All new bookings now calculate tax correctly from DB setting. 45 historical invoices corrected.
+
+**0b. Collect Payment Dialog — Tip/Amount Sync Bugs** ✅ FIXED
+- **Status:** 🟢 RESOLVED (2025-03-17)
+- **Reported:** 2025-03-17
+- **Component:** Web POS Booking Detail (`frontend/src/pages/pos/booking-detail.tsx`)
+- **Issues Fixed:**
+  1. **Tip not updating payment amount:** Entering a tip didn't recalculate the total payment amount — staff had to manually add tip to amount
+  2. **Duplicate payments for tip:** Backend created two separate payment records (one for base, one for tip) instead of a single combined payment
+  3. **Existing tip not visible:** If a tip was already saved on the invoice (from a prior partial payment), it wasn't shown in the dialog
+- **Fix Applied:** (2025-03-17)
+  - Tip `onChange` now recalculates and sets `paymentDialogAmount` dynamically
+  - FE sends total amount (base + tip) as a single payment; backend `addSinglePayment()` handles tip accumulation
+  - Dialog now displays existing tip from DB with "(already added)" label
+  - Added invoice breakdown (subtotal, tax, tip, total) in the payment dialog
+  - Commit: `abd6ca5`
+- **Impact:** Staff can now enter tips without manual math; no more duplicate payment records
+
+**0c. UNPAID Badge Bug — Empty Seats Blocking Paid Status** ✅ FIXED
+- **Status:** 🟢 RESOLVED (2025-03-17)
+- **Reported:** 2025-03-17
+- **Component:** Backend invoice repository (`backend/src/repositories/invoiceRepo.ts`)
+- **Issue:**
+  - `checkAllInvoicesPaid()` counted ALL invoices with `paymentStatus != 'PAID'`, including empty seats with $0 subtotal
+  - Empty seats (no orders) had `paymentStatus = 'UNPAID'` and `subtotal = 0`, which blocked the booking from being marked PAID
+  - Bookings showed "UNPAID" badge even when all real seats were fully paid
+- **Fix Applied:** (2025-03-17)
+  - Added `subtotal: { gt: 0 }` filter to `checkAllInvoicesPaid()` so empty seats are excluded
+  - Corrected 182 bookings on prod via SQL UPDATE (set empty-seat invoices to PAID, updated booking paymentStatus)
+  - Commit: `f0e68bc`
+- **Impact:** Bookings now correctly show PAID when all seats with orders are paid, regardless of empty seats
 
 **1. Web POS - Booking Detail Actions Panel Empty** ✅ FIXED
 - **Status:** 🟢 RESOLVED - 2025-11-25

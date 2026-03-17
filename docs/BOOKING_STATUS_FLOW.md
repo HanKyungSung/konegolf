@@ -725,8 +725,9 @@ UNPAID
   Alert: ⚠️ WARNING (red) on dashboard if booking time passed
 
 PAID
-  When: ALL invoices.status = PAID
-  What: All customers have paid
+  When: ALL invoices with subtotal > 0 have status = PAID
+  What: All customers (occupied seats) have paid
+  Note: Empty seats ($0 subtotal) are excluded from this check
   Status: ✓ Ready to mark COMPLETED
 
 OVERPAYMENT HANDLING:

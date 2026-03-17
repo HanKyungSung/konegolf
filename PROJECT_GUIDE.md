@@ -94,6 +94,15 @@ Production uses `docker-compose.release.yml` with pre-built images from CI:
 
 > **Note:** `docker-compose.yml` is for local development. `docker-compose.prod.yml` is legacy. Production uses `docker-compose.release.yml`.
 
+### Scheduled Jobs (node-cron)
+
+All cron jobs run inside the backend container using `node-cron` with `America/Halifax` timezone:
+
+| Job | Schedule | File | Purpose |
+|---|---|---|---|
+| Coupon expiry | Daily | `src/jobs/couponScheduler.ts` | Expires coupons past their end date |
+| Booking report | 7:00 AM Atlantic | `src/jobs/bookingReportScheduler.ts` | Emails uncompleted bookings from previous day |
+
 ### Versioning
 
 - **Backend:** `backend/VERSION.txt` (current: 1.0.0)

@@ -17,7 +17,6 @@ import { printRouter } from './routes/print';
 import contactRouter from './routes/contact';
 import couponsRouter from './routes/coupons';
 import reportsRouter from './routes/reports';
-import { scoresRouter } from './routes/scores';
 import cookieParser from 'cookie-parser';
 import { WebSocketManager } from './services/websocket-manager';
 import { startCouponScheduler } from './jobs/couponScheduler';
@@ -59,7 +58,6 @@ app.use('/api/print', printRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/coupons', couponsRouter);
 app.use('/api/reports', reportsRouter);
-app.use('/api/scores', scoresRouter);
 
 // Serve frontend static files (after API routes to avoid conflicts)
 // With rootDir='.', structure is: dist/src/server.js and dist/public/
