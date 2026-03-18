@@ -740,6 +740,7 @@ export interface UncompletedBookingsEmailParams {
     roomName: string;
     startTime: string;
     endTime: string;
+    paymentStatus: string;
     bookingId: string;
   }[];
 }
@@ -748,14 +749,18 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
   const count = bookings.length;
   const subject = `[Kone Golf] ${count} Uncompleted Booking${count > 1 ? 's' : ''} from ${date}`;
 
-  const rows = bookings.map((b, i) => `
+  const rows = bookings.map((b, i) => {
+    const badgeColor = b.paymentStatus === 'PAID' ? '#16a34a' : '#dc2626';
+    return `
     <tr style="border-bottom:1px solid #e2e8f0">
       <td style="padding:10px 12px;color:#334155">${i + 1}</td>
       <td style="padding:10px 12px;color:#334155;font-weight:600">${b.customerName}</td>
       <td style="padding:10px 12px;color:#334155">${b.customerPhone}</td>
       <td style="padding:10px 12px;color:#334155">${b.roomName}</td>
       <td style="padding:10px 12px;color:#334155">${b.startTime} – ${b.endTime}</td>
-    </tr>`).join('');
+      <td style="padding:10px 12px"><span style="background:${badgeColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${b.paymentStatus}</span></td>
+    </tr>`;
+  }).join('');
 
   const html = `<!doctype html>
 <html>
@@ -778,6 +783,7 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
             <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Phone</th>
             <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Room</th>
             <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Time</th>
+            <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600">Payment</th>
           </tr>
         </thead>
         <tbody>
@@ -796,12 +802,12 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
 </html>`;
 
   const text = `Uncompleted Bookings Report — ${date}\n\n${count} booking(s) still in BOOKED status:\n\n` +
-    bookings.map((b, i) => `${i + 1}. ${b.customerName} | ${b.customerPhone} | ${b.roomName} | ${b.startTime} – ${b.endTime}`).join('\n') +
+    bookings.map((b, i) => `${i + 1}. ${b.customerName} | ${b.customerPhone} | ${b.roomName} | ${b.startTime} – ${b.endTime} | ${b.paymentStatus}`).join('\n') +
     '\n\nPlease review and update their status at https://pos.konegolf.ca';
 
   const transport = getTransport();
   if (!transport) {
-    log.info({ to, count }, 'Dev-log: uncompleted bookings email (no transport)');
+    log.info({ to, count, bookings: bookings.map(b => ({ customer: b.customerName, room: b.roomName, time: `${b.startTime} – ${b.endTime}`, payment: b.paymentStatus })) }, 'Dev-log: uncompleted bookings email (no transport)');
     return;
   }
 
@@ -812,4 +818,5 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
     text,
     html,
   });
-}
+
+  log.info({ to, subject, count }, 'Uncompleted bookings email sent successfully');}

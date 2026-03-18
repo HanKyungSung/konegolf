@@ -125,6 +125,7 @@ export async function checkUncompletedBookings() {
   const bookings = await prisma.booking.findMany({
     where: {
       bookingStatus: 'BOOKED',
+      bookingSource: { not: 'QUICK_SALE' },
       startTime: { gte: start, lt: end },
     },
     include: {
@@ -146,10 +147,25 @@ export async function checkUncompletedBookings() {
     roomName: b.room?.name || 'Unknown',
     startTime: formatAtlanticTime(b.startTime),
     endTime: formatAtlanticTime(b.endTime),
+    paymentStatus: b.paymentStatus,
     bookingId: b.id,
   }));
 
   const recipient = process.env.REPORT_EMAIL || 'konegolf.general@gmail.com';
+
+  // Log email content before sending for audit trail
+  log.info({
+    to: recipient,
+    date: yesterdayLabel,
+    count: bookings.length,
+    bookings: reportData.map(b => ({
+      bookingId: b.bookingId,
+      customer: b.customerName,
+      room: b.roomName,
+      time: `${b.startTime} – ${b.endTime}`,
+      payment: b.paymentStatus,
+    })),
+  }, 'Sending uncompleted bookings report email');
 
   await sendUncompletedBookingsEmail({
     to: recipient,
