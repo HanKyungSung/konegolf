@@ -51,6 +51,38 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 
 ### 🔄 Ongoing Tasks
 - Dashboard for the users
+- [ ] **Switch to Google Workspace Email** 🔴 HIGH PRIORITY
+  - **Why:** Free Gmail hit daily sending limit (500/day). Need Google Workspace (2,000/day) or transactional email service.
+  - **Steps:**
+    1. Buy Google Workspace Business Starter ($7 USD/mo) for `konegolf.ca`
+    2. Create email account (e.g. `info@konegolf.ca`)
+    3. Add DNS records: MX, SPF, DKIM, DMARC for `konegolf.ca`
+    4. Enable 2FA on new account → generate App Password
+    5. Update `.env.production` on prod server (`GMAIL_USER`, `GMAIL_APP_PASSWORD`, `EMAIL_FROM`)
+    6. Update `backend/.env` for local dev
+    7. Restart backend: `docker compose -f docker-compose.release.yml restart backend`
+  - **All hardcoded email references to update:**
+    - **Env config files (credentials — update values only, no code change):**
+      - [ ] `backend/.env` — `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `EMAIL_FROM`
+      - [ ] `backend/.env.example` — update example values
+      - [ ] `.env.production` (on prod server) — `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `EMAIL_FROM`
+    - **Backend code (hardcoded `konegolf.general@gmail.com`):**
+      - [ ] `backend/src/services/emailService.ts:563` — contact form recipient hardcoded as `konegolf.general@gmail.com`
+      - [ ] `backend/src/services/emailService.ts:560` — comment referencing `konegolf.general@gmail.com`
+      - [ ] `backend/src/jobs/bookingReportScheduler.ts:157` — fallback `konegolf.general@gmail.com`
+      - [ ] `backend/src/routes/contact.ts:16` — comment referencing `konegolf.general@gmail.com`
+    - **Backend code (`EMAIL_FROM` fallbacks — env-driven, no change needed unless switching away from Gmail):**
+      - `backend/src/services/emailService.ts:67,88,292,333,544,625,719,825` — `process.env.EMAIL_FROM || 'K one Golf <no-reply@konegolf.ca>'`
+    - **Frontend (user-facing email display):**
+      - [ ] `frontend/components/policy-modal.tsx:147` — displays `konegolf.general@gmail.com` to users
+    - **Test scripts:**
+      - [ ] `backend/scripts/test-report-email.ts:12` — fallback `konegolf.general@gmail.com`
+    - **Documentation (update references):**
+      - [ ] `RECEIPT_TESTING.md:8-9,141` — Gmail setup instructions
+      - [ ] `DEPLOY_DOCKER.md:123,254,306,316` — EMAIL_FROM references
+      - [ ] `DEPLOYMENT_STATUS.md:103,131` — EMAIL_FROM reference
+      - [ ] `backend/README.md:69,498` — EMAIL_FROM reference
+  - **No code deployment needed** — env var change + restart is enough for the core switch. Hardcoded references are follow-up cleanup.
 - [x] **Persistent Logging with Rotation** (2026-03-18)
   - [x] Pino logger writes to both stdout and `/app/logs/app.log` via `pino.multistream`
   - [x] Docker volume mount: `/var/log/kgolf:/app/logs` in `docker-compose.release.yml`
