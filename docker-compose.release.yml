@@ -71,6 +71,9 @@ services:
   # All runtime vars (including NODE_ENV, PORT) provided via .env.production
     ports:
       - "8082:8080"
+    volumes:
+      - score_uploads:/app/uploads
+      - /var/log/kgolf:/app/logs
     networks:
       - kgolf_net
     healthcheck:
@@ -86,4 +89,6 @@ networks:
 
 volumes:
   pg_data:
+    driver: local
+  score_uploads:
     driver: local

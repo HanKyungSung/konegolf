@@ -51,7 +51,21 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 
 ### 🔄 Ongoing Tasks
 - Dashboard for the users
-- [x] **Daily Morning Email Report for Uncompleted Bookings** (2025-03-17)
+- [x] **Persistent Logging with Rotation** (2026-03-18)
+  - [x] Pino logger writes to both stdout and `/app/logs/app.log` via `pino.multistream`
+  - [x] Docker volume mount: `/var/log/kgolf:/app/logs` in `docker-compose.release.yml`
+  - [x] Logrotate config at `/etc/logrotate.d/kgolf` — daily rotation, 30 days, compressed
+  - [x] Logs now survive container redeployments
+  - [x] Documented in `PROJECT_GUIDE.md` (log locations, search commands, config)
+- [x] **Morning Email Report — Quick Sale Fix & POS Link** (2026-03-18)
+  - [x] Quick sales now included with orange "QUICK SALE" badge in email
+  - [x] Quick sale time shows as "3:23 PM (created)" instead of misleading time range
+  - [x] Added `bookingSource` field to report data and logs
+  - [x] Fixed POS link: `pos.konegolf.ca` → `konegolf.ca`
+  - [x] Added Payment status column with colored badges (green PAID / red UNPAID)
+  - [x] Added structured email content logging for audit trail
+  - [x] Commit: `3923e37`
+- [x] **Daily Morning Email Report for Uncompleted Bookings** (2026-03-17)
   - [x] New cron job at 7:00 AM Atlantic Time (`backend/src/jobs/bookingReportScheduler.ts`)
   - [x] Queries bookings with `bookingStatus='BOOKED'` and `startTime` within the previous day (Atlantic TZ)
   - [x] Sends HTML email with booking table (customer, room, time, seats, payment status)

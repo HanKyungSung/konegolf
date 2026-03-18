@@ -110,6 +110,99 @@ All cron jobs run inside the backend container using `node-cron` with `America/H
 
 ---
 
+## Logging
+
+### Architecture
+
+Production logging uses **pino** with dual output:
+
+```
+Backend Container
+  └─ pino logger
+       ├─ stdout (JSON) → Docker json-file driver (lost on redeploy)
+       └─ /app/logs/app.log → mounted to host /var/log/kgolf/app.log (persistent)
+```
+
+### Log Location
+
+| Location | Path | Survives Redeploy? |
+|---|---|---|
+| **Container stdout** | `docker logs k-golf-backend-1` | ❌ No — lost when container is replaced |
+| **Persistent file** | `/var/log/kgolf/app.log` on host | ✅ Yes — volume-mounted from container |
+| **Rotated archives** | `/var/log/kgolf/app.log-YYYY-MM-DD.gz` | ✅ Yes — 30 days retention |
+
+### How to Read Logs
+
+```bash
+# SSH into prod server
+ssh root@147.182.215.135
+
+# --- Live / Recent logs ---
+# Tail live container output (current session only)
+docker logs --tail 100 k-golf-backend-1
+
+# Follow live logs
+docker logs -f k-golf-backend-1
+
+# --- Persistent logs (survives deployments) ---
+# View current log file
+cat /var/log/kgolf/app.log
+
+# Tail persistent log
+tail -100 /var/log/kgolf/app.log
+
+# Follow persistent log in real-time
+tail -f /var/log/kgolf/app.log
+
+# --- Searching logs ---
+# Find errors
+grep '"level":50' /var/log/kgolf/app.log
+
+# Find warnings
+grep '"level":40' /var/log/kgolf/app.log
+
+# Search by module (e.g. email, booking-report-scheduler)
+grep 'booking-report-scheduler' /var/log/kgolf/app.log
+
+# Search in rotated (compressed) logs
+zgrep 'error' /var/log/kgolf/app.log-2026-03-17.gz
+
+# Count emails sent today
+grep 'email sent' /var/log/kgolf/app.log | wc -l
+
+# Find all requests to a specific endpoint
+grep '/api/bookings' /var/log/kgolf/app.log | tail -20
+```
+
+### Pino Log Levels
+
+| Level | Number | Meaning |
+|---|---|---|
+| `trace` | 10 | Very verbose debugging |
+| `debug` | 20 | Debug information |
+| `info` | 30 | Normal operations (default) |
+| `warn` | 40 | Something unexpected but recoverable |
+| `error` | 50 | Something failed |
+| `fatal` | 60 | App is crashing |
+
+### Log Rotation Config
+
+- **Config file:** `/etc/logrotate.d/kgolf` on the prod server
+- **Schedule:** Daily rotation
+- **Retention:** 30 days
+- **Compression:** gzip (delayed by 1 day via `delaycompress`)
+- **Method:** `copytruncate` — no app restart needed
+- **Max disk usage:** ~150 MB (30 days × ~5 MB/day at current traffic)
+
+### Configuration
+
+- **Log level:** Set `LOG_LEVEL` env var (default: `info`)
+- **Log directory:** Set `LOG_DIR` env var (default: `/app/logs`)
+- **Logger source:** `backend/src/lib/logger.ts`
+- **Volume mount:** `docker-compose.release.yml` maps `/var/log/kgolf:/app/logs`
+
+---
+
 ## Halted / Do Not Reference
 
 The following components are **halted indefinitely** until a decision is made to revive them. Do not reference, suggest, or modify anything related to these:
