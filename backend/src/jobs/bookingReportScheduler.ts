@@ -125,7 +125,6 @@ export async function checkUncompletedBookings() {
   const bookings = await prisma.booking.findMany({
     where: {
       bookingStatus: 'BOOKED',
-      bookingSource: { not: 'QUICK_SALE' },
       startTime: { gte: start, lt: end },
     },
     include: {
@@ -141,15 +140,19 @@ export async function checkUncompletedBookings() {
 
   log.info({ count: bookings.length }, `Found ${bookings.length} uncompleted bookings from ${yesterdayLabel}`);
 
-  const reportData = bookings.map((b) => ({
-    customerName: b.customerName || 'N/A',
-    customerPhone: b.customerPhone || '',
-    roomName: b.room?.name || 'Unknown',
-    startTime: formatAtlanticTime(b.startTime),
-    endTime: formatAtlanticTime(b.endTime),
-    paymentStatus: b.paymentStatus,
-    bookingId: b.id,
-  }));
+  const reportData = bookings.map((b) => {
+    const isQuickSale = b.bookingSource === 'QUICK_SALE';
+    return {
+      customerName: b.customerName || 'N/A',
+      customerPhone: b.customerPhone || '',
+      roomName: b.room?.name || 'Unknown',
+      startTime: isQuickSale ? `${formatAtlanticTime(b.startTime)} (created)` : formatAtlanticTime(b.startTime),
+      endTime: isQuickSale ? '' : formatAtlanticTime(b.endTime),
+      paymentStatus: b.paymentStatus,
+      bookingSource: b.bookingSource || 'UNKNOWN',
+      bookingId: b.id,
+    };
+  });
 
   const recipient = process.env.REPORT_EMAIL || 'konegolf.general@gmail.com';
 
@@ -162,8 +165,9 @@ export async function checkUncompletedBookings() {
       bookingId: b.bookingId,
       customer: b.customerName,
       room: b.roomName,
-      time: `${b.startTime} – ${b.endTime}`,
+      time: `${b.startTime}${b.endTime ? ` – ${b.endTime}` : ''}`,
       payment: b.paymentStatus,
+      source: b.bookingSource,
     })),
   }, 'Sending uncompleted bookings report email');
 

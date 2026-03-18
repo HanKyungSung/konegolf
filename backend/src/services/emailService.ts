@@ -741,6 +741,7 @@ export interface UncompletedBookingsEmailParams {
     startTime: string;
     endTime: string;
     paymentStatus: string;
+    bookingSource: string;
     bookingId: string;
   }[];
 }
@@ -750,15 +751,20 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
   const subject = `[Kone Golf] ${count} Uncompleted Booking${count > 1 ? 's' : ''} from ${date}`;
 
   const rows = bookings.map((b, i) => {
-    const badgeColor = b.paymentStatus === 'PAID' ? '#16a34a' : '#dc2626';
+    const payBadgeColor = b.paymentStatus === 'PAID' ? '#16a34a' : '#dc2626';
+    const isQuickSale = b.bookingSource === 'QUICK_SALE';
+    const nameBadge = isQuickSale
+      ? ` <span style="background:#f97316;color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;vertical-align:middle">QUICK SALE</span>`
+      : '';
+    const timeDisplay = b.endTime ? `${b.startTime} – ${b.endTime}` : b.startTime;
     return `
     <tr style="border-bottom:1px solid #e2e8f0">
       <td style="padding:10px 12px;color:#334155">${i + 1}</td>
-      <td style="padding:10px 12px;color:#334155;font-weight:600">${b.customerName}</td>
+      <td style="padding:10px 12px;color:#334155;font-weight:600">${b.customerName}${nameBadge}</td>
       <td style="padding:10px 12px;color:#334155">${b.customerPhone}</td>
       <td style="padding:10px 12px;color:#334155">${b.roomName}</td>
-      <td style="padding:10px 12px;color:#334155">${b.startTime} – ${b.endTime}</td>
-      <td style="padding:10px 12px"><span style="background:${badgeColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${b.paymentStatus}</span></td>
+      <td style="padding:10px 12px;color:#334155">${timeDisplay}</td>
+      <td style="padding:10px 12px"><span style="background:${payBadgeColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${b.paymentStatus}</span></td>
     </tr>`;
   }).join('');
 
@@ -794,7 +800,7 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
     <div style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0">
       <p style="margin:0;color:#94a3b8;font-size:12px">
         This is an automated report from Kone Golf POS. 
-        <a href="https://pos.konegolf.ca" style="color:#f59e0b">Open POS →</a>
+        <a href="https://konegolf.ca" style="color:#f59e0b">Open POS →</a>
       </p>
     </div>
   </div>
@@ -802,8 +808,12 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
 </html>`;
 
   const text = `Uncompleted Bookings Report — ${date}\n\n${count} booking(s) still in BOOKED status:\n\n` +
-    bookings.map((b, i) => `${i + 1}. ${b.customerName} | ${b.customerPhone} | ${b.roomName} | ${b.startTime} – ${b.endTime} | ${b.paymentStatus}`).join('\n') +
-    '\n\nPlease review and update their status at https://pos.konegolf.ca';
+    bookings.map((b, i) => {
+      const source = b.bookingSource === 'QUICK_SALE' ? ' [Quick Sale]' : '';
+      const time = b.endTime ? `${b.startTime} – ${b.endTime}` : b.startTime;
+      return `${i + 1}. ${b.customerName}${source} | ${b.customerPhone} | ${b.roomName} | ${time} | ${b.paymentStatus}`;
+    }).join('\n') +
+    '\n\nPlease review and update their status at https://konegolf.ca';
 
   const transport = getTransport();
   if (!transport) {
