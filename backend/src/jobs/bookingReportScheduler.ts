@@ -154,7 +154,7 @@ export async function checkUncompletedBookings() {
     };
   });
 
-  const recipient = process.env.REPORT_EMAIL || 'konegolf.general@gmail.com';
+  const recipient = process.env.REPORT_EMAIL || 'general@konegolf.ca';
 
   // Log email content before sending for audit trail
   log.info({

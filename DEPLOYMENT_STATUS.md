@@ -126,9 +126,9 @@ ssh ... SMTP_HOST='...' SMTP_PORT='...' 'docker compose up'
    # SMTP (optional - only if email features enabled)
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
-   SMTP_USER=your-email@gmail.com
+   SMTP_USER=general@konegolf.ca
    SMTP_PASS=your-app-password
-   EMAIL_FROM=no-reply@k-golf.inviteyou.ca
+   EMAIL_FROM=general@konegolf.ca
    
    # Future secrets
    # JWT_SECRET=generate-random-string

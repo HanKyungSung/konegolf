@@ -557,10 +557,10 @@ Hours: 10:00 AM - 12:00 AM Daily
 }
 
 /**
- * Send contact form email to konegolf.general@gmail.com
+ * Send contact form email to general@konegolf.ca
  */
 export async function sendContactEmail({ firstName, lastName, email, message }: ContactEmailParams) {
-  const to = 'konegolf.general@gmail.com';
+  const to = process.env.CONTACT_EMAIL || 'general@konegolf.ca';
   const subject = `Contact Form: ${firstName} ${lastName}`;
   
   const text = `

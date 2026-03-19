@@ -120,7 +120,7 @@
        SMTP_PORT=587
        SMTP_USER=apikey-user
        SMTP_PASS=super-secret
-       EMAIL_FROM=no-reply@your-domain
+       EMAIL_FROM=general@konegolf.ca
        DATABASE_URL=postgres://kgolf:kgolf_password@db:5432/kgolf_app?schema=public
        ```
     - Then in compose add:
@@ -251,7 +251,7 @@ SMTP_HOST=smtp.yourprovider.com
 SMTP_PORT=587
 SMTP_USER=apikey-or-username
 SMTP_PASS=secret-password
-EMAIL_FROM=no-reply@your-domain.com
+EMAIL_FROM=general@konegolf.ca
 SEED_ADMIN_EMAIL=admin@your-domain.com
 SEED_ADMIN_PASSWORD=secure-password
 POS_ADMIN_KEY=pos-secret-key
@@ -313,7 +313,7 @@ Legend: (O) optional, (A) choose one path.
    SMTP_PORT=587
    SMTP_USER=...
    SMTP_PASS=...
-   EMAIL_FROM=no-reply@your-domain
+   EMAIL_FROM=general@konegolf.ca
    DATABASE_URL=postgres://kgolf:kgolf_password@db:5432/kgolf_app?schema=public
    ```
 - [ ] 10. (O) Add future secrets placeholders (e.g. `JWT_SECRET=`) even if app not using yet

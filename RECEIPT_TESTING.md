@@ -5,12 +5,12 @@
 ### 1. Environment Variables
 Make sure these are set in `backend/.env`:
 ```bash
-GMAIL_USER=your-gmail@gmail.com
+GMAIL_USER=general@konegolf.ca
 GMAIL_APP_PASSWORD=your-app-specific-password
 ```
 
-**How to get Gmail App Password:**
-1. Go to Google Account settings
+**How to get Google Workspace App Password:**
+1. Go to Google Workspace account settings
 2. Security → 2-Step Verification → App passwords
 3. Generate a new app password for "Mail"
 4. Copy the 16-character password
@@ -140,7 +140,7 @@ fetch('http://localhost:8080/api/receipts/YOUR_BOOKING_ID/email', {
 ### Email Not Sending?
 - Check `GMAIL_USER` and `GMAIL_APP_PASSWORD` in `.env`
 - Look at backend console logs for errors
-- Check Gmail "Less secure app access" settings
+- Check Google Workspace app password settings
 - Verify the email address is valid
 
 ### Receipt Data Missing?

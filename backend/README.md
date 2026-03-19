@@ -66,7 +66,7 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/kgolf"
 TEST_DATABASE_URL="postgresql://postgres:password@localhost:5432/kgolf_test"
 SESSION_SECRET="your-secret-key-here"
 CORS_ORIGIN="http://localhost:5173"
-EMAIL_FROM="noreply@kgolf.com"
+EMAIL_FROM="general@konegolf.ca"
 ```
 
 ### 3. Database Setup
@@ -493,9 +493,9 @@ CORS_ORIGIN="http://localhost:5173"  # Frontend origin
 # Email (Production)
 SMTP_HOST="smtp.gmail.com"
 SMTP_PORT="587"
-SMTP_USER="your-email@gmail.com"
+SMTP_USER="general@konegolf.ca"
 SMTP_PASS="app-password"
-EMAIL_FROM="noreply@kgolf.com"
+EMAIL_FROM="general@konegolf.ca"
 
 # Frontend URL (for email links)
 FRONTEND_ORIGIN="https://k-golf.inviteyou.ca"

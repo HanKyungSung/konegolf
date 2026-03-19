@@ -13,7 +13,7 @@ const contactSchema = z.object({
 
 /**
  * POST /api/contact
- * Send a contact form message to konegolf.general@gmail.com
+ * Send a contact form message to general@konegolf.ca
  */
 router.post('/', async (req, res) => {
   try {

@@ -144,7 +144,7 @@ export function PolicyModal({ open, onOpenChange, type }: PolicyModalProps) {
           <div className="border-t border-slate-700 pt-6 mt-6">
             <p className="text-sm text-slate-400">
               <strong className="text-white">Questions?</strong> If you have any questions about our policies or need to discuss special circumstances, 
-              please contact us at <a href="#contact" className="text-amber-400 hover:underline">konegolf.general@gmail.com</a> or 
+              please contact us at <a href="mailto:general@konegolf.ca" className="text-amber-400 hover:underline">general@konegolf.ca</a> or 
               call us at <span className="text-amber-400">(902) 270-2259</span>.
             </p>
             <p className="text-xs text-slate-500 mt-4">
