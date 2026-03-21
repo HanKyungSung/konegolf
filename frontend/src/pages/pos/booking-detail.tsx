@@ -140,7 +140,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   // Collect payment dialog state
   const [paymentDialogSeat, setPaymentDialogSeat] = useState<number | null>(null);
   const [paymentDialogAmount, setPaymentDialogAmount] = useState<string>('');
-  const [paymentDialogMethod, setPaymentDialogMethod] = useState<'CARD' | 'CASH' | 'GIFT_CARD'>('CARD');
+  const [paymentDialogMethod, setPaymentDialogMethod] = useState<'CARD' | 'CASH' | 'GIFT_CARD' | null>(null);
 
   // Receipt modal state
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -1566,7 +1566,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                     onClick={() => {
                                       setPaymentDialogSeat(seat);
                                       setPaymentDialogAmount(remaining > 0 ? remaining.toFixed(2) : seatTotal.toFixed(2));
-                                      setPaymentDialogMethod('CARD');
+                                      setPaymentDialogMethod(null);
                                     }}
                                     disabled={subtotal === 0}
                                     className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold h-12"
@@ -2501,7 +2501,9 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
                 {/* Payment Method */}
                 <div className="space-y-2">
-                  <Label className="text-slate-300 text-sm">Payment Method</Label>
+                  <Label className={`text-sm font-semibold ${paymentDialogMethod === null ? 'text-amber-400 animate-pulse' : 'text-slate-300'}`}>
+                    {paymentDialogMethod === null ? '⚠️ Select Payment Method' : 'Payment Method'}
+                  </Label>
                   <div className="grid grid-cols-3 gap-2">
                     {([['CARD', 'Card', CreditCard], ['CASH', 'Cash', Banknote], ['GIFT_CARD', 'Gift Card', Gift]] as const).map(([method, label, Icon]) => (
                       <div
@@ -2572,6 +2574,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         if (!inv) throw new Error('No invoice found');
                         const amount = parseFloat(paymentDialogAmount);
                         if (isNaN(amount) || amount <= 0) throw new Error('Enter a valid amount');
+                        if (!paymentDialogMethod) throw new Error('Select a payment method');
 
                         const tipVal = parseFloat(tipAmountBySeat[seat] || '0') || 0;
 
@@ -2605,13 +2608,15 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         setProcessingPayment(null);
                       }
                     }}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-bold h-12"
-                    disabled={processingPayment === paymentDialogSeat}
+                    className={`flex-1 font-bold h-12 ${paymentDialogMethod === null ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-600 text-black'}`}
+                    disabled={processingPayment === paymentDialogSeat || paymentDialogMethod === null}
                   >
                     {processingPayment === paymentDialogSeat ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
+                    ) : paymentDialogMethod === null ? (
+                      'Select Payment Method'
                     ) : (
-                      'Add Payment'
+                      `Pay $${paymentDialogAmount || '0.00'} by ${paymentDialogMethod === 'GIFT_CARD' ? 'Gift Card' : paymentDialogMethod === 'CARD' ? 'Card' : 'Cash'}`
                     )}
                   </Button>
                   <Button
