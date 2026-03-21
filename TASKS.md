@@ -51,6 +51,17 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 
 ### 🔄 Ongoing Tasks
 - Dashboard for the users
+- [x] **Fix: Force Explicit Payment Method Selection** (2026-03-21)
+  - [x] **Root cause:** Collect Payment dialog defaulted to CARD — staff collecting cash often forgot to switch, recording CASH payments as CARD
+  - [x] **Impact:** System CARD totals consistently higher than bank deposits; CASH totals matched exactly
+  - [x] **Fix:** Payment method starts as `null`, "Add Payment" button disabled until CARD/Cash/Gift Card is selected, button text shows "Pay $XX by Card/Cash", amber pulsing label warns staff to select method
+  - [x] **File:** `frontend/src/pages/pos/booking-detail.tsx`
+  - [x] Commit: `85c0846`
+- [x] **Fix: Coupon Redemption Not Updating Invoice Totals** (2026-03-21)
+  - [x] **Bug:** `redeemCoupon()` created discount order but never called `recalculateInvoice()`, leaving invoice subtotal/tax/total stale
+  - [x] **Fix:** Added `invoiceRepo.recalculateInvoice()` call in `POST /api/coupons/:code/redeem` route after redemption
+  - [x] **Data fix:** Corrected invoice `d20408fd` for booking `152dc4d6` (John Muise) — subtotal $35→$20, tax $4.90→$2.80, total $39.90→$22.80
+  - [x] Commit: `ea8455d`
 - [x] **Switch to Google Workspace Email** ✅ COMPLETED (2026-03-19)
   - **Account:** `general@konegolf.ca` (Google Workspace Business Starter)
   - [x] Google Workspace account created for `konegolf.ca`
