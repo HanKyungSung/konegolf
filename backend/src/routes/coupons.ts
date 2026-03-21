@@ -4,6 +4,7 @@ import logger from '../lib/logger';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin, requireStaffOrAdmin } from '../middleware/requireRole';
 import { createCoupon, validateCoupon, redeemCoupon, getPublicCoupon } from '../services/couponService';
+import * as invoiceRepo from '../repositories/invoiceRepo';
 import { sendCouponEmail } from '../services/emailService';
 
 const router = Router();
@@ -61,8 +62,19 @@ router.post('/:code/redeem', requireAuth, requireStaffOrAdmin, async (req: Reque
       seatNumber: Number(seatNumber),
     });
 
-    req.log.info({ code: req.params.code.toUpperCase(), bookingId, seatNumber, couponId: coupon.id }, 'Coupon redeemed');
-    res.json({ success: true, coupon });
+    // Recalculate invoice totals to reflect the discount order
+    const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, Number(seatNumber));
+
+    req.log.info({
+      code: req.params.code.toUpperCase(),
+      bookingId,
+      seatNumber,
+      couponId: coupon.id,
+      discount: Number(coupon.discountAmount),
+      invoiceSubtotal: Number(updatedInvoice.subtotal),
+      invoiceTotal: Number(updatedInvoice.totalAmount),
+    }, 'Coupon redeemed, invoice recalculated');
+    res.json({ success: true, coupon, updatedInvoice });
   } catch (err: any) {
     req.log.error({ err, code: req.params.code }, 'Coupon redeem failed');
     const message = err.message || 'Internal server error';
