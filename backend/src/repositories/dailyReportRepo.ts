@@ -30,11 +30,11 @@ export async function getDailySummary(dateInput?: Date): Promise<DailySummaryDat
   const { year, month, day } = getAtlanticComponents(target);
   const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-  // Paid invoices for this day (based on paidAt in Atlantic day range)
+  // Paid invoices for this day (based on booking startTime in Atlantic day range)
   const paidInvoices = await prisma.invoice.findMany({
     where: {
       status: 'PAID',
-      paidAt: { gte: start, lte: end },
+      booking: { startTime: { gte: start, lte: end } },
     },
     select: {
       paymentMethod: true,

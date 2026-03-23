@@ -40,8 +40,9 @@ export async function getMonthlyReport(month: number, year: number): Promise<Mon
   const dateFilter = { gte: startDate, lt: endDate };
 
   // ── 1. PAID INVOICES — single source of truth for revenue ──
+  // Use booking startTime (not paidAt) so revenue aligns with the day the booking occurred
   const invoices = await prisma.invoice.findMany({
-    where: { status: 'PAID', paidAt: dateFilter },
+    where: { status: 'PAID', booking: { startTime: dateFilter } },
     select: {
       paymentMethod: true,
       totalAmount: true,
