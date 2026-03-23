@@ -45,9 +45,9 @@ services:
         condition: service_completed_successfully
     env_file:
       - .env.production
-    # Seed temporarily disabled — score_capture migration not yet deployed
-    # Original: ["node", "dist/prisma/seed.js"]
-    command: ["echo", "Seed skipped"]
+    # Seed runs in production mode (skips test users and mock bookings)
+    # Set SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD in .env.production to customize
+    command: ["node", "dist/prisma/seed.js"]
     restart: "no"
     networks:
       - kgolf_net
