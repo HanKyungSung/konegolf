@@ -311,6 +311,44 @@ Notes on migrations
 
 Testing: See [backend/README.md](backend/README.md#testing) for comprehensive testing documentation.
 
+### E2E Testing (Playwright)
+
+End-to-end tests live in `e2e-tests/` and run against the live dev servers using Playwright (Chromium).
+
+**Prerequisites:** Backend running on `:8080`, frontend running on `:5173`.
+
+```bash
+# Terminal 1 — backend
+cd backend && npm run dev
+
+# Terminal 2 — frontend
+cd frontend && npm run dev
+```
+
+**Run tests** (from repo root):
+
+| Command | Description |
+|---------|-------------|
+| `npm run test:e2e` | Headless run (fastest) |
+| `npm run test:e2e:headed` | Shows browser window |
+| `npm run test:e2e:ui` | Playwright interactive UI |
+| `npm run test:e2e:report` | Opens the last HTML report |
+
+**Test suites (23 tests):**
+
+| File | Tests | What it covers |
+|------|-------|----------------|
+| `01-auth-flow.spec.ts` | 6 | Login, invalid credentials, admin/user redirect, auth guard |
+| `02-booking-flow.spec.ts` | 5 | Dashboard rooms, walk-in booking modal, validation, booking detail |
+| `03-pos-order-flow.spec.ts` | 5 | Add food/drink items to seats, menu categories, custom/discount buttons |
+| `04-payment-flow.spec.ts` | 7 | Card/Cash payment, tips, tip method toggle, complete booking, quick sale |
+
+**Key files:**
+
+- `e2e-tests/global-setup.ts` — Seeds DB and verifies servers before tests
+- `e2e-tests/helpers.ts` — Shared login, booking creation, and API helpers
+- `playwright.config.ts` — Playwright config (Chromium, sequential, screenshots on failure)
+
 ### Timestamps & Timezones (UTC)
 
 - Storage: All Prisma `DateTime` fields are mapped to Postgres `timestamptz` and persisted as UTC instants.

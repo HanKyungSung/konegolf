@@ -1645,21 +1645,19 @@ Replace complex booking status with simplified states (BOOKED/COMPLETED/CANCELLE
   - Tax calculations correct
 
 #### E2E Tests
-- [~] **E2E Test Infrastructure (Playwright)** 🔄 IN PROGRESS (2025-12-19)
-  - [x] Playwright installed and configured
-  - [x] 4 test suites created (19 tests total):
-    - `01-signup-flow.spec.ts` - User registration (4 tests)
-    - `02-booking-flow.spec.ts` - Booking creation (4 tests)
-    - `03-pos-order-flow.spec.ts` - POS orders (4 tests)
-    - `04-admin-management.spec.ts` - Admin functions (7 tests)
-  - [x] Auto-server startup configured (`test:e2e:full` command)
-  - [x] GitHub Actions workflow created (disabled)
-  - [x] Fixed webpack dev server crashes during test runs
-  - [x] Fixed test selectors to match actual UI
-  - [ ] **PAUSED** - Need to debug signup flow (backend not receiving request)
-  - [ ] Fix login flow for booking/POS/admin tests
-  - [ ] Update selectors to match real UI components
-  - [ ] Consider adding data-testid attributes to components
+- [x] **E2E Test Infrastructure (Playwright)** ✅ COMPLETE (2026-03-23)
+  - [x] Playwright installed and configured with global setup (seed + health checks)
+  - [x] 4 test suites rewritten with real working selectors (23 tests total):
+    - `01-auth-flow.spec.ts` - Login, auth redirects, error handling (6 tests)
+    - `02-booking-flow.spec.ts` - Dashboard, walk-in booking, booking detail (5 tests)
+    - `03-pos-order-flow.spec.ts` - Add menu items, categories, custom items (5 tests)
+    - `04-payment-flow.spec.ts` - Card/Cash payment, tips, tip method toggle, complete booking (7 tests)
+  - [x] Helper utilities: `loginAsAdmin`, `createWalkInBooking`, `createAndOpenBooking` (via Quick Sale API)
+  - [x] Global setup seeds DB, verifies backend/frontend running
+  - [x] All 23 tests passing against live dev servers
+  - Run: `npm run test:e2e` (requires backend on :8080 and frontend on :5173)
+  - Run with UI: `npm run test:e2e:ui`
+  - Run headed: `npm run test:e2e:headed`
   
 - [ ] **booking-workflow.test.ts**
   - Create booking → invoices created

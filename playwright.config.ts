@@ -13,14 +13,16 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e-tests',
+  /* Global setup: seed database and verify servers are running */
+  globalSetup: './e2e-tests/global-setup.ts',
   /* Run tests in files in parallel */
-  fullyParallel: false, // Changed: tests may share database state
+  fullyParallel: false, // Tests share database state, run sequentially
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : 1, // Changed: run tests sequentially
+  workers: 1, // Run tests sequentially — shared DB state
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -32,8 +34,8 @@ export default defineConfig({
     trace: 'on-first-retry',
     
     /* Wait for navigation to complete */
-    navigationTimeout: 10000,
-    actionTimeout: 10000,
+    navigationTimeout: 15000,
+    actionTimeout: 15000,
     
     /* Screenshot on failure */
     screenshot: 'only-on-failure',

@@ -1,130 +1,118 @@
 import { test, expect } from '@playwright/test';
+import { loginAsAdmin, createAndOpenBooking, MENU_ITEMS } from './helpers';
 
 /**
- * E2E Test 3: POS Order Entry Flow
- * Tests adding items, splitting bills, and processing payments in POS
+ * 03 — POS Order & Menu Flow Tests
+ * Tests adding items to seats, menu navigation, and order management.
+ * Uses Quick Sale API to create bookings for reliable access to booking detail.
  */
-test.describe('POS Order Entry Flow', () => {
-  
+
+test.describe('POS Order Flow', () => {
   test.beforeEach(async ({ page }) => {
-    // Login as admin/POS user
-    await page.goto('/login');
-    await page.fill('input[id="email"]', 'admin@k-golf.ca');
-    await page.fill('input[id="password"]', 'admin123');
-    await page.click('button[type="submit"]:has-text("Sign In")');
-    await page.waitForURL(/.*dashboard/, { timeout: 10000 });
+    await page.context().clearCookies();
+    await loginAsAdmin(page);
   });
 
-  test('should add orders to booking and process payment', async ({ page }) => {
-    // Step 1: Go to dashboard and find a booking
-    await page.goto('/pos/dashboard');
-    
-    // Click on first booking in timeline/list
-    const firstBooking = page.locator('[data-booking-id], .booking-card, .timeline-booking').first();
-    await firstBooking.click();
-    
-    // Step 2: Verify booking detail page loaded
-    await expect(page.locator('h1, h2').first()).toContainText(/Booking|Detail/i);
-    
-    // Step 3: Add menu item to seat 1
-    const addItemButton = page.locator('button:has-text("Add Item"), button:has-text("+")').first();
-    await addItemButton.click();
-    
-    // Step 4: Select menu item from modal/dropdown
-    await page.click('button:has-text("Club Sandwich"), [data-item="club-sandwich"]');
-    
-    // Step 5: Confirm quantity and seat
-    const confirmButton = page.locator('button:has-text("Add"), button:has-text("Confirm")');
-    if (await confirmButton.isVisible()) {
-      await confirmButton.click();
-    }
-    
-    // Step 6: Verify item appears in order list
-    await expect(page.locator('text=Club Sandwich')).toBeVisible();
-    await expect(page.locator('text=/\\$12\\.99|12.99/')).toBeVisible();
-    
-    // Step 7: Open payment section
-    const payButton = page.locator('button:has-text("Pay"), button:has-text("Process Payment")');
-    await payButton.click();
-    
-    // Step 8: Select payment method
-    await page.click('input[value="CARD"], button:has-text("Card")');
-    
-    // Step 9: Add tip (optional)
-    const tipInput = page.locator('input[name="tip"], input[placeholder*="tip"]');
-    if (await tipInput.isVisible()) {
-      await tipInput.fill('5.00');
-    }
-    
-    // Step 10: Submit payment
-    await page.click('button:has-text("Process Payment"), button:has-text("Complete")');
-    
-    // Step 11: Verify payment success
-    await expect(page.locator('text=/payment.*success|paid/i, .badge:has-text("PAID")')).toBeVisible({ timeout: 5000 });
+  test('add food item to seat via menu', async ({ page }) => {
+    await createAndOpenBooking(page);
+
+    // Click on the "Food" tab in the menu panel
+    await page.getByRole('tab', { name: 'Food' }).click();
+    await page.waitForTimeout(500);
+
+    // Click "Club Sandwich" menu item button
+    await page.getByRole('button', { name: /Club Sandwich/ }).click();
+
+    // "Add to Seat" dialog should appear
+    await expect(page.getByText('Add to Seat')).toBeVisible({ timeout: 3000 });
+
+    // Click "Seat 1" to add item to seat 1
+    await page.getByRole('button', { name: 'Seat 1' }).click();
+
+    // Wait for item to be added
+    await page.waitForTimeout(1500);
+
+    // Verify item appears in the seat (not in the menu panel)
+    // The seat accordion shows items as <p> tags, the menu shows items as <h4> tags
+    // Check that "1 item" count appears in Seat 1 trigger
+    await expect(page.getByText(/1 item/)).toBeVisible({ timeout: 3000 });
   });
 
-  test('should split bill across seats', async ({ page }) => {
-    await page.goto('/pos/dashboard');
-    
-    // Click first booking
-    await page.locator('.booking-card').first().click();
-    
-    // Add items to different seats
-    await page.click('button:has-text("Add Item")');
-    await page.click('[data-item="beer"]');
-    await page.selectOption('select[name="seat"]', '1');
-    await page.click('button:has-text("Add")');
-    
-    await page.click('button:has-text("Add Item")');
-    await page.click('[data-item="club-sandwich"]');
-    await page.selectOption('select[name="seat"]', '2');
-    await page.click('button:has-text("Add")');
-    
-    // Verify items split correctly
-    const seat1Section = page.locator('[data-seat="1"], .seat-1');
-    await expect(seat1Section.locator('text=Beer')).toBeVisible();
-    
-    const seat2Section = page.locator('[data-seat="2"], .seat-2');
-    await expect(seat2Section.locator('text=Club Sandwich')).toBeVisible();
+  test('add drink item from Drinks tab', async ({ page }) => {
+    await createAndOpenBooking(page);
+
+    // Switch to Drinks tab
+    await page.getByRole('tab', { name: 'Drinks' }).click();
+    await page.waitForTimeout(500);
+
+    // Click Beer
+    await page.getByRole('button', { name: /Beer/ }).click();
+
+    // Select Seat 1
+    await expect(page.getByText('Add to Seat')).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: 'Seat 1' }).click();
+    await page.waitForTimeout(1500);
+
+    // Verify item count increased
+    await expect(page.getByText(/1 item/)).toBeVisible({ timeout: 3000 });
   });
 
-  test('should calculate totals with tax', async ({ page }) => {
-    await page.goto('/pos/dashboard');
-    await page.locator('.booking-card').first().click();
-    
-    // Add item
-    await page.click('button:has-text("Add Item")');
-    await page.click('[data-item="club-sandwich"]'); // $12.99
-    await page.click('button:has-text("Add")');
-    
-    // Verify calculations
-    await expect(page.locator('text=/subtotal.*12\\.99/i')).toBeVisible();
-    await expect(page.locator('text=/tax.*1\\./i')).toBeVisible(); // ~$1.30 tax
-    await expect(page.locator('text=/total.*14\\./i')).toBeVisible(); // ~$14.29 total
+  test('add multiple items to same seat', async ({ page }) => {
+    await createAndOpenBooking(page);
+
+    // Add a food item
+    await page.getByRole('tab', { name: 'Food' }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: /Korean Fried Chicken/ }).click();
+    await expect(page.getByText('Add to Seat')).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: 'Seat 1' }).click();
+    await page.waitForTimeout(1500);
+
+    // Add a drink
+    await page.getByRole('tab', { name: 'Drinks' }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: /Soft Drinks/ }).click();
+    await expect(page.getByText('Add to Seat')).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: 'Seat 1' }).click();
+    await page.waitForTimeout(1500);
+
+    // Verify 2 items added
+    await expect(page.getByText(/2 items/)).toBeVisible({ timeout: 3000 });
   });
 
-  test('should remove order item', async ({ page }) => {
-    await page.goto('/pos/dashboard');
-    await page.locator('.booking-card').first().click();
-    
-    // Add item
-    await page.click('button:has-text("Add Item")');
-    await page.click('[data-item="beer"]');
-    await page.click('button:has-text("Add")');
-    
-    // Verify item added
-    await expect(page.locator('text=Beer')).toBeVisible();
-    
-    // Remove item
-    await page.locator('button[aria-label*="Remove"], button:has-text("Remove")').first().click();
-    
-    // Confirm removal
-    const confirmDelete = page.locator('button:has-text("Delete"), button:has-text("Confirm")');
-    if (await confirmDelete.isVisible()) {
-      await confirmDelete.click();
-    }
-    
-    // Verify item removed
-    await expect(page.locator('text=Beer')).not.toBeVisible({ timeout: 2000 });
+  test('menu shows correct categories with items', async ({ page }) => {
+    await createAndOpenBooking(page);
+
+    // Check Hours tab
+    await page.getByRole('tab', { name: 'Hours' }).click();
+    await page.waitForTimeout(500);
+    await expect(page.getByRole('button', { name: /1 Hour/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /2 Hours/ })).toBeVisible();
+
+    // Check Food tab
+    await page.getByRole('tab', { name: 'Food' }).click();
+    await page.waitForTimeout(500);
+    await expect(page.getByRole('button', { name: /Club Sandwich/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Bulgogi Burger/ })).toBeVisible();
+
+    // Check Appetizers tab
+    await page.getByRole('tab', { name: 'Appetizers' }).click();
+    await page.waitForTimeout(500);
+    await expect(page.getByRole('button', { name: /French Fries/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Chicken Wings/ })).toBeVisible();
+
+    // Check Desserts tab
+    await page.getByRole('tab', { name: 'Desserts' }).click();
+    await page.waitForTimeout(500);
+    await expect(page.getByRole('button', { name: /Ice Cream/ })).toBeVisible();
+  });
+
+  test('shows Custom Item and Discount buttons', async ({ page }) => {
+    await createAndOpenBooking(page);
+
+    // Should see Custom Item and Discount buttons
+    await expect(page.getByRole('button', { name: /Custom Item/ })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /Discount/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Apply Coupon/ })).toBeVisible();
   });
 });

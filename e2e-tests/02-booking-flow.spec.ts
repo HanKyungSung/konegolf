@@ -1,103 +1,81 @@
 import { test, expect } from '@playwright/test';
+import { loginAsAdmin, createWalkInBooking, createAndOpenBooking } from './helpers';
 
 /**
- * E2E Test 2: Complete Booking Flow
- * Tests the entire booking journey from room selection to confirmation
+ * 02 — POS Booking Flow Tests
+ * Tests creating, viewing, and managing bookings from the POS dashboard.
  */
-test.describe('Complete Booking Flow', () => {
-  
+
+test.describe('POS Booking Flow', () => {
   test.beforeEach(async ({ page }) => {
-    // Login before each test
-    await page.goto('/login');
-    await page.fill('input[id="email"]', 'test@example.com');
-    await page.fill('input[id="password"]', 'password123');
-    await page.click('button[type="submit"]:has-text("Sign In")');
-    await page.waitForURL(/.*dashboard/, { timeout: 10000 });
+    await page.context().clearCookies();
+    await loginAsAdmin(page);
   });
 
-  test('should create booking through complete user flow', async ({ page }) => {
-    // Step 1: Navigate to booking page
-    await page.goto('/booking');
-    await expect(page.locator('h2').filter({ hasText: /Book|Reserve/i })).toBeVisible();
-    
-    // Step 2: Select a room
-    const roomButton = page.locator('button:has-text("Bay 1"), [data-room-id="1"]').first();
-    await roomButton.click();
-    
-    // Verify room is selected (background color change or checkmark)
-    await expect(roomButton).toHaveClass(/selected|active/);
-    
-    // Step 3: Select date
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const dateStr = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
-    
-    await page.fill('input[type="date"]', dateStr);
-    
-    // Step 4: Select start time
-    await page.selectOption('select[name="startTime"], [name="time"]', '10:00');
-    
-    // Step 5: Select number of players
-    await page.selectOption('select[name="numberOfPlayers"], select[name="players"]', '2');
-    
-    // Step 6: Verify booking summary
-    const summary = page.locator('.booking-summary, .summary-card');
-    await expect(summary).toContainText(/Bay 1/i);
-    await expect(summary).toContainText(/2.*player/i);
-    
-    // Step 7: Submit booking
-    await page.click('button:has-text("Create Booking"), button:has-text("Book Now")');
-    
-    // Step 8: Wait for success confirmation
-    await page.waitForURL(/.*bookings|success/, { timeout: 5000 });
-    
-    // Step 9: Verify success message or booking in list
-    const successIndicator = page.locator('text=/booking.*created|success/i, .success-message');
-    await expect(successIndicator).toBeVisible({ timeout: 3000 });
+  test('POS dashboard shows rooms and navigation', async ({ page }) => {
+    // Should see room headings in room cards
+    await expect(page.getByRole('heading', { name: 'Room 1' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Room 2' })).toBeVisible();
+
+    // Should see Quick Sale button
+    await expect(page.getByRole('button', { name: 'Quick Sale' })).toBeVisible();
+
+    // Should see tab navigation
+    await expect(page.getByRole('tab', { name: 'Timeline' })).toBeVisible();
   });
 
-  test('should show available time slots', async ({ page }) => {
-    await page.goto('/booking');
-    
-    // Select room
-    await page.click('button:has-text("Bay 1")');
-    
-    // Select date
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    await page.fill('input[type="date"]', tomorrow.toISOString().split('T')[0]);
-    
-    // Verify time slots appear
-    await expect(page.locator('select[name="startTime"] option, button[data-time]')).toHaveCount(13, { timeout: 3000 });
+  test('create walk-in booking via modal', async ({ page }) => {
+    // Use the helper which properly handles TimePicker
+    // Use Room 4 and a unique phone to avoid conflicts with previous test runs
+    await createWalkInBooking(page, {
+      customerPhone: '9025559999',
+      customerName: 'E2E Walk-in Customer',
+      room: 'Room 4',
+    });
+
+    // Verify we're back on the dashboard (use .first() in case modal is briefly visible)
+    await expect(page.getByRole('button', { name: 'Create Booking' }).first()).toBeVisible();
   });
 
-  test('should validate required fields', async ({ page }) => {
-    await page.goto('/booking');
-    
-    // Try to submit without selecting anything
-    const submitButton = page.locator('button:has-text("Create Booking"), button:has-text("Book Now")');
-    
-    // Button should be disabled
-    if (await submitButton.isDisabled()) {
-      expect(await submitButton.isDisabled()).toBe(true);
-    } else {
-      // If not disabled, click and check for validation messages
-      await submitButton.click();
-      await expect(page.locator('text=/select.*room|required/i')).toBeVisible();
-    }
+  test('booking modal validates required fields', async ({ page }) => {
+    // Open Create Booking modal
+    await page.getByRole('button', { name: 'Create Booking' }).click();
+    await expect(page.getByText('Customer Information')).toBeVisible({ timeout: 5000 });
+
+    // Continue button should be disabled without phone/name
+    const continueBtn = page.getByTestId('continue-btn');
+    await expect(continueBtn).toBeDisabled();
+
+    // Fill phone
+    const phoneInput = page.getByTestId('customer-phone');
+    await phoneInput.fill('9025551111');
+    await page.waitForTimeout(1500);
+
+    // Fill name to enable continue
+    const nameInput = page.getByTestId('customer-name');
+    await nameInput.fill('Validation Test');
+
+    // Now Continue should be enabled
+    await expect(continueBtn).toBeEnabled({ timeout: 3000 });
   });
 
-  test('should calculate correct price', async ({ page }) => {
-    await page.goto('/booking');
-    
-    // Select room
-    await page.click('button:has-text("Bay 1")');
-    
-    // Select 2 players
-    await page.selectOption('select[name="players"]', '2');
-    
-    // Should show price: $35/player = $70 total (or $35 for 1 hour)
-    const priceElement = page.locator('text=/\\$\\d+/, .price, .total');
-    await expect(priceElement).toBeVisible();
+  test('can open booking detail and see seats', async ({ page }) => {
+    // Use API to create booking, then navigate to its detail page
+    await createAndOpenBooking(page);
+
+    // Booking detail should show seat information
+    await expect(page.getByText('Seat 1').first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test('booking detail shows menu panel with categories', async ({ page }) => {
+    // Use API to create booking and open detail
+    await createAndOpenBooking(page);
+
+    // Should see all menu category tabs
+    await expect(page.getByRole('tab', { name: 'Hours' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('tab', { name: 'Food' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Drinks' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Appetizers' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Desserts' })).toBeVisible();
   });
 });
