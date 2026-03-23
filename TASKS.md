@@ -21,10 +21,11 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 ---
 
 ## Personal note (Do not touch)
-- daily report
-  - card/cash etc
 - create a new / change the account phone number
-- 
+- quick sale
+  - total doesn't show
+- how to handle cash tip? → tipMethod field added (2026-03-23)
+- do we need 'unpiad/paid' status
 
 ### 🔄 Ongoing Tasks
 - [ ] **Enable DigitalOcean Droplet Backups** 🔴 HIGH PRIORITY
@@ -1087,6 +1088,24 @@ k-golf.inviteyou.ca (Legacy)  → Nginx → Docker:8082 → K-Golf App (backward
 ## 🐛 Active Issues & Bugs
 
 ### Priority: CRITICAL 🔥
+
+**0z. Tip Method Tracking for Cash Tips** ✅ IMPLEMENTED (not yet deployed)
+- **Status:** 🟡 IMPLEMENTED — needs deploy + migration
+- **Date:** 2026-03-23
+- **Component:** Schema, Backend, Web POS
+- **Issue:** Tips have no payment method — system doesn't distinguish card tips vs cash tips. When a customer pays by card but leaves a cash tip, the tip inflates the system CARD total, causing bank reconciliation gaps.
+- **Solution:** Added `tipMethod` field (`'CARD'` | `'CASH'`, nullable) to Invoice table.
+  - When staff enters a tip, a toggle appears: "💳 Card" / "💵 Cash" (defaults to Card)
+  - Backend stores `tipMethod` on the invoice alongside the existing `tip` amount
+  - Reconciliation queries can filter by `tipMethod` when summing tips for bank matching
+- **Files Changed:**
+  - `backend/prisma/schema.prisma` — Added `tipMethod String?` to Invoice model
+  - `backend/prisma/migrations/20260323073826_add_tip_method_to_invoice/` — Migration SQL
+  - `backend/src/repositories/invoiceRepo.ts` — `addSinglePayment()` accepts and stores `tipMethod`
+  - `backend/src/routes/booking.ts` — `addPaymentSchema` validates `tipMethod`, passes through
+  - `frontend/services/pos-api.ts` — `addPayment()` sends `tipMethod` to API
+  - `frontend/src/pages/pos/booking-detail.tsx` — Tip method toggle UI in payment dialog
+- **Deploy:** Run `prisma migrate deploy` on production, then deploy new backend + frontend
 
 **0a. Hardcoded 10% Tax Rate in Booking Invoice Calculation** ✅ FIXED
 - **Status:** 🟢 RESOLVED (2025-03-17)

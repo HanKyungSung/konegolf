@@ -381,6 +381,7 @@ export interface Invoice {
   subtotal: number;
   tax: number;
   tip: number | null;
+  tipMethod: string | null;
   totalAmount: number;
   status: 'UNPAID' | 'PAID';
   paymentMethod: string | null;
@@ -558,6 +559,7 @@ export async function addPayment(data: {
   method: 'CARD' | 'CASH' | 'GIFT_CARD';
   amount: number;
   tip?: number;
+  tipMethod?: 'CARD' | 'CASH';
 }): Promise<{ invoice: Invoice; remaining: number; bookingPaymentStatus: string }> {
   const res = await fetch(`${API_BASE}/api/bookings/invoices/${data.invoiceId}/add-payment`, {
     method: 'POST',
@@ -572,6 +574,7 @@ export async function addPayment(data: {
       method: data.method,
       amount: data.amount,
       tip: data.tip,
+      tipMethod: data.tipMethod,
     })
   });
 

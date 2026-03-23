@@ -46,14 +46,16 @@ model User {
 }
 
 model Room {
-  id           String     @id @default(uuid())
-  name         String     @unique
-  capacity     Int        @default(4)
-  active       Boolean    @default(true) // legacy; prefer status
-  status       RoomStatus @default(ACTIVE)
-  createdAt    DateTime   @default(now()) @db.Timestamptz
-  updatedAt    DateTime   @updatedAt @db.Timestamptz
-  bookings     Booking[]
+  id             String         @id @default(uuid())
+  name           String         @unique
+  bayNumber      Int?           @unique
+  capacity       Int            @default(4)
+  active         Boolean        @default(true) // legacy; prefer status
+  status         RoomStatus     @default(ACTIVE)
+  createdAt      DateTime       @default(now()) @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @db.Timestamptz
+  bookings       Booking[]
+  scoreCaptures  ScoreCapture[]
 }
 
 enum RoomStatus {
@@ -89,6 +91,7 @@ model Booking {
   invoices        Invoice[]
   orders          Order[]
   redeemedCoupons Coupon[]
+  scoreCaptures   ScoreCapture[]
 
   @@index([roomId, startTime])
   @@index([userId, startTime])
@@ -112,6 +115,7 @@ model Invoice {
   // Payment tracking
   status          String    @default("UNPAID")  // UNPAID | PAID
   paymentMethod   String?   // CARD | CASH | GIFT_CARD | SPLIT | null if unpaid
+  tipMethod       String?   // CARD | CASH — how the tip was paid (null = same as paymentMethod)
   paidAt          DateTime? @db.Timestamptz     // When payment was collected
   
   payments        Payment[] // Split payment records (one-to-many)
@@ -300,4 +304,46 @@ model Coupon {
   @@index([userId])
   @@index([status])
   @@index([couponTypeId])
+}
+
+// ──────────────────────────────────────────────
+// Score Capture — bay PC screen capture results
+// ──────────────────────────────────────────────
+
+model ScoreCapture {
+  id              String               @id @default(uuid())
+  bayNumber       Int
+  room            Room?                @relation(fields: [roomId], references: [id])
+  roomId          String?
+  booking         Booking?             @relation(fields: [bookingId], references: [id])
+  bookingId       String?
+  status          String               @default("ACTIVE") // ACTIVE | NEEDS_REVIEW | DELETED
+  courseName      String?
+  screenshotPath  String?
+  sourceVersion   String?
+  rawPayload      Json?
+  capturedAt      DateTime             @db.Timestamptz
+  createdAt       DateTime             @default(now()) @db.Timestamptz
+  updatedAt       DateTime             @updatedAt @db.Timestamptz
+  players         ScoreCapturePlayer[]
+
+  @@index([bayNumber, capturedAt])
+  @@index([status])
+  @@index([bookingId])
+}
+
+model ScoreCapturePlayer {
+  id              String       @id @default(uuid())
+  capture         ScoreCapture @relation(fields: [captureId], references: [id], onDelete: Cascade)
+  captureId       String
+  seatIndex       Int?
+  ocrName         String
+  ocrTotalScore   Int
+  ocrOverPar      Int?
+  nameConfidence  Float?
+  scoreConfidence Float?
+  createdAt       DateTime     @default(now()) @db.Timestamptz
+  updatedAt       DateTime     @updatedAt @db.Timestamptz
+
+  @@index([captureId])
 }

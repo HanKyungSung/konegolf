@@ -214,6 +214,7 @@ router.get('/:id', async (req, res) => {
         subtotal: inv.subtotal,
         tax: inv.tax,
         tip: inv.tip,
+        tipMethod: inv.tipMethod,
         totalAmount: inv.totalAmount,
         status: inv.status,
         paymentMethod: inv.paymentMethod,
@@ -1386,6 +1387,7 @@ router.get('/:bookingId/invoices', async (req, res) => {
       subtotal: inv.subtotal,
       tax: inv.tax,
       tip: inv.tip,
+      tipMethod: inv.tipMethod,
       totalAmount: inv.totalAmount,
       status: inv.status,
       paymentMethod: inv.paymentMethod,
@@ -1509,6 +1511,7 @@ const addPaymentSchema = z.object({
   method: z.enum(['CARD', 'CASH', 'GIFT_CARD']),
   amount: z.number().positive(),
   tip: z.number().nonnegative().optional(),
+  tipMethod: z.enum(['CARD', 'CASH']).optional(),
 });
 
 router.post('/invoices/:invoiceId/add-payment', requireAuth, async (req, res) => {
@@ -1523,7 +1526,7 @@ router.post('/invoices/:invoiceId/add-payment', requireAuth, async (req, res) =>
       });
     }
 
-    const { bookingId, seatIndex, method, amount, tip } = parsed.data;
+    const { bookingId, seatIndex, method, amount, tip, tipMethod } = parsed.data;
 
     // Verify booking exists
     const booking = await getBooking(bookingId);
@@ -1537,7 +1540,8 @@ router.post('/invoices/:invoiceId/add-payment', requireAuth, async (req, res) =>
       seatIndex,
       method,
       amount,
-      tip
+      tip,
+      tipMethod
     );
 
     // Check if all invoices are now paid

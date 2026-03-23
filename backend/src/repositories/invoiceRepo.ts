@@ -179,7 +179,8 @@ export async function addSinglePayment(
   seatIndex: number,
   method: string,
   amount: number,
-  tip?: number
+  tip?: number,
+  tipMethod?: string
 ): Promise<Invoice & { payments: Payment[] }> {
   const invoice = await prisma.invoice.findUnique({
     where: { bookingId_seatIndex: { bookingId, seatIndex } },
@@ -225,10 +226,19 @@ export async function addSinglePayment(
   const uniqueMethods = new Set(allPayments.map(p => p.method));
   const effectiveMethod = uniqueMethods.size > 1 ? 'SPLIT' : method;
 
+  // Determine effective tipMethod:
+  // - If tipMethod is explicitly provided, use it
+  // - If tip is provided but no tipMethod, default to the payment method
+  // - If no new tip, preserve existing tipMethod
+  const effectiveTipMethod = tip && tip > 0
+    ? (tipMethod || method)
+    : invoice.tipMethod || null;
+
   const updated = await prisma.invoice.update({
     where: { bookingId_seatIndex: { bookingId, seatIndex } },
     data: {
       tip: newTip,
+      tipMethod: effectiveTipMethod,
       totalAmount: invoiceTotal,
       ...(isFullyPaid ? {
         status: 'PAID',

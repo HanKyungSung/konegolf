@@ -135,6 +135,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   
   // Payment state
   const [tipAmountBySeat, setTipAmountBySeat] = useState<Record<number, string>>({});
+  const [tipMethodBySeat, setTipMethodBySeat] = useState<Record<number, 'CARD' | 'CASH'>>({});
   const [processingPayment, setProcessingPayment] = useState<number | null>(null);
   
   // Collect payment dialog state
@@ -1302,19 +1303,22 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           )}
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3">
-                          <Button
-                            size="sm"
-                            variant="outline"
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenReceiptModal('seat', seat);
                             }}
-                            disabled={loadingReceipt || seatItems.length === 0}
-                            className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/50"
+                            className={`inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                              loadingReceipt || seatItems.length === 0
+                                ? 'opacity-50 pointer-events-none'
+                                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/50 cursor-pointer'
+                            }`}
                           >
                             <Printer className="h-4 w-4 mr-1" />
                             Print
-                          </Button>
+                          </div>
                           {isPaid ? (
                             <Badge className="bg-green-500 text-white flex items-center gap-1">
                               <CheckCircle2 className="h-3 w-3" />
@@ -1478,7 +1482,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                             </div>
                             {tipAmount > 0 && (
                               <div className="flex justify-between text-slate-300">
-                                <span>Tip</span>
+                                <span>Tip {isPaid && (() => { const inv = invoices.find(i => i.seatIndex === seat); return inv?.tipMethod ? <span className="text-xs text-slate-500">({inv.tipMethod === 'CASH' ? '💵 Cash' : '💳 Card'})</span> : ''; })()}</span>
                                 <span>${tipAmount.toFixed(2)}</span>
                               </div>
                             )}
@@ -1567,6 +1571,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                       setPaymentDialogSeat(seat);
                                       setPaymentDialogAmount(remaining > 0 ? remaining.toFixed(2) : seatTotal.toFixed(2));
                                       setPaymentDialogMethod(null);
+                                      setTipMethodBySeat(prev => ({ ...prev, [seat]: 'CARD' }));
                                     }}
                                     disabled={subtotal === 0}
                                     className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold h-12"
@@ -2497,6 +2502,25 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       </Button>
                     ))}
                   </div>
+                  {/* Tip Method Toggle — only show when a tip is entered */}
+                  {(parseFloat(tipAmountBySeat[paymentDialogSeat] || '0') || 0) > 0 && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-slate-400">Tip paid by:</span>
+                      {(['CARD', 'CASH'] as const).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setTipMethodBySeat(prev => ({ ...prev, [paymentDialogSeat!]: m }))}
+                          className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                            (tipMethodBySeat[paymentDialogSeat!] || 'CARD') === m
+                              ? 'bg-amber-500 text-black'
+                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          }`}
+                        >
+                          {m === 'CARD' ? '💳 Card' : '💵 Cash'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Payment Method */}
@@ -2585,11 +2609,13 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           method: paymentDialogMethod,
                           amount,
                           tip: tipVal > 0 ? tipVal : undefined,
+                          tipMethod: tipVal > 0 ? (tipMethodBySeat[seat] || 'CARD') : undefined,
                         });
 
                         // Reset tip after payment that includes it
                         if (tipVal > 0) {
                           setTipAmountBySeat({ ...tipAmountBySeat, [seat]: '' });
+                          setTipMethodBySeat(prev => { const n = { ...prev }; delete n[seat]; return n; });
                         }
 
                         if (result.remaining <= 0.01) {
