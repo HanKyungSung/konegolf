@@ -28,6 +28,13 @@ async function getOperatingHours(): Promise<{ openMinutes: number; closeMinutes:
   return { openMinutes, closeMinutes };
 }
 
+// Sync booking.price to the sum of all invoice totalAmounts (what the customer actually pays)
+async function syncBookingPriceFromInvoices(bookingId: string) {
+  const invoices = await prisma.invoice.findMany({ where: { bookingId } });
+  const total = invoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+  await prisma.booking.update({ where: { id: bookingId }, data: { price: total } });
+}
+
 function presentBooking(b: any) {
   return {
     id: b.id,
@@ -1214,6 +1221,7 @@ router.post('/:bookingId/orders', requireAuth, async (req, res) => {
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
+      await syncBookingPriceFromInvoices(bookingId);
       return res.status(201).json({
         order: {
           id: order.id,
@@ -1281,6 +1289,7 @@ router.patch('/orders/:orderId', requireAuth, async (req, res) => {
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
+      await syncBookingPriceFromInvoices(bookingId);
       return res.json({
         order: updatedOrder,
         updatedInvoice: {
@@ -1346,6 +1355,7 @@ router.delete('/orders/:orderId', requireAuth, async (req, res) => {
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
+      await syncBookingPriceFromInvoices(bookingId);
       return res.json({
         success: true,
         updatedInvoice: {

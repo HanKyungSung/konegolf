@@ -287,10 +287,8 @@ export default function POSDashboard() {
       // 1. Currently active (time-wise)
       // 2. Not cancelled
       // 3. Not completed
-      // 4. Not a quick sale
       const status = (b.bookingStatus || b.status || '').toUpperCase();
-      const source = (b as any).bookingSource || b.source || '';
-      return now >= start && now <= end && status !== 'CANCELLED' && status !== 'COMPLETED' && source !== 'QUICK_SALE';
+      return now >= start && now <= end && status !== 'CANCELLED' && status !== 'COMPLETED';
     });
   }, [bookings]);
 
@@ -534,7 +532,7 @@ export default function POSDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {rooms.map((room) => {
-                    const roomTodayBookings = todayBookings.filter(b => b.roomId === room.id && (b as any).bookingSource !== 'QUICK_SALE');
+                    const roomTodayBookings = todayBookings.filter(b => b.roomId === room.id);
 
                     return (
                       <Card key={room.id} className="bg-slate-700/30 border-slate-600">
@@ -836,9 +834,8 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
             const dayStr = dateKey(day);
             const dayBookings = bookings.filter(b => b.date === dayStr);
             const filteredDayBookings = filterBookingsByStatus(dayBookings);
-            const nonQuickSaleBookings = filteredDayBookings.filter(b => (b as any).bookingSource !== 'QUICK_SALE');
-            const totalHours = nonQuickSaleBookings.reduce((sum, b) => sum + (b.duration || 0), 0);
-            const subtotal = nonQuickSaleBookings.reduce((sum, b) => sum + (b.price || 0), 0);
+            const totalHours = filteredDayBookings.reduce((sum, b) => sum + (b.duration || 0), 0);
+            const subtotal = filteredDayBookings.reduce((sum, b) => sum + (b.price || 0), 0);
             const totalRevenue = subtotal * (1 + taxRate / 100);
 
             return (
@@ -861,7 +858,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
                     {totalHours} hour{totalHours !== 1 ? 's' : ''}
                   </Badge>
                   <Badge className="bg-slate-700/60 text-slate-300">
-                    {nonQuickSaleBookings.length} booking{nonQuickSaleBookings.length !== 1 ? 's' : ''}
+                    {filteredDayBookings.length} booking{filteredDayBookings.length !== 1 ? 's' : ''}
                   </Badge>
                 </div>
 
@@ -884,7 +881,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
 
                 {/* Room Rows */}
                 {rooms.map((room, roomIdx) => {
-                  const roomBookings = filterBookingsByStatus(dayBookings.filter(b => b.roomId === room.id && (b as any).bookingSource !== 'QUICK_SALE'));
+                  const roomBookings = filterBookingsByStatus(dayBookings.filter(b => b.roomId === room.id));
                   const roomColor = roomColors[roomIdx % roomColors.length];
                   const currentTimePos = getCurrentTimePosition(day);
 

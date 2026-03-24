@@ -774,7 +774,7 @@ const bookingSearchSchema = z.object({
   dateFrom: z.string().optional(), // ISO date string
   dateTo: z.string().optional(),   // ISO date string
   status: z.enum(['BOOKED', 'COMPLETED', 'CANCELLED']).optional(),
-  source: z.enum(['ONLINE', 'WALK_IN', 'PHONE']).optional(),
+  source: z.enum(['ONLINE', 'WALK_IN', 'PHONE', 'QUICK_SALE']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   sortBy: z.enum(['startTime', 'createdAt', 'price']).default('startTime'),
@@ -850,18 +850,22 @@ router.get('/bookings/search', requireSalesOrAbove, async (req, res) => {
         include: {
           room: { select: { name: true } },
           user: { select: { id: true, name: true, phone: true, email: true } },
-          createdByUser: { select: { name: true } }
+          createdByUser: { select: { name: true } },
+          invoices: { select: { totalAmount: true } }
         }
       }),
       prisma.booking.count({ where })
     ]);
 
     // Format bookings for response
-    const formattedBookings = bookings.map(b => ({
+    const formattedBookings = bookings.map(b => {
+      // Total = sum of invoice totalAmounts (subtotal + tax + tip) — the actual amount the customer pays
+      const invoiceTotal = b.invoices.reduce((sum: number, inv: any) => sum + Number(inv.totalAmount || 0), 0);
+      return {
       id: b.id,
       startTime: b.startTime,
       endTime: b.endTime,
-      price: Number(b.price || 0),
+      price: invoiceTotal,
       bookingStatus: b.bookingStatus,
       paymentStatus: b.paymentStatus,
       bookingSource: b.bookingSource,
@@ -880,7 +884,8 @@ router.get('/bookings/search', requireSalesOrAbove, async (req, res) => {
         phone: b.user.phone,
         email: b.user.email
       } : null
-    }));
+    };
+    });
 
     const totalPages = Math.ceil(totalCount / limit);
 

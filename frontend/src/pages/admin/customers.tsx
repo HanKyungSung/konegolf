@@ -1435,6 +1435,7 @@ export default function CustomerManagement() {
                   <SelectItem value="ONLINE">Online</SelectItem>
                   <SelectItem value="WALK_IN">Walk-in</SelectItem>
                   <SelectItem value="PHONE">Phone</SelectItem>
+                  <SelectItem value="QUICK_SALE">Quick Sale</SelectItem>
                 </SelectContent>
               </Select>
               {(dateFrom || dateTo || statusFilter !== 'ALL' || sourceFilter !== 'ALL') && (
@@ -1539,7 +1540,9 @@ export default function CustomerManagement() {
                                     ? 'border-green-500/50 text-green-400 bg-green-500/10'
                                     : booking.bookingSource === 'WALK_IN'
                                       ? 'border-blue-500/50 text-blue-400 bg-blue-500/10'
-                                      : 'border-amber-500/50 text-amber-400 bg-amber-500/10'
+                                      : booking.bookingSource === 'QUICK_SALE'
+                                        ? 'border-purple-500/50 text-purple-400 bg-purple-500/10'
+                                        : 'border-amber-500/50 text-amber-400 bg-amber-500/10'
                                 }
                               >
                                 {booking.bookingSource}
