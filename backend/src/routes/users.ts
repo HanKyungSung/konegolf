@@ -17,9 +17,9 @@ const router = Router();
 /**
  * Middleware to require ADMIN or STAFF role
  */
-function requireAdminOrStaff(req: any, res: Response, next: Function) {
-  if (req.user?.role !== UserRole.ADMIN && req.user?.role !== UserRole.STAFF) {
-    return res.status(403).json({ error: 'Admin or Staff access required' });
+function requireAdminOrStaffOrSales(req: any, res: Response, next: Function) {
+  if (req.user?.role !== UserRole.ADMIN && req.user?.role !== UserRole.STAFF && req.user?.role !== UserRole.SALES) {
+    return res.status(403).json({ error: 'Admin, Staff, or Sales access required' });
   }
   next();
 }
@@ -52,7 +52,7 @@ const lookupQuerySchema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
 });
 
-router.get('/lookup', requireAuth, requireAdminOrStaff, async (req, res) => {
+router.get('/lookup', requireAuth, requireAdminOrStaffOrSales, async (req, res) => {
   try {
     // Validate query params
     const parsed = lookupQuerySchema.safeParse(req.query);
@@ -157,7 +157,7 @@ const recentQuerySchema = z.object({
   role: z.nativeEnum(UserRole).optional(),
 });
 
-router.get('/recent', requireAuth, requireAdmin, async (req, res) => {
+router.get('/recent', requireAuth, requireAdminOrStaffOrSales, async (req, res) => {
   try {
     // Validate query params
     const parsed = recentQuerySchema.safeParse(req.query);

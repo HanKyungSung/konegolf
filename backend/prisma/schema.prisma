@@ -12,6 +12,7 @@ generator client {
 
 enum UserRole {
   CUSTOMER
+  SALES
   STAFF
   ADMIN
 }

@@ -186,6 +186,72 @@ async function main() {
 		console.log(`Superadmin already exists: ${superadminEmail} / ${superadminPhone} (role: ${(existingSuperadmin as any).role})`);
 	}
 
+	// Create sales account (read-only access to dashboards/reports)
+	const salesEmail = 'sales@konegolf.ca';
+	const salesPhone = '+19025551001';
+	const salesPassword = process.env.SEED_SALES_PASSWORD || 'salesaccount123';
+
+	const existingSales = await prisma.user.findFirst({
+		where: {
+			OR: [
+				{ email: salesEmail },
+				{ phone: salesPhone }
+			]
+		}
+	});
+
+	if (!existingSales) {
+		const passwordHash = await hashPassword(salesPassword);
+		await prisma.user.create({
+			data: {
+				email: salesEmail,
+				name: 'Sales',
+				phone: salesPhone,
+				passwordHash,
+				passwordUpdatedAt: new Date(),
+				emailVerifiedAt: new Date(),
+				role: 'SALES',
+				registrationSource: 'ONLINE',
+			} as any,
+		});
+		console.log(`Seeded sales user: ${salesEmail} / ${salesPhone} (role: SALES)`);
+	} else {
+		console.log(`Sales user already exists: ${salesEmail} / ${salesPhone} (role: ${(existingSales as any).role})`);
+	}
+
+	// Create staff account (POS operations — bookings, orders, room control)
+	const staffEmail = 'staff@konegolf.ca';
+	const staffPhone = '+19025551002';
+	const staffPassword = process.env.SEED_STAFF_PASSWORD || 'staffaccount123';
+
+	const existingStaff = await prisma.user.findFirst({
+		where: {
+			OR: [
+				{ email: staffEmail },
+				{ phone: staffPhone }
+			]
+		}
+	});
+
+	if (!existingStaff) {
+		const passwordHash = await hashPassword(staffPassword);
+		await prisma.user.create({
+			data: {
+				email: staffEmail,
+				name: 'Staff',
+				phone: staffPhone,
+				passwordHash,
+				passwordUpdatedAt: new Date(),
+				emailVerifiedAt: new Date(),
+				role: 'STAFF',
+				registrationSource: 'ONLINE',
+			} as any,
+		});
+		console.log(`Seeded staff user: ${staffEmail} / ${staffPhone} (role: STAFF)`);
+	} else {
+		console.log(`Staff user already exists: ${staffEmail} / ${staffPhone} (role: ${(existingStaff as any).role})`);
+	}
+
 	// Create a test user for manual login (idempotent by email)
 	// Only in non-production by default. To force in prod/staging, set SEED_ENABLE_TEST_USER=true explicitly.
 	const enableTestUser = (process.env.NODE_ENV !== 'production') || process.env.SEED_ENABLE_TEST_USER === 'true';

@@ -191,9 +191,13 @@ interface Pagination {
 // API helper
 const getApiBase = () => process.env.REACT_APP_API_BASE || 'http://localhost:8080';
 
+const READER_ROLES = ['ADMIN', 'SALES'];
+const hasReadAccess = (role?: string) => role ? READER_ROLES.includes(role) : false;
+
 export default function CustomerManagement() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isReadOnly = user?.role === 'SALES';
   
   // Tab state
   const [activeTab, setActiveTab] = useState<'customers' | 'bookings' | 'coupons' | 'reports'>('customers');
@@ -374,13 +378,13 @@ export default function CustomerManagement() {
     }
   };
 
-  // Redirect if not admin
+  // Redirect if not admin or sales
   useEffect(() => {
     if (!user) {
       navigate('/login');
-    } else if (user.role !== 'ADMIN') {
+    } else if (!hasReadAccess(user.role)) {
       navigate('/dashboard');
-      toast({ title: 'Access denied', description: 'Admin access required', variant: 'destructive' });
+      toast({ title: 'Access denied', description: 'Admin or Sales access required', variant: 'destructive' });
     }
   }, [user, navigate]);
 
@@ -587,14 +591,14 @@ export default function CustomerManagement() {
 
   // Initial load
   useEffect(() => {
-    if (user?.role === 'ADMIN') {
+    if (hasReadAccess(user?.role)) {
       loadMetrics();
     }
   }, [user, loadMetrics]);
 
   // Load data based on active tab with debounced search
   useEffect(() => {
-    if (user?.role !== 'ADMIN') return;
+    if (!hasReadAccess(user?.role)) return;
     
     const timer = setTimeout(() => {
       if (activeTab === 'customers') {
@@ -614,19 +618,19 @@ export default function CustomerManagement() {
 
   // Load when filters/pagination change (non-search)
   useEffect(() => {
-    if (user?.role === 'ADMIN' && activeTab === 'customers') {
+    if (hasReadAccess(user?.role) && activeTab === 'customers') {
       loadCustomers();
     }
   }, [customerPage, customerSortBy, customerSortOrder]);
 
   useEffect(() => {
-    if (user?.role === 'ADMIN' && activeTab === 'bookings') {
+    if (hasReadAccess(user?.role) && activeTab === 'bookings') {
       loadBookings();
     }
   }, [bookingPage, bookingSortBy, bookingSortOrder, dateFrom, dateTo, statusFilter, sourceFilter]);
 
   useEffect(() => {
-    if (user?.role === 'ADMIN' && activeTab === 'coupons') {
+    if (hasReadAccess(user?.role) && activeTab === 'coupons') {
       loadCoupons();
     }
   }, [couponPage, couponStatusFilter, couponTypeFilter]);
@@ -1022,7 +1026,7 @@ export default function CustomerManagement() {
     loadCustomerDetail(birthdayCustomer.id);
   };
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || !hasReadAccess(user.role)) {
     return null;
   }
 
@@ -1176,7 +1180,7 @@ export default function CustomerManagement() {
               className="pl-10 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
             />
           </div>
-          {activeTab === 'customers' && (
+          {activeTab === 'customers' && !isReadOnly && (
             <Button
               onClick={openCreateModal}
               className="bg-amber-500 hover:bg-amber-600 text-black font-medium"
@@ -1333,6 +1337,7 @@ export default function CustomerManagement() {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
+                                {!isReadOnly && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -1342,6 +1347,7 @@ export default function CustomerManagement() {
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -2420,6 +2426,7 @@ export default function CustomerManagement() {
           ) : null}
 
           <DialogFooter className="mt-4">
+            {!isReadOnly && (
             <Button
               variant="outline"
               onClick={() => {
@@ -2431,6 +2438,8 @@ export default function CustomerManagement() {
               <Edit2 className="h-4 w-4 mr-2" />
               Edit Customer
             </Button>
+            )}
+            {!isReadOnly && (
             <Button
               variant="outline"
               onClick={async () => {
@@ -2458,6 +2467,7 @@ export default function CustomerManagement() {
               <Gift className="h-4 w-4 mr-2" />
               Send Coupon
             </Button>
+            )}
             <Button
               onClick={() => setDetailModalOpen(false)}
               className="bg-amber-500 hover:bg-amber-600 text-black"

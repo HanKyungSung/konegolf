@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { requireAuth } from '../middleware/requireAuth';
-import { requireAdmin, requireStaffOrAdmin } from '../middleware/requireRole';
+import { requireAdmin, requireStaffOrAdmin, requireSalesOrAbove } from '../middleware/requireRole';
 import { createCoupon, validateCoupon, redeemCoupon, getPublicCoupon } from '../services/couponService';
 import * as invoiceRepo from '../repositories/invoiceRepo';
 import { sendCouponEmail } from '../services/emailService';
@@ -34,7 +34,7 @@ router.get('/public/:code', async (req: Request, res: Response) => {
  * GET /api/coupons/validate/:code
  * Full coupon validation for staff — includes user info
  */
-router.get('/validate/:code', requireAuth, requireStaffOrAdmin, async (req: Request, res: Response) => {
+router.get('/validate/:code', requireAuth, requireSalesOrAbove, async (req: Request, res: Response) => {
   try {
     const result = await validateCoupon(req.params.code.toUpperCase());
     res.json(result);
@@ -135,7 +135,7 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res: Response) 
  * Admin coupon list with optional filters
  * Query: ?status=ACTIVE&type=BIRTHDAY&search=john&page=1&limit=20
  */
-router.get('/', requireAuth, requireStaffOrAdmin, async (req: Request, res: Response) => {
+router.get('/', requireAuth, requireSalesOrAbove, async (req: Request, res: Response) => {
   try {
     const { status, type, search, page = '1', limit = '20', userId } = req.query;
     const pageNum = Math.max(1, Number(page));
@@ -295,7 +295,7 @@ router.patch('/:id/status', requireAuth, requireAdmin, async (req: Request, res:
  * GET /api/coupons/types
  * List all active coupon types (for dropdown)
  */
-router.get('/types', requireAuth, requireStaffOrAdmin, async (req: Request, res: Response) => {
+router.get('/types', requireAuth, requireSalesOrAbove, async (req: Request, res: Response) => {
   try {
     const types = await prisma.couponType.findMany({
       where: { active: true },

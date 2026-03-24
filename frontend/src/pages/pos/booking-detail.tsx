@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2 } from 'lucide-react';
 import Receipt from '../../components/Receipt';
 import { VENUE_TIMEZONE } from '@/lib/timezone';
+import { useAuth } from '@/hooks/use-auth';
 import { 
   getBooking, 
   updateBookingStatus as apiUpdateBookingStatus,
@@ -87,6 +88,8 @@ const roomColors: Record<string, string> = {
 const MAX_SEATS = 10;
 
 export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetailProps) {
+  const { user } = useAuth();
+  const isReadOnly = user?.role === 'SALES';
   // State
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -1227,6 +1230,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                 <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg">
                   <span className="text-white font-medium">Number of Seats</span>
                   <div className="flex items-center gap-3">
+                    {!isReadOnly && (
                     <Button
                       size="sm"
                       onClick={handleReduceSeats}
@@ -1235,7 +1239,9 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     >
                       <Minus className="h-5 w-5" />
                     </Button>
+                    )}
                     <span className="text-2xl font-bold text-amber-400 w-12 text-center">{numberOfSeats}</span>
+                    {!isReadOnly && (
                     <Button
                       size="sm"
                       onClick={async () => {
@@ -1254,6 +1260,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     >
                       <Plus className="h-5 w-5" />
                     </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1375,7 +1382,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                   <span className="text-amber-400 font-bold min-w-[80px] text-right">
                                     ${((item.splitPrice || item.menuItem.price) * item.quantity).toFixed(2)}
                                   </span>
-                                  {!isPaid && (
+                                  {!isPaid && !isReadOnly && (
                                     <div className="flex items-center gap-1">
                                       <Button
                                         size="sm"
@@ -1463,7 +1470,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span>-${Math.abs((item.splitPrice || item.menuItem.price) * item.quantity).toFixed(2)}</span>
-                                  {!isPaid && (
+                                  {!isPaid && !isReadOnly && (
                                     <Button
                                       size="sm"
                                       variant="outline"
@@ -1526,6 +1533,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                               )}
                               <p>Total: ${total.toFixed(2)}</p>
                             </div>
+                            {!isReadOnly && (
                             <Button
                               onClick={() => unpayInvoice(seat)}
                               disabled={processingPayment === seat}
@@ -1534,6 +1542,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                             >
                               {processingPayment === seat ? 'Processing...' : 'Cancel Payment'}
                             </Button>
+                            )}
                           </div>
                         ) : (
                           <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
@@ -1566,6 +1575,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                     </div>
                                   )}
 
+                                  {!isReadOnly && (
                                   <Button
                                     onClick={() => {
                                       setPaymentDialogSeat(seat);
@@ -1581,6 +1591,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                       ? `Add Payment ($${remaining.toFixed(2)} remaining)` 
                                       : `Collect Payment — $${seatTotal.toFixed(2)}`}
                                   </Button>
+                                  )}
                                 </>
                               );
                             })()}
@@ -1598,6 +1609,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
           {/* Right Column - Info & Menu */}
           <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
             {/* Quick Actions */}
+            {!isReadOnly && (
             <Card className="bg-slate-800/50 border-slate-700">
               <CardHeader>
                 <CardTitle className="text-white text-lg">Quick Actions</CardTitle>
@@ -1631,6 +1643,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                 )}
               </CardContent>
             </Card>
+            )}
 
             {/* Payment Summary */}
             <Card className="bg-slate-800/50 border-slate-700">
@@ -1706,6 +1719,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
             </Card>
 
             {/* Menu */}
+            {!isReadOnly && (
             <Card className="bg-slate-800/50 border-slate-700">
               <CardHeader>
                 <CardTitle className="text-white">Menu</CardTitle>
@@ -1788,6 +1802,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                 )}
               </CardContent>
             </Card>
+            )}
 
 
           </div>

@@ -9,6 +9,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 import { requireAuth } from '../middleware/requireAuth';
+import { requireAdmin, requireSalesOrAbove } from '../middleware/requireRole';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { normalizePhone, validatePhone } from '../utils/phoneUtils';
@@ -16,18 +17,8 @@ import { todayRange, monthRange, dayRange, getAtlanticComponents, toDateString }
 
 const router = Router();
 
-/**
- * Middleware to require ADMIN role
- */
-function requireAdmin(req: any, res: Response, next: Function) {
-  if (req.user?.role !== UserRole.ADMIN) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  next();
-}
-
-// Apply auth and admin middleware to all routes
-router.use(requireAuth, requireAdmin);
+// All routes require authentication
+router.use(requireAuth);
 
 /**
  * GET /api/customers/metrics
@@ -35,7 +26,7 @@ router.use(requireAuth, requireAdmin);
  * Get customer metrics for dashboard cards.
  * Extensible: Add new metrics by adding to the response object.
  */
-router.get('/metrics', async (req, res) => {
+router.get('/metrics', requireSalesOrAbove, async (req, res) => {
   try {
     const now = new Date();
     // Use Atlantic timezone for all date boundaries
@@ -163,7 +154,7 @@ router.get('/metrics', async (req, res) => {
  * Get monthly revenue and booking data for the past 12 months.
  * Used for the revenue trend chart on the admin dashboard.
  */
-router.get('/revenue-history', async (req, res) => {
+router.get('/revenue-history', requireSalesOrAbove, async (req, res) => {
   try {
     const now = new Date();
     const atlanticNow = getAtlanticComponents(now);
@@ -362,7 +353,7 @@ const listQuerySchema = z.object({
   registrationSource: z.enum(['ONLINE', 'WALK_IN', 'PHONE']).optional(),
 });
 
-router.get('/', async (req, res) => {
+router.get('/', requireSalesOrAbove, async (req, res) => {
   try {
     const parsed = listQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -482,7 +473,7 @@ router.get('/', async (req, res) => {
  * Get single customer with full details and ALL their bookings.
  * All bookings are linked by userId. Shows booking source and who created it.
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireSalesOrAbove, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -591,10 +582,10 @@ const createSchema = z.object({
   phone: z.string().min(1, 'Phone is required'),
   email: z.string().email().optional().nullable(),
   dateOfBirth: z.string().optional().nullable(), // YYYY-MM-DD
-  role: z.enum(['CUSTOMER', 'STAFF']).optional().default('CUSTOMER'),
+  role: z.enum(['CUSTOMER', 'SALES', 'STAFF']).optional().default('CUSTOMER'),
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -664,7 +655,7 @@ const updateSchema = z.object({
   dateOfBirth: z.string().optional().nullable(), // YYYY-MM-DD
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -742,7 +733,7 @@ router.put('/:id', async (req, res) => {
  * Delete a customer (soft delete by role change or hard delete based on policy).
  * For now, we'll prevent deletion if they have bookings.
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -790,7 +781,7 @@ const bookingSearchSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
-router.get('/bookings/search', async (req, res) => {
+router.get('/bookings/search', requireSalesOrAbove, async (req, res) => {
   try {
     const parsed = bookingSearchSchema.safeParse(req.query);
     if (!parsed.success) {

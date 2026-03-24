@@ -7,7 +7,7 @@ import POSMenuManagement from './menu-management';
 
 /**
  * POS Routes
- * Requires authenticated user with ADMIN or STAFF role
+ * Requires authenticated user with ADMIN, STAFF, or SALES role
  */
 export default function POSRoutes() {
   const { user, isLoading } = useAuth();
@@ -21,12 +21,12 @@ export default function POSRoutes() {
     );
   }
 
-  // Require authentication and ADMIN or STAFF role
+  // Require authentication and ADMIN, STAFF, or SALES role
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'ADMIN' && user.role !== 'STAFF') {
+  if (user.role !== 'ADMIN' && user.role !== 'STAFF' && user.role !== 'SALES') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
@@ -64,5 +64,7 @@ function BookingDetailWrapper() {
 // Wrapper to provide onBack navigation
 function MenuManagementWrapper() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  if (user?.role === 'SALES') return <Navigate to="/pos/dashboard" replace />;
   return <POSMenuManagement onBack={() => navigate('/pos/dashboard')} />;
 }

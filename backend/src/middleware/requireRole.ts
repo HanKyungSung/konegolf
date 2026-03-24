@@ -22,3 +22,15 @@ export function requireStaffOrAdmin(req: any, res: Response, next: NextFunction)
   }
   next();
 }
+
+/**
+ * Middleware to require SALES, STAFF, or ADMIN role.
+ * Use for read-only access to dashboards, metrics, reports, and customer data.
+ */
+export function requireSalesOrAbove(req: any, res: Response, next: NextFunction) {
+  const role = req.user?.role;
+  if (role !== UserRole.ADMIN && role !== UserRole.STAFF && role !== UserRole.SALES) {
+    return res.status(403).json({ error: 'Sales, Staff, or Admin access required' });
+  }
+  next();
+}

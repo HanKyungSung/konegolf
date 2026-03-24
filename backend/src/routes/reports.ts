@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { requireAuth } from '../middleware/requireAuth';
-import { requireAdmin, requireStaffOrAdmin } from '../middleware/requireRole';
+import { requireAdmin, requireStaffOrAdmin, requireSalesOrAbove } from '../middleware/requireRole';
 import { getMonthlyReport } from '../repositories/monthlyReportRepo';
 import { generateMonthlyReportPdf } from '../services/reportPdfService';
 import { getDailySummary } from '../repositories/dailyReportRepo';
@@ -14,7 +14,7 @@ const router = Router();
  * Defaults to today if no date param provided.
  * Staff + Admin.
  */
-router.get('/daily-summary', requireAuth, requireStaffOrAdmin, async (req: any, res: Response) => {
+router.get('/daily-summary', requireAuth, requireSalesOrAbove, async (req: any, res: Response) => {
   try {
     let target: Date | undefined;
     if (req.query.date) {
@@ -40,7 +40,7 @@ router.get('/daily-summary', requireAuth, requireStaffOrAdmin, async (req: any, 
  * Generates and streams a monthly sales report PDF.
  * Admin only.
  */
-router.get('/monthly-sales', requireAuth, requireAdmin, async (req: any, res: Response) => {
+router.get('/monthly-sales', requireAuth, requireSalesOrAbove, async (req: any, res: Response) => {
   try {
     const month = parseInt(req.query.month as string, 10);
     const year = parseInt(req.query.year as string, 10);

@@ -125,10 +125,10 @@ router.put('/global_tax_rate', requireAuth, async (req: Request, res: Response) 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdminOrSales = user?.role === 'ADMIN' || user?.role === 'SALES';
 
     const settings = await prisma.setting.findMany({
-      where: isAdmin ? {} : { isPublic: true },
+      where: isAdminOrSales ? {} : { isPublic: true },
       select: {
         id: true,
         key: true,
@@ -175,7 +175,7 @@ router.get('/:key', async (req: Request, res: Response) => {
       user = (req as any).user;
     }
     
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdminOrSales = user?.role === 'ADMIN' || user?.role === 'SALES';
 
     const setting = await prisma.setting.findUnique({
       where: { key },
@@ -186,12 +186,12 @@ router.get('/:key', async (req: Request, res: Response) => {
     }
 
     // Public settings can be accessed by anyone
-    // Private settings require authentication and admin access
+    // Private settings require authentication and admin/sales access
     if (!setting.isPublic) {
       if (!user) {
         return res.status(401).json({ error: 'Authentication required for private settings' });
       }
-      if (!isAdmin) {
+      if (!isAdminOrSales) {
         return res.status(403).json({ error: 'Admin access required for private settings' });
       }
     }

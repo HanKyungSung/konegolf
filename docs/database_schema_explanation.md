@@ -1,8 +1,153 @@
 # Database Schema Explanation
 
 **Created:** October 12, 2025  
-**Last Updated:** March 11, 2026  
-**Purpose:** Explain existing and proposed database relationships
+**Last Updated:** March 21, 2026  
+**Purpose:** Explain existing database relationships and provide quick column reference
+
+> **⚠️ MAINTENANCE RULE:** If any code change touches `backend/prisma/schema.prisma` (adding/removing/renaming columns, adding models, changing types), **you MUST update this file** to keep the Quick Column Reference and model documentation in sync. Also update `docs/bank_reconciliation_investigation.md` if Invoice, Booking, User, or Payment tables are affected.
+
+---
+
+## 🔑 Quick Column Reference (for queries)
+
+PostgreSQL uses **exact casing** with double quotes for camelCase columns. Lowercase columns don't need quotes.
+
+### User
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| email | `email` | String? | Nullable, unique |
+| **name** | `name` | String | **Single field — NOT firstName/lastName** |
+| phone | `phone` | String | Unique, required |
+| dateOfBirth | `"dateOfBirth"` | Date? | |
+| role | `role` | Enum | CUSTOMER, SALES, ADMIN, STAFF |
+| registrationSource | `"registrationSource"` | String | ONLINE, WALK_IN, PHONE |
+| registeredBy | `"registeredBy"` | UUID? | FK → User |
+| passwordHash | `"passwordHash"` | String? | |
+| createdAt | `"createdAt"` | Timestamptz | |
+| updatedAt | `"updatedAt"` | Timestamptz | |
+
+### Booking
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| roomId | `"roomId"` | UUID | FK → Room |
+| userId | `"userId"` | UUID? | FK → User (nullable for guests) |
+| customerName | `"customerName"` | String | Denormalized snapshot |
+| customerPhone | `"customerPhone"` | String | Denormalized snapshot |
+| customerEmail | `"customerEmail"` | String? | |
+| **startTime** | `"startTime"` | Timestamptz | **Use for bank reconciliation** |
+| endTime | `"endTime"` | Timestamptz | |
+| players | `players` | Int | |
+| price | `price` | Decimal(10,2) | Total booking price |
+| bookingStatus | `"bookingStatus"` | String | BOOKED, COMPLETED, CANCELLED, EXPIRED |
+| paymentStatus | `"paymentStatus"` | String | UNPAID, PAID |
+| paidAt | `"paidAt"` | Timestamptz? | When staff closed payment |
+| completedAt | `"completedAt"` | Timestamptz? | |
+| tipAmount | `"tipAmount"` | Decimal? | |
+| bookingSource | `"bookingSource"` | String | ONLINE, WALK_IN, PHONE |
+| createdBy | `"createdBy"` | UUID? | FK → User (admin) |
+| internalNotes | `"internalNotes"` | Text? | |
+| createdAt | `"createdAt"` | Timestamptz | |
+
+### Invoice
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| bookingId | `"bookingId"` | UUID | FK → Booking |
+| seatIndex | `"seatIndex"` | Int | 1–4 |
+| **subtotal** | `subtotal` | Decimal(10,2) | **Lowercase — no quotes needed** |
+| **tax** | `tax` | Decimal(10,2) | **Lowercase — no quotes needed** |
+| **tip** | `tip` | Decimal?(10,2) | **Lowercase — no quotes needed** |
+| totalAmount | `"totalAmount"` | Decimal(10,2) | subtotal + tax + tip |
+| status | `status` | String | UNPAID, PAID |
+| paymentMethod | `"paymentMethod"` | String? | CARD, CASH, GIFT_CARD, SPLIT |
+| paidAt | `"paidAt"` | Timestamptz? | When payment was collected |
+| createdAt | `"createdAt"` | Timestamptz | |
+
+### Payment (split payments)
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| invoiceId | `"invoiceId"` | UUID | FK → Invoice |
+| method | `method` | String | CARD, CASH, GIFT_CARD |
+| amount | `amount` | Decimal(10,2) | |
+| createdAt | `"createdAt"` | Timestamptz | |
+
+### Order
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| bookingId | `"bookingId"` | UUID | FK → Booking |
+| menuItemId | `"menuItemId"` | UUID? | FK → MenuItem (null for custom) |
+| customItemName | `"customItemName"` | String? | |
+| customItemPrice | `"customItemPrice"` | Decimal? | |
+| discountType | `"discountType"` | String? | FLAT or PERCENT |
+| seatIndex | `"seatIndex"` | Int? | 1–4 or null (shared) |
+| quantity | `quantity` | Int | |
+| unitPrice | `"unitPrice"` | Decimal(10,2) | |
+| totalPrice | `"totalPrice"` | Decimal(10,2) | |
+| createdAt | `"createdAt"` | Timestamptz | |
+
+### Room
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| name | `name` | String | Unique |
+| bayNumber | `"bayNumber"` | Int? | Unique |
+| capacity | `capacity` | Int | Default 4 |
+| active | `active` | Boolean | Legacy; prefer status |
+| status | `status` | Enum | ACTIVE, MAINTENANCE, CLOSED |
+
+### Coupon
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| code | `code` | String | Unique (e.g. KGOLF-A3X9) |
+| userId | `"userId"` | UUID | FK → User |
+| couponTypeId | `"couponTypeId"` | UUID | FK → CouponType |
+| description | `description` | String | |
+| discountAmount | `"discountAmount"` | Decimal(10,2) | |
+| status | `status` | Enum | ACTIVE, REDEEMED, EXPIRED |
+| expiresAt | `"expiresAt"` | Timestamptz? | null = never expires |
+| redeemedAt | `"redeemedAt"` | Timestamptz? | |
+| redeemedBookingId | `"redeemedBookingId"` | UUID? | FK → Booking |
+| redeemedSeatNumber | `"redeemedSeatNumber"` | Int? | |
+| milestone | `milestone` | Int? | e.g. 10 = loyalty milestone |
+
+### MenuItem
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| name | `name` | String | |
+| description | `description` | Text? | |
+| price | `price` | Decimal(10,2) | |
+| category | `category` | Enum | HOURS, FOOD, DRINKS, APPETIZERS, DESSERTS |
+| hours | `hours` | Int? | Only for HOURS category |
+| available | `available` | Boolean | |
+| sortOrder | `"sortOrder"` | Int | |
+
+### ScoreCapture
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| bayNumber | `"bayNumber"` | Int | |
+| roomId | `"roomId"` | UUID? | FK → Room |
+| bookingId | `"bookingId"` | UUID? | FK → Booking |
+| status | `status` | String | ACTIVE, NEEDS_REVIEW, DELETED |
+| courseName | `"courseName"` | String? | |
+| screenshotPath | `"screenshotPath"` | String? | |
+| capturedAt | `"capturedAt"` | Timestamptz | |
+
+### ScoreCapturePlayer
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| captureId | `"captureId"` | UUID | FK → ScoreCapture |
+| seatIndex | `"seatIndex"` | Int? | |
+| ocrName | `"ocrName"` | String | |
+| ocrTotalScore | `"ocrTotalScore"` | Int | |
+| ocrOverPar | `"ocrOverPar"` | Int? | |
 
 ---
 
@@ -540,38 +685,28 @@ const adminRevenue = await prisma.booking.groupBy({
 
 ## 🎯 Summary
 
-### **Existing Relations (Not columns)**
-- ✅ `bookings` - User's bookings
-- ✅ `authProviders` - Login methods (Google, email/password, etc.)
-- ✅ `sessions` - Active login sessions
-- ✅ `emailVerificationToken` - Email verification
-- ✅ `settingsUpdates` - Settings changed by admin
+### **Current Schema Models**
+- ✅ `User` — Single `name` field (not firstName/lastName), phone is primary identifier
+- ✅ `Booking` — `startTime` for bank reconciliation, `bookingStatus` for state
+- ✅ `Invoice` — Per-seat billing, lowercase `subtotal`/`tax`/`tip`, camelCase `totalAmount`/`paymentMethod`/`paidAt`
+- ✅ `Payment` — Split payment records per Invoice (method + amount)
+- ✅ `Order` — Menu items and discounts per seat per booking
+- ✅ `Room` — Bay mapping with `bayNumber`, status enum
+- ✅ `MenuItem` — Menu with categories and sorting
+- ✅ `Coupon` / `CouponType` — Loyalty and promotion system
+- ✅ `ScoreCapture` / `ScoreCapturePlayer` — Bay screen OCR results
+- ✅ `Setting` — Global config (tax rate, etc.)
 
-### **New Tracking Fields**
-- ✨ `User.registrationSource` - How account was created
-- ✨ `User.registeredBy` - Which admin created it
-- ✨ `Booking.bookingSource` - How booking was created
-- ✨ `Booking.createdBy` - Which admin created it
-- ✨ `Booking.isGuestBooking` - Flag for guests
+### **Key Gotchas for Queries**
+- `User.name` is a **single field** — there is NO `firstName` or `lastName`
+- `Invoice.subtotal`, `.tax`, `.tip` are **lowercase** — no double quotes needed in SQL
+- `Invoice.totalAmount`, `.paymentMethod`, `.paidAt` are **camelCase** — need `"quotes"` in SQL
+- Use `Booking.startTime` for bank reconciliation, NOT `Invoice.paidAt`
+- After DST (Mar 8): Atlantic = UTC-3 (ADT), midnight = `03:00 UTC`
+- Before DST: Atlantic = UTC-4 (AST), midnight = `04:00 UTC`
 
-### **Payment Model** *(Added 2026-03-11)*
-- ✨ `Payment` - Tracks individual payment records per Invoice
-  - `id` (PK, uuid)
-  - `invoiceId` (FK → Invoice)
-  - `method` (CARD / CASH / GIFT_CARD)
-  - `amount` (Decimal — amount paid in this payment)
-  - `createdAt` (DateTime)
-- Supports incremental/split payments (multiple payments per invoice)
-- When `sum(payments.amount) >= invoice.totalAmount` → invoice marked PAID
-- When multiple payment methods → `invoice.paymentMethod = 'SPLIT'`
-
-### **Benefits**
-- 📊 Marketing analytics (which channel works best)
-- 👥 Staff performance tracking
-- 💰 Revenue attribution
-- 🎯 Customer behavior insights
-- 📈 A/B testing capabilities
-
----
-
-**Would you like me to update the v1.0 specification to include these tracking fields?**
+### **Maintenance**
+> **⚠️ When changing `backend/prisma/schema.prisma`, always update:**
+> 1. This file (`docs/database_schema_explanation.md`) — Quick Column Reference tables
+> 2. `docs/bank_reconciliation_investigation.md` — Schema Reference section (if Invoice/Booking/User/Payment changed)
+> 3. `.github/copilot-instructions.md` or `PROJECT_GUIDE.md` — if major structural changes

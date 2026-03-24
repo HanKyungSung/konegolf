@@ -22,6 +22,20 @@ export const TEST_USER = {
   phone: '+14165552000',
 };
 
+export const SALES_USER = {
+  email: 'sales@konegolf.ca',
+  password: 'salesaccount123',
+  name: 'Sales',
+  phone: '+19025551001',
+};
+
+export const STAFF_USER = {
+  email: 'staff@konegolf.ca',
+  password: 'staffaccount123',
+  name: 'Staff',
+  phone: '+19025551002',
+};
+
 // Known menu items (from seed.ts)
 export const MENU_ITEMS = {
   HOUR_1: { name: '1 Hour', price: 35.00, category: 'Hours' },
@@ -60,6 +74,31 @@ export async function loginAsTestUser(page: Page) {
   await page.getByRole('button', { name: 'Sign In' }).click();
 
   await page.waitForURL('**/dashboard', { timeout: 10000 });
+}
+
+/**
+ * Login as sales user (read-only access to POS)
+ */
+export async function loginAsSales(page: Page) {
+  await page.goto('/login');
+  await page.locator('#email').fill(SALES_USER.email);
+  await page.locator('#password').fill(SALES_USER.password);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+
+  await page.waitForURL('**/dashboard', { timeout: 10000 });
+}
+
+/**
+ * Login as staff user
+ */
+export async function loginAsStaff(page: Page) {
+  await page.goto('/login');
+  await page.locator('#email').fill(STAFF_USER.email);
+  await page.locator('#password').fill(STAFF_USER.password);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+
+  await page.waitForURL('**/dashboard', { timeout: 10000 });
+  await expect(page.getByRole('button', { name: 'Create Booking' })).toBeVisible({ timeout: 10000 });
 }
 
 /**

@@ -289,8 +289,8 @@ const CustomerDashboard = () => {
 const DashboardPage = () => {
   const { user } = useAuth()
   
-  // Show POS dashboard for ADMIN and STAFF, customer dashboard for regular users
-  if (user?.role === 'ADMIN' || user?.role === 'STAFF') {
+  // Show POS dashboard for ADMIN, STAFF, and SALES; customer dashboard for regular users
+  if (user?.role === 'ADMIN' || user?.role === 'STAFF' || user?.role === 'SALES') {
     return <POSDashboard />
   }
   

@@ -26,6 +26,7 @@ import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString } from '@/lib/ti
 export default function POSDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isReadOnly = user?.role === 'SALES';
   
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -343,7 +344,7 @@ export default function POSDashboard() {
       <AdminHeader
         title="K one Golf POS"
         navItems={[
-          { label: 'Customers', to: '/admin/customers', show: user?.role === 'ADMIN' },
+          { label: 'Customers', to: '/admin/customers', show: user?.role === 'ADMIN' || user?.role === 'SALES' },
         ]}
       />
 
@@ -362,6 +363,7 @@ export default function POSDashboard() {
               <CardDescription>Live view of currently occupied rooms</CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              {!isReadOnly && (
               <Button 
                 onClick={async () => {
                   try {
@@ -377,6 +379,8 @@ export default function POSDashboard() {
                 <ShoppingBag className="h-4 w-4" />
                 <span>Quick Sale</span>
               </Button>
+              )}
+              {!isReadOnly && (
               <Button 
                 onClick={() => setShowCreateModal(true)}
                 className={`${buttonStyles.primarySemibold} flex items-center gap-2 text-xs sm:text-sm`}
@@ -385,6 +389,7 @@ export default function POSDashboard() {
                 <Plus className="h-4 w-4" />
                 <span>Create Booking</span>
               </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -458,6 +463,7 @@ export default function POSDashboard() {
                     ) : (
                       <div className="text-center py-4">
                         <p className="text-xs text-slate-400 mb-2">No booking</p>
+                        {!isReadOnly && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -470,6 +476,7 @@ export default function POSDashboard() {
                           <span className="text-lg mr-1">+</span>
                           Book
                         </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -481,11 +488,11 @@ export default function POSDashboard() {
 
         {/* Tabs for different management views */}
         <Tabs defaultValue="timeline" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsList className={`grid w-full ${isReadOnly ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-4'}`}>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="rooms">Room Management</TabsTrigger>
-            <TabsTrigger value="menu">Menu</TabsTrigger>
-            <TabsTrigger value="tax">Tax Settings</TabsTrigger>
+            {!isReadOnly && <TabsTrigger value="rooms">Room Management</TabsTrigger>}
+            {!isReadOnly && <TabsTrigger value="menu">Menu</TabsTrigger>}
+            {!isReadOnly && <TabsTrigger value="tax">Tax Settings</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="timeline">
