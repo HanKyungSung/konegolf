@@ -184,7 +184,7 @@ router.get('/revenue-history', requireSalesOrAbove, async (req, res) => {
 
       // Get revenue, booking counts, and payment method breakdown for this month
       // Revenue = sum of paid invoices from COMPLETED bookings (actual money collected for finished sessions)
-      const [revenueData, bookingStats, paymentBreakdown, completedBookingCount] = await Promise.all([
+      const [revenueData, bookingStats, paidInvoices, completedBookingCount] = await Promise.all([
         prisma.invoice.aggregate({
           where: {
             status: 'PAID',
@@ -202,8 +202,7 @@ router.get('/revenue-history', requireSalesOrAbove, async (req, res) => {
           },
           _count: true
         }),
-        prisma.invoice.groupBy({
-          by: ['paymentMethod'],
+        prisma.invoice.findMany({
           where: {
             status: 'PAID',
             booking: {
@@ -211,7 +210,11 @@ router.get('/revenue-history', requireSalesOrAbove, async (req, res) => {
               bookingStatus: 'COMPLETED'
             }
           },
-          _sum: { totalAmount: true }
+          select: {
+            paymentMethod: true,
+            totalAmount: true,
+            payments: { select: { method: true, amount: true } },
+          }
         }),
         prisma.booking.count({
           where: {
@@ -225,9 +228,23 @@ router.get('/revenue-history', requireSalesOrAbove, async (req, res) => {
       const bookingCount = completedBookingCount;
       const completedCount = bookingStats.find(s => s.bookingStatus === 'COMPLETED')?._count || 0;
       const cancelledCount = bookingStats.find(s => s.bookingStatus === 'CANCELLED')?._count || 0;
-      const cashRevenue = Number(paymentBreakdown.find(p => p.paymentMethod === 'CASH')?._sum.totalAmount || 0);
-      const cardRevenue = Number(paymentBreakdown.find(p => p.paymentMethod === 'CARD')?._sum.totalAmount || 0);
-      const giftCardRevenue = Number(paymentBreakdown.find(p => p.paymentMethod === 'GIFT_CARD')?._sum.totalAmount || 0);
+
+      // Build payment breakdown from Payment records (same logic as daily report)
+      const paymentMap: Record<string, number> = {};
+      for (const inv of paidInvoices) {
+        if (inv.payments && inv.payments.length > 0) {
+          for (const p of inv.payments) {
+            const method = p.method || 'OTHER';
+            paymentMap[method] = (paymentMap[method] || 0) + Number(p.amount);
+          }
+        } else {
+          const method = inv.paymentMethod || 'OTHER';
+          paymentMap[method] = (paymentMap[method] || 0) + Number(inv.totalAmount);
+        }
+      }
+      const cashRevenue = paymentMap['CASH'] || 0;
+      const cardRevenue = paymentMap['CARD'] || 0;
+      const giftCardRevenue = paymentMap['GIFT_CARD'] || 0;
       const otherRevenue = Math.max(0, revenue - cashRevenue - cardRevenue - giftCardRevenue);
 
       const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
