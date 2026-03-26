@@ -4,6 +4,13 @@ import { hashPassword } from '../src/services/authService';
 const prisma = new PrismaClient();
 
 async function main() {
+	// Simple seeded random for reproducible results across the entire seed
+	let seed = 42;
+	const seededRandom = () => {
+		seed = (seed * 1664525 + 1013904223) & 0x7fffffff;
+		return seed / 0x7fffffff;
+	};
+
 	const desiredRooms = [
 		{ name: 'Room 1', capacity: 4, active: true },
 		{ name: 'Room 2', capacity: 4, active: true },
@@ -308,6 +315,14 @@ async function main() {
 	if (enableMockBookings) {
 		console.log('Seeding mock bookings...');
 		
+		// Clean existing mock data to prevent overlaps from previous runs
+		// Delete in FK order: payments → orders → invoices → bookings
+		const deletedPayments = await prisma.payment.deleteMany({});
+		const deletedOrders = await prisma.order.deleteMany({});
+		const deletedInvoices = await prisma.invoice.deleteMany({});
+		const deletedBookings = await prisma.booking.deleteMany({});
+		console.log(`Cleaned: ${deletedPayments.count} payments, ${deletedOrders.count} orders, ${deletedInvoices.count} invoices, ${deletedBookings.count} bookings`);
+		
 		// Get all rooms
 		const rooms = await prisma.room.findMany({ where: { active: true } });
 		if (rooms.length === 0) {
@@ -349,6 +364,7 @@ async function main() {
 
 				// Generate bookings for past 30 days and next 14 days
 				const today = new Date();
+				today.setHours(0, 0, 0, 0);
 				const bookingsToCreate: any[] = [];
 				
 				// Track occupied slots per room per day to avoid overlaps
@@ -384,14 +400,14 @@ async function main() {
 					bookingDate.setHours(0, 0, 0, 0);
 
 					// Create 2-4 random bookings per day
-					const numBookingsToday = Math.floor(Math.random() * 3) + 2; // 2-4 bookings
+					const numBookingsToday = Math.floor(seededRandom() * 3) + 2; // 2-4 bookings
 					
 					for (let i = 0; i < numBookingsToday; i++) {
-						const customer = mockCustomers[Math.floor(Math.random() * mockCustomers.length)];
-						const room = rooms[Math.floor(Math.random() * rooms.length)];
+						const customer = mockCustomers[Math.floor(seededRandom() * mockCustomers.length)];
+						const room = rooms[Math.floor(seededRandom() * rooms.length)];
 						
 						// Random duration: 1-3 hours
-						const duration = Math.floor(Math.random() * 3) + 1;
+						const duration = Math.floor(seededRandom() * 3) + 1;
 						
 						// Find an available time slot for this room
 						// Try different hours between 9:00 and 21:00 (leaving room for duration)
@@ -408,7 +424,7 @@ async function main() {
 						}
 						
 						// Pick random available hour
-						const hour = availableHours[Math.floor(Math.random() * availableHours.length)];
+						const hour = availableHours[Math.floor(seededRandom() * availableHours.length)];
 						const minute = 0; // Keep it simple with full hours
 						
 						// Mark slot as occupied
@@ -420,7 +436,7 @@ async function main() {
 						const endTime = new Date(startTime.getTime() + duration * 60 * 60 * 1000);
 						
 						// Random players: 1-4
-						const players = Math.floor(Math.random() * 4) + 1;
+						const players = Math.floor(seededRandom() * 4) + 1;
 						
 						// Calculate price (base $35/hour)
 						const basePrice = duration * 35;
@@ -433,15 +449,15 @@ async function main() {
 					const paymentStatus = isPast ? 'PAID' : 'UNPAID';
 					
 					// Payment details for completed/paid bookings
-					const paymentMethod = isPast ? (Math.random() > 0.5 ? 'CARD' : 'CASH') : null;
+					const paymentMethod = isPast ? (seededRandom() > 0.5 ? 'CARD' : 'CASH') : null;
 					const paidAt = isPast ? endTime : null;
 						
 						// Random booking source: ONLINE, WALK_IN, or PHONE
 						const sources = ['ONLINE', 'WALK_IN', 'PHONE'];
-						const bookingSource = sources[Math.floor(Math.random() * sources.length)];
+						const bookingSource = sources[Math.floor(seededRandom() * sources.length)];
 						
 						// Created at: random time before start time
-						const createdAt = new Date(startTime.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000); // Up to 7 days before
+						const createdAt = new Date(startTime.getTime() - seededRandom() * 7 * 24 * 60 * 60 * 1000); // Up to 7 days before
 						
 					bookingsToCreate.push({
 						roomId: room.id,
@@ -463,26 +479,14 @@ async function main() {
 					}
 				}
 
-				// Insert bookings (skip if already exists to make seed idempotent)
-				let createdCount = 0;
+				// Insert all bookings (data was cleaned above, no duplicates possible)
 				for (const booking of bookingsToCreate) {
-					const existing = await prisma.booking.findFirst({
-						where: {
-							roomId: booking.roomId,
-							startTime: booking.startTime,
-							endTime: booking.endTime,
-						},
+					await prisma.booking.create({
+						data: booking as any,
 					});
-					
-					if (!existing) {
-						await prisma.booking.create({
-							data: booking as any,
-						});
-						createdCount++;
-					}
 				}
 				
-				console.log(`Seeded ${createdCount} mock bookings (total attempted: ${bookingsToCreate.length})`);
+				console.log(`Seeded ${bookingsToCreate.length} mock bookings`);
 			}
 		}
 	} else {
@@ -490,109 +494,118 @@ async function main() {
 	}
 
 	// ============================================
-	// Phase 1.3.5: Seed Orders and Invoices
+	// Phase 1.3.5: Seed Orders and Invoices (dev/test only)
 	// ============================================
-	console.log('\n=== Seeding Orders and Invoices ===');
+	// This creates random mock orders/invoices — must not run in production
+	if (enableMockBookings) {
+		console.log('\n=== Seeding Orders and Invoices ===');
 
-	const TAX_RATE = 0.1; // 10% tax
-	const HOURLY_RATE = 50;
+		// Read actual tax rate from settings
+		const taxSetting = await prisma.setting.findUnique({ where: { key: 'global_tax_rate' } });
+		const TAX_RATE = taxSetting ? Number(taxSetting.value) / 100 : 0.15; // Convert percentage to decimal
+		console.log(`Using tax rate: ${(TAX_RATE * 100).toFixed(1)}%`);
 
-	// Get all bookings to seed orders/invoices for
-	const allBookings = await prisma.booking.findMany({
-		include: { invoices: true },
-	});
+		const HOURLY_RATE = 50;
 
-	console.log(`Found ${allBookings.length} bookings to process for orders/invoices`);
+		// Get all bookings to seed orders/invoices for
+		const allBookings = await prisma.booking.findMany({
+			include: { invoices: true },
+		});
 
-	let invoicesCreated = 0;
-	let ordersCreated = 0;
+		console.log(`Found ${allBookings.length} bookings to process for orders/invoices`);
 
-	for (const booking of allBookings) {
-		// Skip if invoices already exist for this booking
-		if (booking.invoices.length > 0) {
-			continue;
-		}
+		let invoicesCreated = 0;
+		let ordersCreated = 0;
 
-		// Create empty invoices for each seat (1 per player)
-		// Start at $0, orders will be added later
-		const invoicesForBooking = [];
+		for (const booking of allBookings) {
+			// Skip if invoices already exist for this booking
+			if (booking.invoices.length > 0) {
+				continue;
+			}
 
-		for (let seatIndex = 1; seatIndex <= booking.players; seatIndex++) {
-			const invoice = await prisma.invoice.create({
-				data: {
-					bookingId: booking.id,
-					seatIndex,
-					subtotal: 0,
-					tax: 0,
-					tip: null,
-					totalAmount: 0,
-					status: booking.paymentStatus === 'PAID' ? 'PAID' : 'UNPAID',
-					paymentMethod: booking.paymentStatus === 'PAID' ? (Math.random() > 0.5 ? 'CARD' : 'CASH') : null,
-					paidAt: booking.paymentStatus === 'PAID' ? booking.paidAt : null,
-				},
-			});
-			invoicesForBooking.push(invoice);
-			invoicesCreated++;
-		}
+			// Create empty invoices for each seat (1 per player)
+			// Start at $0, orders will be added later
+			const invoicesForBooking = [];
 
-		// 50% chance to add orders (menu items) for completed bookings
-		if (booking.bookingStatus === 'COMPLETED' && Math.random() > 0.5) {
-			const menuItems = await prisma.menuItem.findMany({
-				where: {
-					available: true,
-					category: { in: ['FOOD', 'DRINKS', 'APPETIZERS', 'DESSERTS'] },
-				},
-			});
+			for (let seatIndex = 1; seatIndex <= booking.players; seatIndex++) {
+				const invoice = await prisma.invoice.create({
+					data: {
+						bookingId: booking.id,
+						seatIndex,
+						subtotal: 0,
+						tax: 0,
+						tip: null,
+						totalAmount: 0,
+						status: booking.paymentStatus === 'PAID' ? 'PAID' : 'UNPAID',
+						paymentMethod: booking.paymentStatus === 'PAID' ? (seededRandom() > 0.5 ? 'CARD' : 'CASH') : null,
+						paidAt: booking.paymentStatus === 'PAID' ? booking.paidAt : null,
+					},
+				});
+				invoicesForBooking.push(invoice);
+				invoicesCreated++;
+			}
 
-			if (menuItems.length > 0) {
-				// Add 1-3 random menu items per seat
-				for (const invoice of invoicesForBooking) {
-					const itemCount = Math.floor(Math.random() * 3) + 1;
-					const selectedItems = menuItems
-						.sort(() => Math.random() - 0.5)
-						.slice(0, itemCount);
+			// 50% chance to add orders (menu items) for completed bookings
+			if (booking.bookingStatus === 'COMPLETED' && seededRandom() > 0.5) {
+				const menuItems = await prisma.menuItem.findMany({
+					where: {
+						available: true,
+						category: { in: ['FOOD', 'DRINKS', 'APPETIZERS', 'DESSERTS'] },
+					},
+				});
 
-					for (const item of selectedItems) {
-						const quantity = Math.floor(Math.random() * 2) + 1; // 1-2 of each item
-						const order = await prisma.order.create({
-							data: {
+				if (menuItems.length > 0) {
+					// Add 1-3 random menu items per seat
+					for (const invoice of invoicesForBooking) {
+						const itemCount = Math.floor(seededRandom() * 3) + 1;
+						const selectedItems = menuItems
+							.sort(() => seededRandom() - 0.5)
+							.slice(0, itemCount);
+
+						for (const item of selectedItems) {
+							const quantity = Math.floor(seededRandom() * 2) + 1; // 1-2 of each item
+							const order = await prisma.order.create({
+								data: {
+									bookingId: booking.id,
+									menuItemId: item.id,
+									seatIndex: invoice.seatIndex,
+									quantity,
+									unitPrice: Number(item.price),
+									totalPrice: Number(item.price) * quantity,
+								},
+							});
+							ordersCreated++;
+						}
+
+						// Recalculate invoice totals with orders (no base price)
+						const orders = await prisma.order.findMany({
+							where: {
 								bookingId: booking.id,
-								menuItemId: item.id,
 								seatIndex: invoice.seatIndex,
-								quantity,
-								unitPrice: Number(item.price),
-								totalPrice: Number(item.price) * quantity,
 							},
 						});
-						ordersCreated++;
+
+						const orderSubtotal = orders.reduce((sum, o) => sum + Number(o.totalPrice), 0);
+						const newTax = orderSubtotal * TAX_RATE;
+						const newTotal = orderSubtotal + newTax;
+
+						await prisma.invoice.update({
+							where: { id: invoice.id },
+							data: {
+								subtotal: orderSubtotal,
+								tax: newTax,
+								totalAmount: newTotal,
+							},
+						});
 					}
-
-					// Recalculate invoice totals with orders (no base price)
-					const orders = await prisma.order.findMany({
-						where: {
-							bookingId: booking.id,
-							seatIndex: invoice.seatIndex,
-						},
-					});
-
-					const orderSubtotal = orders.reduce((sum, o) => sum + Number(o.totalPrice), 0);
-					const newTax = orderSubtotal * TAX_RATE;
-					const newTotal = orderSubtotal + newTax;
-
-					await prisma.invoice.update({
-						where: { id: invoice.id },
-						data: {
-							subtotal: orderSubtotal,
-							tax: newTax,
-							totalAmount: newTotal,
-						},
-					});
 				}
 			}
 		}
-	}
 
-	console.log(`Seeded ${invoicesCreated} invoices and ${ordersCreated} orders`);
+		console.log(`Seeded ${invoicesCreated} invoices and ${ordersCreated} orders`);
+	} else {
+		console.log('Skipping mock orders/invoices seeding (production).');
+	}
 }
 
 main()

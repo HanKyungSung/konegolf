@@ -26,8 +26,42 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - total doesn't show
 - how to handle cash tip? → tipMethod field added (2026-03-23)
 - do we need 'unpiad/paid' status
+- fix paidAt to use starttime instead
 
 ### 🔄 Ongoing Tasks
+- [x] **Fix Seed Script: Overlapping Bookings & Production Safety** (2026-03-26)
+  - [x] Seed created overlapping bookings on same room (broken slot collision detection due to `Math.random()` non-determinism across re-runs)
+  - [x] Fix: Clean all mock data (payments/orders/invoices/bookings) before re-seeding instead of stale idempotent check
+  - [x] Fix: Use seeded PRNG for deterministic, reproducible output
+  - [x] Fix: Orders/Invoices section was unguarded — now wrapped in `enableMockBookings` (won't run in production)
+  - [x] Fix: Tax rate reads from `global_tax_rate` setting instead of hardcoded 10%
+  - [x] Settings seed: create-if-not-exists only — never overwrites existing values (safe for prod)
+  - [x] Verified: 133 bookings, 0 overlaps, 346 invoices, 152 orders
+- [x] **Fix QUICK_SALE Appearing on POS Timeline** (2026-03-25)
+  - [x] QUICK_SALE bookings appeared as room blocks on POS timeline (no room/time, misleading)
+  - [x] Fix: Added `b.bookingSource !== 'QUICK_SALE'` filter to timeline `dayBookings`
+  - [x] Fix: Added `bookingSource?: string` to frontend `Booking` interface (API field was missing from type)
+  - [x] Files: `frontend/src/pages/pos/dashboard.tsx`, `frontend/services/pos-api.ts`
+- [x] **Fix Tax Distribution for Split Payments (Largest Remainder Method)** (2026-03-25)
+  - [x] Bug: 4-seat booking with $8.75/seat × 14% tax = $1.225/seat → all 4 rounded to $1.23 → total $4.92 (should be $4.90)
+  - [x] Fix: `recalculateAllInvoices()` in `invoiceRepo.ts` uses largest remainder method (CRA-compliant)
+  - [x] Frontend `calculateSeatTax()` reads from `invoice.tax` (backend is single source of truth)
+  - [x] 17 unit tests + 5 e2e tests added and passing
+  - [x] Prod booking `724da8cb` fixed via SQL
+  - [x] Commit: `9dd9ef1`
+- [x] **Add SALES Role (Read-Only Access)** (2026-03-24)
+  - [x] Added `SALES` to `UserRole` enum in Prisma schema
+  - [x] Created `requireSalesOrAbove` middleware (allows SALES, STAFF, ADMIN)
+  - [x] Customer routes: GET endpoints allow SALES; POST/PUT/DELETE remain ADMIN-only
+  - [x] Reports routes: daily-summary and monthly-sales allow SALES
+  - [x] Coupon routes: GET endpoints (list, validate, types) allow SALES; write stays ADMIN
+  - [x] Score routes: GET endpoints allow SALES; PATCH/DELETE stay STAFF/ADMIN
+  - [x] User routes: lookup and recent allow SALES
+  - [x] Settings routes: SALES can read all settings (public + private); write stays ADMIN
+  - [x] POS frontend: SALES can access dashboard (room status, timeline) — all write actions hidden (Quick Sale, Create Booking, Book, Room/Menu/Tax Management tabs)
+  - [x] Frontend customers page: read-only UI (no Add/Edit/Delete/Coupon buttons)
+  - [x] Seeded sales user: `sales@konegolf.ca` / `salesaccount123` (role: SALES)
+  - [x] Migration: `20260324064243_add_sales_role`
 - [ ] **Enable DigitalOcean Droplet Backups** 🔴 HIGH PRIORITY
   - [ ] Navigate to DigitalOcean → Droplets → k-golf (147.182.215.135)
   - [ ] Enable Weekly Automatic Backups (~20% of droplet cost)

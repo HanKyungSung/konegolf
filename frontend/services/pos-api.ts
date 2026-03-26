@@ -36,6 +36,7 @@ export interface Booking {
   bookingStatus?: string; // BOOKED | COMPLETED | CANCELLED
   paymentStatus?: string; // UNPAID | BILLED | PAID
   source: string;
+  bookingSource?: string; // ONLINE | WALK_IN | PHONE | QUICK_SALE
   createdAt: string;
   updatedAt: string;
   user?: {

@@ -832,7 +832,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
         <div className="space-y-8">
           {weekDays.map((day) => {
             const dayStr = dateKey(day);
-            const dayBookings = bookings.filter(b => b.date === dayStr);
+            const dayBookings = bookings.filter(b => b.date === dayStr && b.bookingSource !== 'QUICK_SALE');
             const filteredDayBookings = filterBookingsByStatus(dayBookings);
             const totalHours = filteredDayBookings.reduce((sum, b) => sum + (b.duration || 0), 0);
             const subtotal = filteredDayBookings.reduce((sum, b) => sum + (b.price || 0), 0);
