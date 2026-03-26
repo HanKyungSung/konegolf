@@ -58,52 +58,104 @@ export async function getAllInvoices(bookingId: string): Promise<InvoiceWithItem
 }
 
 export async function recalculateInvoice(bookingId: string, seatIndex: number): Promise<Invoice> {
-  // Get all orders for this seat
-  const orders = await orderRepo.getOrdersForInvoice(bookingId, seatIndex);
+  // Delegate to recalculateAllInvoices for consistent tax distribution
+  const invoices = await recalculateAllInvoices(bookingId);
+  const updated = invoices.find(inv => inv.seatIndex === seatIndex);
+  if (!updated) {
+    throw new Error(`Invoice not found for booking ${bookingId}, seat ${seatIndex}`);
+  }
+  return updated;
+}
 
-  // Calculate totals from orders
-  const subtotal = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
-  
-  // Get current tax rate from settings
+/**
+ * Recalculate ALL invoices for a booking with proper tax distribution.
+ * Tax is computed once on the total subtotal, then distributed across seats
+ * using the largest remainder method to avoid rounding errors.
+ */
+export async function recalculateAllInvoices(bookingId: string): Promise<Invoice[]> {
+  // Get all invoices for this booking
+  const existingInvoices = await prisma.invoice.findMany({
+    where: { bookingId },
+    orderBy: { seatIndex: 'asc' },
+  });
+
+  // Also get all orders to find seats that may not have invoices yet
+  const allOrders = await prisma.order.findMany({
+    where: { bookingId, seatIndex: { not: null } },
+  });
+
+  // Determine all seat indices that need invoices (from existing invoices + orders)
+  const seatIndicesFromInvoices = existingInvoices.map(inv => inv.seatIndex);
+  const seatIndicesFromOrders = [...new Set(allOrders.filter(o => o.seatIndex !== null).map(o => o.seatIndex!))];
+  const allSeatIndices = [...new Set([...seatIndicesFromInvoices, ...seatIndicesFromOrders])].sort((a, b) => a - b);
+
+  if (allSeatIndices.length === 0) return [];
+
+  // Get tax rate once
   const taxRate = await getGlobalTaxRate();
-  const tax = subtotal * taxRate;
 
-  // Get current invoice to preserve tip if any
-  const currentInvoice = await prisma.invoice.findUnique({
-    where: {
-      bookingId_seatIndex: {
-        bookingId,
-        seatIndex,
-      },
-    },
-  });
-
-  const tip = currentInvoice?.tip || 0;
-  const totalAmount = subtotal + tax + Number(tip || 0);
-
-  // Upsert invoice (create if doesn't exist, update if it does)
-  return prisma.invoice.upsert({
-    where: {
-      bookingId_seatIndex: {
-        bookingId,
-        seatIndex,
-      },
-    },
-    create: {
-      bookingId,
+  // Calculate subtotal for each seat
+  const seatData: { seatIndex: number; subtotal: number; tip: number }[] = [];
+  for (const seatIndex of allSeatIndices) {
+    const orders = await orderRepo.getOrdersForInvoice(bookingId, seatIndex);
+    const subtotal = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
+    const existingInv = existingInvoices.find(inv => inv.seatIndex === seatIndex);
+    seatData.push({
       seatIndex,
-      subtotal: subtotal,
-      tax: tax,
-      tip: 0,
-      totalAmount: totalAmount,
-      status: 'UNPAID',
-    },
-    update: {
-      subtotal: subtotal,
-      tax: tax,
-      totalAmount: totalAmount,
-    },
-  });
+      subtotal,
+      tip: Number(existingInv?.tip || 0),
+    });
+  }
+
+  // Calculate total tax on the combined subtotal (single source of truth)
+  const totalSubtotal = seatData.reduce((sum, s) => sum + s.subtotal, 0);
+  const totalTaxRaw = totalSubtotal * taxRate;
+  const totalTaxCents = Math.round(totalTaxRaw * 100); // Round once to cents
+
+  // Distribute tax to each seat using largest remainder method
+  const seatTaxRaw = seatData.map(s => s.subtotal * taxRate * 100); // in cents, unrounded
+  const seatTaxFloored = seatTaxRaw.map(t => Math.floor(t));
+  let remainderCents = totalTaxCents - seatTaxFloored.reduce((sum, t) => sum + t, 0);
+
+  // Sort by largest fractional remainder, give extra cent to those seats
+  const indices = seatData.map((_, i) => i);
+  indices.sort((a, b) => (seatTaxRaw[b] - seatTaxFloored[b]) - (seatTaxRaw[a] - seatTaxFloored[a]));
+  for (const idx of indices) {
+    if (remainderCents <= 0) break;
+    seatTaxFloored[idx]++;
+    remainderCents--;
+  }
+
+  // Upsert each invoice (create if new seat, update if existing)
+  const updatedInvoices: Invoice[] = [];
+  for (let i = 0; i < seatData.length; i++) {
+    const { seatIndex, subtotal, tip } = seatData[i];
+    const tax = seatTaxFloored[i] / 100; // Convert back to dollars
+    const totalAmount = subtotal + tax + tip;
+
+    const updated = await prisma.invoice.upsert({
+      where: {
+        bookingId_seatIndex: { bookingId, seatIndex },
+      },
+      create: {
+        bookingId,
+        seatIndex,
+        subtotal,
+        tax,
+        tip: 0,
+        totalAmount,
+        status: 'UNPAID',
+      },
+      update: {
+        subtotal,
+        tax,
+        totalAmount,
+      },
+    });
+    updatedInvoices.push(updated);
+  }
+
+  return updatedInvoices;
 }
 
 export interface PaymentInput {

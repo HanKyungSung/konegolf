@@ -84,7 +84,7 @@ describe.skip('E2E: User Lookup & Recent Customers API', () => {
           endTime: new Date('2025-10-01T12:00:00Z'),
           players: 2,
           price: 50.00,
-          status: 'CONFIRMED',
+          bookingStatus: 'BOOKED',
         },
         {
           roomId: testRoom.id,
@@ -96,7 +96,7 @@ describe.skip('E2E: User Lookup & Recent Customers API', () => {
           endTime: new Date('2025-10-10T16:00:00Z'),
           players: 4,
           price: 75.50,
-          status: 'CONFIRMED',
+          bookingStatus: 'BOOKED',
         },
       ],
     });
@@ -301,7 +301,7 @@ describe.skip('E2E: User Lookup & Recent Customers API', () => {
           endTime: new Date('2025-10-15T12:00:00Z'),
           players: 2,
           price: 60.00,
-          status: 'CONFIRMED',
+          bookingStatus: 'BOOKED',
         },
       });
 

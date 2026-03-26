@@ -203,6 +203,46 @@ grep '/api/bookings' /var/log/kgolf/app.log | tail -20
 
 ---
 
+## Testing
+
+### Unit Tests (Jest)
+
+Located in `backend/tests/unit/`. Pure function tests — no database required.
+
+```bash
+cd backend && npx jest                     # Run all unit tests
+cd backend && npx jest -- --watch          # Watch mode
+cd backend && npx jest pricing.test.ts     # Run specific file
+```
+
+- **Config:** `backend/jest.config.js` (ts-jest, 70% coverage threshold)
+- **Pattern:** Mirror functions locally, test with describe/it blocks
+- **Files:** `pricing.test.ts` (tax/price calc), `phone.test.ts` (phone normalization), `tax-distribution.test.ts` (split payment rounding)
+
+### E2E Tests (Playwright)
+
+Located in `e2e-tests/`. Requires local backend (port 8080) + frontend (port 5173) running.
+
+```bash
+npx playwright test                        # Run all e2e tests
+npx playwright test 04-payment-flow        # Run specific suite
+npx playwright test --headed               # Run with browser visible
+```
+
+- **Config:** `playwright.config.ts`
+- **Helpers:** `e2e-tests/helpers.ts` — login functions, booking creation (API + UI), menu item constants
+- **Global setup:** `e2e-tests/global-setup.ts` — seeds DB, verifies health endpoints
+- **Naming:** `NN-description.spec.ts` (numbered for execution order)
+- **Test users:** admin@konegolf.ca, staff@konegolf.ca, sales@konegolf.ca, test@example.com
+
+### Writing Tests
+
+- **Bug fixes:** Add a test that reproduces the bug before fixing
+- **New features:** Add e2e tests for user-facing behavior, unit tests for business logic
+- **Tax/pricing:** Always test rounding edge cases (split payments, odd cents)
+
+---
+
 ## Halted / Do Not Reference
 
 The following components are **halted indefinitely** until a decision is made to revive them. Do not reference, suggest, or modify anything related to these:

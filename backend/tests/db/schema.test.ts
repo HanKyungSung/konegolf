@@ -260,7 +260,7 @@ describe('Phase 1.1: Database Schema Migration', () => {
           endTime: new Date('2025-10-20T16:00:00Z'),
           players: 2,
           price: 100,
-          status: 'CONFIRMED',
+          bookingStatus: 'BOOKED',
           bookingSource: 'WALK_IN',
         },
       });
@@ -300,7 +300,7 @@ describe('Phase 1.1: Database Schema Migration', () => {
           endTime: new Date('2025-10-21T12:00:00Z'),
           players: 3,
           price: 100,
-          status: 'CONFIRMED',
+          bookingStatus: 'BOOKED',
           bookingSource: 'ONLINE',
         },
       });
@@ -363,7 +363,7 @@ describe('Phase 1.1: Database Schema Migration', () => {
           endTime: new Date('2025-10-22T16:00:00Z'),
           players: 2,
           price: 100,
-          status: 'CONFIRMED',
+          bookingStatus: 'BOOKED',
           bookingSource: 'WALK_IN',
           createdBy: adminUser.id, // ✅ Admin who created this booking
         },

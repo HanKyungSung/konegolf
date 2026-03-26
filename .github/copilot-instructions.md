@@ -14,7 +14,15 @@
   - `screen_capture/PLAN.md` — Update part status if a major milestone is completed
   - Root `TASKS.md` — Update if the change affects the broader project
   If a planning or implementation session touches any of these docs, check all of them before committing.
+- **Schema changes:** When modifying `backend/prisma/schema.prisma`, always update:
+  - `docs/database_schema_explanation.md` — Quick Column Reference tables
+  - `docs/bank_reconciliation_investigation.md` — Schema Reference section (if Invoice/Booking/User/Payment changed)
 - **Git:** Use standard git commands with conventional commits (`feat:`, `fix:`, `docs:`, `chore:`). Do not use MCP git tools unless asked.
+- **Testing:** When adding new features or fixing bugs, write tests:
+  - **Unit tests** (`backend/tests/unit/`): For pure logic — tax calculation, pricing, validation. Use Jest with `ts-jest`. Mirror function locally if testing pure algorithms.
+  - **E2E tests** (`e2e-tests/`): For user-facing flows — booking creation, orders, payments, role access. Use Playwright with helpers from `helpers.ts`. Name files with `NN-description.spec.ts` pattern.
+  - Run unit tests: `cd backend && npx jest`
+  - Run e2e tests: `npx playwright test` (requires local backend + frontend running)
 - **Commands:** Always explain terminal commands before running them.
 - **Versioning:** `backend/VERSION.txt` and `pos/VERSION.txt`
 - **Production:** `docker-compose.release.yml` (not `docker-compose.prod.yml`)

@@ -45,8 +45,6 @@ export async function seedTestData() {
       name: 'Test Room 1',
       capacity: 4,
       status: 'ACTIVE',
-      openMinutes: 540, // 09:00
-      closeMinutes: 1140, // 19:00
       active: true,
     },
   });
@@ -56,8 +54,6 @@ export async function seedTestData() {
       name: 'Test Room 2',
       capacity: 4,
       status: 'ACTIVE',
-      openMinutes: 540,
-      closeMinutes: 1140,
       active: true,
     },
   });
