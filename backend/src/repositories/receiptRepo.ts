@@ -164,8 +164,10 @@ export async function getReceiptData(bookingId: string): Promise<ReceiptData> {
   const taxRate = taxRateSetting ? parseFloat(taxRateSetting.value) : 13;
 
   // Determine payment status and method
+  // Empty seats ($0 subtotal) don't need payment — treat them as effectively paid
   const paidInvoices = invoices.filter((inv) => inv.status === 'PAID');
-  const allPaid = invoices.length > 0 && paidInvoices.length === invoices.length;
+  const chargedInvoices = invoices.filter((inv) => Number(inv.subtotal) > 0);
+  const allPaid = invoices.length > 0 && (chargedInvoices.length === 0 || chargedInvoices.every((inv) => inv.status === 'PAID'));
   const paymentMethod = paidInvoices.length > 0 ? paidInvoices[0].paymentMethod : null;
   const paidAt = paidInvoices.length > 0 ? paidInvoices[0].paidAt : null;
 

@@ -1700,9 +1700,11 @@ router.get('/:bookingId/payment-status', async (req, res) => {
       paidAt: inv.paidAt,
     }));
 
-    const allPaid = invoices.every((inv) => inv.status === 'PAID');
+    // Empty seats ($0 subtotal) don't need payment — only count charged invoices
+    const chargedInvoices = invoices.filter((inv) => Number(inv.totalAmount) > 0);
+    const allPaid = chargedInvoices.length === 0 || chargedInvoices.every((inv) => inv.status === 'PAID');
     const remaining = invoices
-      .filter((inv) => inv.status === 'UNPAID')
+      .filter((inv) => inv.status === 'UNPAID' && Number(inv.totalAmount) > 0)
       .reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
 
     return res.json({
