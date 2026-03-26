@@ -154,6 +154,32 @@ export function toDateString(date: Date | string): string {
   return d.toLocaleDateString('en-CA', { timeZone: VENUE_TIMEZONE });
 }
 
+/**
+ * Get date string (YYYY-MM-DD) in a specific timezone.
+ */
+export function toDateStringInTz(date: Date | string, tz: string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString('en-CA', { timeZone: tz });
+}
+
+/**
+ * Get time parts (hours, minutes) in a specific timezone.
+ * Returns 24h format: { hours: 0-23, minutes: 0-59 }
+ */
+export function getTimePartsInTz(date: Date | string, tz: string): { hours: number; minutes: number } {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(d);
+  const getPart = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
+  const hour = getPart('hour');
+  return { hours: hour === 24 ? 0 : hour, minutes: getPart('minute') };
+}
+
 // ─── Internal Helpers ─────────────────────────────────────────────
 
 /**

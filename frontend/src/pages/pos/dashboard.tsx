@@ -21,7 +21,7 @@ import {
 import { BookingModal } from './booking-modal';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
-import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString } from '@/lib/timezone';
+import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString, toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
 
 export default function POSDashboard() {
   const { user } = useAuth();
@@ -51,6 +51,12 @@ export default function POSDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
 
+  // Timeline timezone: 'venue' (Atlantic) or 'browser' (local)
+  const [timelineTz, setTimelineTz] = useState<'venue' | 'browser'>(() => {
+    return (localStorage.getItem('pos-timeline-tz') as 'venue' | 'browser') || 'venue';
+  });
+  const activeTimezone = timelineTz === 'venue' ? VENUE_TIMEZONE : Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   // Auto-refresh current time every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -63,10 +69,10 @@ export default function POSDashboard() {
     loadTaxRate();
   }, []);
 
-  // Reload data when selected week changes (no loading spinner)
+  // Reload data when selected week or timezone changes (no loading spinner)
   useEffect(() => {
     loadData(false);
-  }, [currentWeekStart]);
+  }, [currentWeekStart, activeTimezone]);
 
   // Poll for room status updates and current week bookings every 5 seconds (smooth, no flickering)
   useEffect(() => {
@@ -104,15 +110,10 @@ export default function POSDashboard() {
           const end = new Date(b.endTime);
           const room = roomsData.find(r => r.id === b.roomId);
           
-          // Use local timezone for both date and time (consistent with loadData)
-          // This ensures bookings appear at correct positions in Atlantic timezone
-          const year = start.getFullYear();
-          const month = String(start.getMonth() + 1).padStart(2, '0');
-          const day = String(start.getDate()).padStart(2, '0');
-          const localDate = `${year}-${month}-${day}`;
-          const hours = String(start.getHours()).padStart(2, '0');
-          const minutes = String(start.getMinutes()).padStart(2, '0');
-          const localTime = `${hours}:${minutes}`;
+          // Use selected timezone for date/time (consistent with loadData)
+          const localDate = toDateStringInTz(start, activeTimezone);
+          const tp = getTimePartsInTz(start, activeTimezone);
+          const localTime = `${String(tp.hours).padStart(2, '0')}:${String(tp.minutes).padStart(2, '0')}`;
           
           return {
             ...b,
@@ -187,20 +188,15 @@ export default function POSDashboard() {
         const end = new Date(b.endTime);
         const room = roomsData.find(r => r.id === b.roomId);
         
-        // Use local timezone for both date and time
-        // This ensures bookings appear at correct positions in the admin's local timezone
-        const year = start.getFullYear();
-        const month = String(start.getMonth() + 1).padStart(2, '0');
-        const day = String(start.getDate()).padStart(2, '0');
-        const localDate = `${year}-${month}-${day}`;
-        const hours = String(start.getHours()).padStart(2, '0');
-        const minutes = String(start.getMinutes()).padStart(2, '0');
-        const localTime = `${hours}:${minutes}`;
+        // Use selected timezone for date/time extraction
+        const localDate = toDateStringInTz(start, activeTimezone);
+        const tp = getTimePartsInTz(start, activeTimezone);
+        const localTime = `${String(tp.hours).padStart(2, '0')}:${String(tp.minutes).padStart(2, '0')}`;
         
         return {
           ...b,
-          date: localDate, // YYYY-MM-DD in local timezone
-          time: localTime, // HH:MM in local timezone
+          date: localDate, // YYYY-MM-DD in selected timezone
+          time: localTime, // HH:MM in selected timezone
           duration: (end.getTime() - start.getTime()) / (1000 * 60 * 60), // hours
           roomName: room?.name || 'Unknown Room',
         };
@@ -501,6 +497,9 @@ export default function POSDashboard() {
               currentWeekStart={currentWeekStart}
               setCurrentWeekStart={setCurrentWeekStart}
               taxRate={taxRate}
+              activeTimezone={activeTimezone}
+              timelineTz={timelineTz}
+              setTimelineTz={setTimelineTz}
             />
           </TabsContent>
 
@@ -718,9 +717,12 @@ interface TimelineViewProps {
   currentWeekStart: Date;
   setCurrentWeekStart: React.Dispatch<React.SetStateAction<Date>>;
   taxRate: number;
+  activeTimezone: string;
+  timelineTz: 'venue' | 'browser';
+  setTimelineTz: (tz: 'venue' | 'browser') => void;
 }
 
-function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCurrentWeekStart, taxRate }: TimelineViewProps) {
+function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCurrentWeekStart, taxRate, activeTimezone, timelineTz, setTimelineTz }: TimelineViewProps) {
   const navigate = useNavigate();
   const dayStart = 10 * 60; // 10:00 AM
   const dayEnd = 24 * 60;   // Midnight (12:00 AM next day)
@@ -752,10 +754,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
   };
 
   const dateKey = (d: Date) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return toDateStringInTz(d, activeTimezone);
   };
 
   // Assign colors to rooms
@@ -780,22 +779,27 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
   const getCurrentTimePosition = (day: Date) => {
     // Only show current time bar for today
     const today = new Date();
-    const todayStr = dateKey(today);
+    const todayStr = toDateStringInTz(today, activeTimezone);
     const dayStr = dateKey(day);
     
     if (todayStr !== dayStr) return null;
     
-    const currentHour = currentTime.getHours();
-    const currentMinutes = currentTime.getMinutes();
+    const tp = getTimePartsInTz(currentTime, activeTimezone);
     
     // Only show if within operating hours (10AM - 12AM)
-    if (currentHour < 10) return null;
+    if (tp.hours < 10) return null;
     
-    const currentTotalMinutes = currentHour * 60 + currentMinutes;
+    const currentTotalMinutes = tp.hours * 60 + tp.minutes;
     const leftPct = ((currentTotalMinutes - dayStart) / totalMinutes) * 100;
     
     return leftPct;
   };
+
+  // Get current time label in the active timezone
+  const currentTimeLabel = useMemo(() => {
+    const tp = getTimePartsInTz(currentTime, activeTimezone);
+    return `${tp.hours}:${String(tp.minutes).padStart(2, '0')}`;
+  }, [currentTime, activeTimezone]);
 
   return (
     <Card>
@@ -808,9 +812,20 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Button size="sm" variant="outline" className={buttonStyles.pagination} onClick={() => navigateWeek('prev')}>← Prev</Button>
             <span className="text-white text-xs sm:text-sm font-medium flex-1 sm:flex-none sm:min-w-[200px] text-center truncate">
-              {weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: VENUE_TIMEZONE })} – {weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: VENUE_TIMEZONE })}
+              {weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: activeTimezone })} – {weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: activeTimezone })}
             </span>
             <Button size="sm" variant="outline" className={buttonStyles.pagination} onClick={() => navigateWeek('next')}>Next →</Button>
+            <button
+              onClick={() => {
+                const next = timelineTz === 'venue' ? 'browser' : 'venue';
+                localStorage.setItem('pos-timeline-tz', next);
+                setTimelineTz(next);
+              }}
+              className="text-[10px] px-2 py-1 rounded border border-slate-600 hover:border-slate-400 transition-colors text-slate-300 hover:text-white whitespace-nowrap"
+              title={`Currently showing: ${activeTimezone}`}
+            >
+              🕐 {timelineTz === 'venue' ? 'AT' : Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ')}
+            </button>
           </div>
         </div>
       </CardHeader>
@@ -843,10 +858,10 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
                 {/* Day Header */}
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-semibold text-white min-w-[120px]">
-                    {day.toLocaleDateString('en-US', { weekday: 'long', timeZone: VENUE_TIMEZONE })}
+                    {day.toLocaleDateString('en-US', { weekday: 'long', timeZone: activeTimezone })}
                   </h3>
                   <div className="text-[11px] text-slate-400">
-                    {day.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: VENUE_TIMEZONE })}
+                    {day.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: activeTimezone })}
                   </div>
                   <div className="flex-1 h-px bg-slate-700" />
                   {/* TODO: Re-enable when employee permissions implemented
@@ -911,7 +926,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
                             style={{ left: `${currentTimePos}%` }}
                           >
                             <div className="absolute -top-6 -left-4 bg-red-600 text-white text-[10px] px-2 py-1 rounded font-bold whitespace-nowrap">
-                              {currentTime.getHours()}:{String(currentTime.getMinutes()).padStart(2, '0')}
+                              {currentTimeLabel}
                             </div>
                           </div>
                         )}
