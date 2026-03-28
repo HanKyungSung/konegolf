@@ -462,13 +462,13 @@ These invoices are marked CARD in the system but have no matching card machine s
 | `77f155f3` | Quick Sale | 1 | $5.70 | No matching card swipe. Physical cash receipt found ✅ |
 | `bee2fb30` | Quick Sale | 1 | $5.70 | No matching card swipe. Physical cash receipt found ✅ |
 
-**4. Split payment not recorded in system (1):**
+**4. Split payment not recorded in system (1) — FIXED:**
 
-The system supports split payments via the `Payment` table (multiple payment rows per invoice), but staff entered only one CASH payment for the full amount instead of two separate payments.
+~~The system supports split payments via the `Payment` table (multiple payment rows per invoice), but staff entered only one CASH payment for the full amount instead of two separate payments.~~
 
 | Booking ID | Customer | Total | Card Portion | Cash Portion | Notes |
 |-----------|----------|-------|-------------|-------------|-------|
-| `9ad1da2b` | Matt Standing | $39.90 | $9.90 | $30.00 | System has one `Payment` row: $39.90 CASH. Should have two: $30.00 CASH + $9.90 CARD. Card machine shows $9.90 swipe at 20:00. |
+| `9ad1da2b` | Matt Standing | $39.90 | $9.90 | $30.00 | **Fixed (2026-03-26):** Replaced single $39.90 CASH payment with $30.00 CASH + $9.90 CARD. Invoice paymentMethod set to SPLIT. Card swipe at 20:00:42 now tracked. |
 
 ### Reconciliation Math
 

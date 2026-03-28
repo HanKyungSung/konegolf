@@ -1423,6 +1423,7 @@ const payInvoiceSchema = z.object({
   seatIndex: z.number().int().min(1).max(4),
   paymentMethod: z.enum(['CARD', 'CASH', 'GIFT_CARD', 'SPLIT']),
   tip: z.number().nonnegative().optional(),
+  tipMethod: z.enum(['CARD', 'CASH']).optional(),
   payments: z.array(z.object({
     method: z.enum(['CARD', 'CASH', 'GIFT_CARD']),
     amount: z.number().positive(),
@@ -1441,7 +1442,7 @@ router.patch('/invoices/:invoiceId/pay', requireAuth, async (req, res) => {
       });
     }
 
-    const { bookingId, seatIndex, paymentMethod, tip, payments } = parsed.data;
+    const { bookingId, seatIndex, paymentMethod, tip, tipMethod, payments } = parsed.data;
 
     // Validate split payments sum matches total
     if (paymentMethod === 'SPLIT' && payments && payments.length > 1) {
@@ -1473,7 +1474,8 @@ router.patch('/invoices/:invoiceId/pay', requireAuth, async (req, res) => {
       seatIndex,
       paymentMethod,
       tip,
-      payments
+      payments,
+      tipMethod
     );
 
     // Check if all invoices are now paid

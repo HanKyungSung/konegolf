@@ -168,7 +168,8 @@ export async function updateInvoicePayment(
   seatIndex: number,
   paymentMethod: string,
   tip?: number,
-  payments?: PaymentInput[]
+  payments?: PaymentInput[],
+  tipMethod?: string
 ): Promise<Invoice & { payments: Payment[] }> {
   // Get current invoice to calculate total
   const invoice = await prisma.invoice.findUnique({
@@ -190,9 +191,20 @@ export async function updateInvoicePayment(
   await prisma.payment.deleteMany({ where: { invoiceId: invoice.id } });
 
   // Determine payment records to create
-  const paymentRecords = payments && payments.length > 1
-    ? payments  // Split payment: use provided array
-    : [{ method: paymentMethod, amount: totalAmount }]; // Single payment
+  let paymentRecords: { method: string; amount: number }[];
+  if (payments && payments.length > 1) {
+    paymentRecords = payments; // Split payment: use provided array
+  } else if (tip && tip > 0 && tipMethod && tipMethod !== paymentMethod) {
+    // Tip method differs from payment method: create two records
+    const mainAmount = Math.round((totalAmount - tip) * 100) / 100;
+    paymentRecords = [];
+    if (mainAmount > 0) {
+      paymentRecords.push({ method: paymentMethod, amount: mainAmount });
+    }
+    paymentRecords.push({ method: tipMethod, amount: tip });
+  } else {
+    paymentRecords = [{ method: paymentMethod, amount: totalAmount }]; // Single payment
+  }
 
   const effectiveMethod = paymentRecords.length > 1 ? 'SPLIT' : paymentMethod;
 
@@ -208,6 +220,7 @@ export async function updateInvoicePayment(
       paymentMethod: effectiveMethod,
       paidAt: new Date(),
       tip: tip,
+      tipMethod: tip && tip > 0 ? (tipMethod || paymentMethod) : null,
       totalAmount: totalAmount,
       payments: {
         create: paymentRecords.map((p) => ({
@@ -260,21 +273,36 @@ export async function addSinglePayment(
   // Clamp to remaining (handle rounding)
   const clampedAmount = Math.min(amount, remaining);
 
-  // Create a single payment record for the full amount (includes tip)
-  await prisma.payment.create({
-    data: {
-      invoiceId: invoice.id,
-      method,
-      amount: clampedAmount,
-    },
-  });
+  // If tip method differs from payment method, split into two payment records
+  const newPayments: { method: string; amount: number }[] = [];
+  if (tip && tip > 0 && tipMethod && tipMethod !== method) {
+    // Separate: main payment (amount minus tip) + tip payment
+    const mainAmount = Math.round((clampedAmount - tip) * 100) / 100;
+    if (mainAmount > 0) {
+      newPayments.push({ method, amount: mainAmount });
+    }
+    newPayments.push({ method: tipMethod, amount: tip });
+  } else {
+    newPayments.push({ method, amount: clampedAmount });
+  }
+
+  // Create payment record(s)
+  for (const pay of newPayments) {
+    await prisma.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        method: pay.method,
+        amount: pay.amount,
+      },
+    });
+  }
 
   // Check if fully paid now
   const newTotalPaid = existingPaid + clampedAmount;
   const isFullyPaid = newTotalPaid >= invoiceTotal - 0.01;
 
   // Determine effective payment method
-  const allPayments = [...invoice.payments, { method, amount: clampedAmount }];
+  const allPayments = [...invoice.payments, ...newPayments];
   const uniqueMethods = new Set(allPayments.map(p => p.method));
   const effectiveMethod = uniqueMethods.size > 1 ? 'SPLIT' : method;
 

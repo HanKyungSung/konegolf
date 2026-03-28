@@ -156,6 +156,65 @@ test.describe('POS Payment Flow', () => {
     await expect(page.getByText('PAID').first()).toBeVisible({ timeout: 5000 });
   });
 
+  test('cash tip on card payment creates separate payment records', async ({ page }) => {
+    const bookingId = await setupBookingWithItem(page);
+
+    // Open payment dialog
+    await page.getByRole('button', { name: /Collect Payment/ }).first().click();
+    await expect(page.getByText('Collect Payment — Seat 1')).toBeVisible({ timeout: 3000 });
+
+    // Select Card
+    const cardOption = page.locator('[class*="cursor-pointer"]').filter({ hasText: 'Card' }).first();
+    await cardOption.click();
+    await page.waitForTimeout(500);
+
+    // Enter tip amount
+    const tipInput = page.getByPlaceholder('0.00').first();
+    await tipInput.clear();
+    await tipInput.fill('5.00');
+    await page.waitForTimeout(500);
+
+    // Select cash tip
+    await page.getByRole('button', { name: /💵 Cash/ }).click();
+    await page.waitForTimeout(300);
+
+    // Click Full amount
+    await page.getByRole('button', { name: /Full/ }).click();
+    await page.waitForTimeout(500);
+
+    // Pay
+    const payButton = page.getByRole('button', { name: /Pay \$/ });
+    await payButton.click();
+    await page.waitForTimeout(2000);
+
+    // Should show PAID
+    await expect(page.getByText('PAID').first()).toBeVisible({ timeout: 5000 });
+
+    // Verify payment records via API - fetch invoices for this booking
+    const invoicesResponse = await page.request.get(
+      `http://localhost:8080/api/bookings/${bookingId}/invoices`,
+      { headers: { 'x-pos-admin-key': 'pos-dev-key-change-in-production' } }
+    );
+    const invoicesData = await invoicesResponse.json();
+    const seat1Invoice = invoicesData.invoices?.find((i: any) => i.seatIndex === 1) || invoicesData.find?.((i: any) => i.seatIndex === 1);
+
+    // Invoice should be SPLIT (CARD + CASH)
+    expect(seat1Invoice.paymentMethod).toBe('SPLIT');
+    expect(seat1Invoice.tipMethod).toBe('CASH');
+    expect(Number(seat1Invoice.tip)).toBe(5);
+
+    // Should have two payment records: CARD for main amount, CASH for tip
+    const payments = seat1Invoice.payments;
+    expect(payments).toHaveLength(2);
+    const cardPayment = payments.find((p: any) => p.method === 'CARD');
+    const cashPayment = payments.find((p: any) => p.method === 'CASH');
+    expect(cardPayment).toBeDefined();
+    expect(cashPayment).toBeDefined();
+    expect(Number(cashPayment.amount)).toBe(5);
+    // Card payment should be total minus tip (use toBeCloseTo for floating point)
+    expect(Number(cardPayment.amount)).toBeCloseTo(Number(seat1Invoice.totalAmount) - 5, 2);
+  });
+
   test('tip percentage buttons calculate correctly', async ({ page }) => {
     await setupBookingWithItem(page);
 
