@@ -66,4 +66,7 @@ Since the POS is accessible from anywhere, we need a way to verify the employee 
 
 ## Decision
 
-> **TBD** — Exploring alternative solutions before committing to an approach.
+> **Decided:** PIN-based clock in/out with a dedicated kiosk page on the store tablet.
+> Individual Employee records (separate from User model) with scrypt-hashed PINs.
+> Daily shift report email at 11 PM Atlantic.
+> Admin dashboard for viewing/editing time entries and managing employees.

@@ -770,3 +770,173 @@ export async function sendReceiptEmail(
   const json = await res.json();
   return json;
 }
+
+// ============= Employee & Time Entry API =============
+
+export interface Employee {
+  id: string;
+  name: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TimeEntry {
+  id: string;
+  employeeId: string;
+  employee: { id: string; name: string };
+  clockIn: string;
+  clockOut: string | null;
+  createdAt: string;
+}
+
+export interface ClockInResponse {
+  message: string;
+  employeeName: string;
+  clockIn: string;
+  entryId: string;
+}
+
+export interface ClockOutResponse {
+  message: string;
+  employeeName: string;
+  clockIn: string;
+  clockOut: string;
+  duration: { hours: number; minutes: number };
+}
+
+export interface ClockStatusResponse {
+  employeeName: string;
+  isClockedIn: boolean;
+  clockIn: string | null;
+}
+
+// ── Kiosk (no auth needed) ──
+
+export async function clockIn(pin: string): Promise<ClockInResponse> {
+  const res = await fetch(`${API_BASE}/api/time-entries/clock-in`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Clock-in failed');
+  return json;
+}
+
+export async function clockOut(pin: string): Promise<ClockOutResponse> {
+  const res = await fetch(`${API_BASE}/api/time-entries/clock-out`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Clock-out failed');
+  return json;
+}
+
+export async function checkClockStatus(pin: string): Promise<ClockStatusResponse> {
+  const res = await fetch(`${API_BASE}/api/time-entries/status`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Status check failed');
+  return json;
+}
+
+// ── Admin endpoints ──
+
+export async function listEmployees(activeOnly = false): Promise<Employee[]> {
+  const params = activeOnly ? '?active=true' : '';
+  const res = await fetch(`${API_BASE}/api/employees${params}`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) throw new Error('Failed to fetch employees');
+  const json = await res.json();
+  return json.employees;
+}
+
+export async function createEmployee(name: string, pin: string): Promise<Employee> {
+  const res = await fetch(`${API_BASE}/api/employees`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, pin }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to create employee');
+  return json.employee;
+}
+
+export async function updateEmployee(id: string, data: { name?: string; pin?: string; active?: boolean }): Promise<Employee> {
+  const res = await fetch(`${API_BASE}/api/employees/${id}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to update employee');
+  return json.employee;
+}
+
+export async function deleteEmployee(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/employees/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error || 'Failed to deactivate employee');
+  }
+}
+
+export async function listTimeEntries(filters?: { startDate?: string; endDate?: string; employeeId?: string }): Promise<TimeEntry[]> {
+  const params = new URLSearchParams();
+  if (filters?.startDate) params.append('startDate', filters.startDate);
+  if (filters?.endDate) params.append('endDate', filters.endDate);
+  if (filters?.employeeId) params.append('employeeId', filters.employeeId);
+
+  const res = await fetch(`${API_BASE}/api/time-entries?${params.toString()}`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) throw new Error('Failed to fetch time entries');
+  const json = await res.json();
+  return json.entries;
+}
+
+export async function listActiveTimeEntries(): Promise<TimeEntry[]> {
+  const res = await fetch(`${API_BASE}/api/time-entries/active`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) throw new Error('Failed to fetch active entries');
+  const json = await res.json();
+  return json.entries;
+}
+
+export async function updateTimeEntry(id: string, data: { clockIn?: string; clockOut?: string | null }): Promise<TimeEntry> {
+  const res = await fetch(`${API_BASE}/api/time-entries/${id}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to update time entry');
+  return json.entry;
+}

@@ -829,4 +829,80 @@ export async function sendUncompletedBookingsEmail({ to, date, bookings }: Uncom
     html,
   });
 
-  log.info({ to, subject, count }, 'Uncompleted bookings email sent successfully');}
+  log.info({ to, subject, count }, 'Uncompleted bookings email sent successfully');
+}
+
+// ============= Shift Report Email =============
+
+export interface ShiftReportEmailParams {
+  to: string;
+  date: string;
+  employees: Array<{
+    name: string;
+    shifts: Array<{ clockIn: string; clockOut: string | null; hours: number; minutes: number }>;
+    totalHours: number;
+    totalMinutes: number;
+    hasOpenShift: boolean;
+  }>;
+}
+
+export async function sendShiftReportEmail({ to, date, employees }: ShiftReportEmailParams) {
+  const totalEmployees = employees.length;
+  const openShifts = employees.filter(e => e.hasOpenShift).length;
+  const subject = `[Kone Golf] Daily Shift Report — ${date}`;
+
+  const employeeRows = employees.map(emp => {
+    const shiftDetails = emp.shifts.map(s => {
+      const clockOut = s.clockOut || '<span style="color:#e53e3e;font-weight:600">Still In</span>';
+      return `${s.clockIn} → ${clockOut} (${s.hours}h ${s.minutes}m)`;
+    }).join('<br>');
+
+    const warning = emp.hasOpenShift ? ' ⚠️' : '';
+    const totalStr = `${emp.totalHours}h ${emp.totalMinutes}m`;
+
+    return `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:500">${emp.name}${warning}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px">${shiftDetails}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:600;text-align:right">${totalStr}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html>
+<body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+  <h2 style="color:#1a202c;margin-bottom:4px">Daily Shift Report</h2>
+  <p style="color:#718096;margin-top:0">${date} · ${totalEmployees} employee${totalEmployees !== 1 ? 's' : ''}${openShifts > 0 ? ` · <span style="color:#e53e3e">${openShifts} open shift${openShifts !== 1 ? 's' : ''}</span>` : ''}</p>
+  <table style="width:100%;border-collapse:collapse;margin-top:16px">
+    <thead>
+      <tr style="background:#f7fafc">
+        <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e2e8f0;color:#4a5568;font-size:13px">Employee</th>
+        <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e2e8f0;color:#4a5568;font-size:13px">Shifts</th>
+        <th style="padding:8px 12px;text-align:right;border-bottom:2px solid #e2e8f0;color:#4a5568;font-size:13px">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${employeeRows}
+    </tbody>
+  </table>
+  <p style="color:#a0aec0;font-size:12px;margin-top:24px">This is an automated report from Kone Golf.</p>
+</body>
+</html>`;
+
+  const text = `Daily Shift Report — ${date}\n\n${employees.map(e => `${e.name}: ${e.totalHours}h ${e.totalMinutes}m${e.hasOpenShift ? ' (STILL CLOCKED IN)' : ''}`).join('\n')}`;
+
+  const transport = getTransport();
+  if (!transport) {
+    log.info({ to, date, employees: employees.map(e => ({ name: e.name, total: `${e.totalHours}h ${e.totalMinutes}m`, open: e.hasOpenShift })) }, 'Dev-log: shift report email (no transport)');
+    return;
+  }
+
+  await transport.sendMail({
+    from: process.env.EMAIL_FROM || 'K one Golf <no-reply@konegolf.ca>',
+    to,
+    subject,
+    text,
+    html,
+  });
+
+  log.info({ to, subject, totalEmployees }, 'Shift report email sent successfully');
+}

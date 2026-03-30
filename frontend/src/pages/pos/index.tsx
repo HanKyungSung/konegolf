@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/use-auth';
 import POSDashboard from './dashboard';
 import POSBookingDetail from './booking-detail';
 import POSMenuManagement from './menu-management';
+import POSClock from './clock';
+import POSTimeManagement from './time-management';
 
 /**
  * POS Routes
@@ -48,6 +50,8 @@ export default function POSRoutes() {
       <Route path="dashboard" element={<POSDashboard />} />
       <Route path="booking/:id" element={<BookingDetailWrapper />} />
       <Route path="menu" element={<MenuManagementWrapper />} />
+      <Route path="clock" element={<POSClock />} />
+      <Route path="time-management" element={<TimeManagementWrapper />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
@@ -67,4 +71,12 @@ function MenuManagementWrapper() {
   const { user } = useAuth();
   if (user?.role === 'SALES') return <Navigate to="/pos/dashboard" replace />;
   return <POSMenuManagement onBack={() => navigate('/pos/dashboard')} />;
+}
+
+// Wrapper for time management (admin only)
+function TimeManagementWrapper() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  if (user?.role !== 'ADMIN') return <Navigate to="/pos/dashboard" replace />;
+  return <POSTimeManagement onBack={() => navigate('/pos/dashboard')} />;
 }

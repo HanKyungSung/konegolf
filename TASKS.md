@@ -3408,6 +3408,11 @@ Refactor booking status model from complex 4-field approach to simplified 2-fiel
 
 ## 🧹 Code Cleanup & Technical Debt
 
+### Payment Status Simplification
+- [ ] **Remove redundant `Booking.paymentStatus` field** — it's a denormalized cache always derivable from `Invoice.status` via `checkAllInvoicesPaid()`. The receipt system already re-derives it independently. Removal would eliminate sync risk and simplify payment logic.
+- [ ] **Remove `BILLED` from frontend types** — `'BILLED'` appears in frontend type definitions (`pos-api.ts`, `dashboard.tsx`, `bookingContext.tsx`) but the backend never sets it. Dead code.
+- [ ] **Auto-mark $0 invoices as PAID** — empty seats (`subtotal=0`) stay `UNPAID` forever. Currently worked around by filtering them out in 3 places (`checkAllInvoicesPaid`, `receiptRepo`, `payment-status` endpoint). Cleaner to mark them `PAID` at creation.
+
 ### UI Component Unification
 
 **Button Components:**

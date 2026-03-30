@@ -6,7 +6,7 @@ import { buttonStyles } from '@/styles/buttonStyles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingBag } from 'lucide-react';
+import { Plus, ShoppingBag, Clock, Users } from 'lucide-react';
 import { 
   listBookings, 
   listRooms, 
@@ -357,6 +357,25 @@ export default function POSDashboard() {
               <CardDescription>Live view of currently occupied rooms</CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <Button 
+                onClick={() => navigate('/pos/clock')}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm"
+                size="sm"
+              >
+                <Clock className="h-4 w-4" />
+                <span>Clock In/Out</span>
+              </Button>
+              {user?.role === 'ADMIN' && (
+              <Button 
+                onClick={() => navigate('/pos/time-management')}
+                variant="outline"
+                className="flex items-center gap-2 text-xs sm:text-sm"
+                size="sm"
+              >
+                <Users className="h-4 w-4" />
+                <span>Time Mgmt</span>
+              </Button>
+              )}
               {!isReadOnly && (
               <Button 
                 onClick={async () => {

@@ -606,6 +606,24 @@ async function main() {
 	} else {
 		console.log('Skipping mock orders/invoices seeding (production).');
 	}
+
+	// ── Seed sample employees for clock in/out ──
+	const sampleEmployees = [
+		{ name: 'Alice', pin: '1234' },
+		{ name: 'Bob', pin: '5678' },
+		{ name: 'Carol', pin: '9012' },
+	];
+
+	let employeesCreated = 0;
+	for (const emp of sampleEmployees) {
+		const existing = await prisma.employee.findFirst({ where: { name: emp.name } });
+		if (!existing) {
+			const pinHash = await hashPassword(emp.pin);
+			await prisma.employee.create({ data: { name: emp.name, pinHash } });
+			employeesCreated++;
+		}
+	}
+	console.log(`Seed complete: ${employeesCreated} employees created (${sampleEmployees.length - employeesCreated} already existed)`);
 }
 
 main()

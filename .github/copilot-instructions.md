@@ -26,6 +26,9 @@
 - **Commands:** Always explain terminal commands before running them.
 - **Versioning:** `backend/VERSION.txt` and `pos/VERSION.txt`
 - **Production:** `docker-compose.release.yml` (not `docker-compose.prod.yml`)
+- **Prod logs:** Always use persistent log files, NOT `docker logs` (lost on redeploy):
+  - `ssh root@147.182.215.135 "grep 'pattern' /var/log/kgolf/app.log"` — current day
+  - `ssh root@147.182.215.135 "zgrep 'pattern' /var/log/kgolf/app.log-YYYY-MM-DD.gz"` — past days (30-day retention)
 - **Deprecated:** Electron POS — use web POS at pos.konegolf.ca instead
 
 ## Production Quick Access

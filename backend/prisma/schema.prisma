@@ -308,6 +308,31 @@ model Coupon {
 }
 
 // ──────────────────────────────────────────────
+// Employee Clock In/Out
+// ──────────────────────────────────────────────
+
+model Employee {
+  id          String      @id @default(uuid())
+  name        String
+  pinHash     String      // scrypt-hashed PIN
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now()) @db.Timestamptz
+  updatedAt   DateTime    @updatedAt @db.Timestamptz
+  timeEntries TimeEntry[]
+}
+
+model TimeEntry {
+  id         String    @id @default(uuid())
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  clockIn    DateTime  @db.Timestamptz
+  clockOut   DateTime? @db.Timestamptz // null = currently clocked in
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+
+  @@index([employeeId, clockIn])
+}
+
+// ──────────────────────────────────────────────
 // Score Capture — bay PC screen capture results
 // ──────────────────────────────────────────────
 
