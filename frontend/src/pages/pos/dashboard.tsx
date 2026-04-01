@@ -6,7 +6,7 @@ import { buttonStyles } from '@/styles/buttonStyles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingBag, Clock, Users } from 'lucide-react';
+import { Plus, ShoppingBag, Users } from 'lucide-react';
 import { 
   listBookings, 
   listRooms, 
@@ -24,7 +24,7 @@ import { AdminHeader } from '@/components/AdminHeader';
 import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString, toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
 
 export default function POSDashboard() {
-  const { user } = useAuth();
+  const { user, employee, pinLogout } = useAuth();
   const navigate = useNavigate();
   const isReadOnly = user?.role === 'SALES';
   
@@ -357,14 +357,22 @@ export default function POSDashboard() {
               <CardDescription>Live view of currently occupied rooms</CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <Button 
-                onClick={() => navigate('/pos/clock')}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm"
-                size="sm"
-              >
-                <Clock className="h-4 w-4" />
-                <span>Clock In/Out</span>
-              </Button>
+              {employee && (
+                <div className="flex items-center gap-2 mr-2">
+                  <span className="text-sm text-slate-300 font-medium">{employee.name}</span>
+                  <Button
+                    onClick={async () => {
+                      await pinLogout();
+                      navigate('/pos');
+                    }}
+                    variant="outline"
+                    className="text-xs text-red-400 border-red-800 hover:bg-red-900/30"
+                    size="sm"
+                  >
+                    Clock Out
+                  </Button>
+                </div>
+              )}
               {user?.role === 'ADMIN' && (
               <Button 
                 onClick={() => navigate('/pos/time-management')}

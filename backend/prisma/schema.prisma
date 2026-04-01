@@ -312,13 +312,14 @@ model Coupon {
 // ──────────────────────────────────────────────
 
 model Employee {
-  id          String      @id @default(uuid())
-  name        String
-  pinHash     String      // scrypt-hashed PIN
-  active      Boolean     @default(true)
-  createdAt   DateTime    @default(now()) @db.Timestamptz
-  updatedAt   DateTime    @updatedAt @db.Timestamptz
-  timeEntries TimeEntry[]
+  id               String            @id @default(uuid())
+  name             String
+  pinHash          String            // scrypt-hashed PIN
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now()) @db.Timestamptz
+  updatedAt        DateTime          @updatedAt @db.Timestamptz
+  timeEntries      TimeEntry[]
+  employeeSessions EmployeeSession[]
 }
 
 model TimeEntry {
@@ -330,6 +331,37 @@ model TimeEntry {
   createdAt  DateTime  @default(now()) @db.Timestamptz
 
   @@index([employeeId, clockIn])
+}
+
+model EmployeeSession {
+  id           String   @id @default(uuid())
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId   String
+  timeEntryId  String?  // FK to the TimeEntry created at login
+  sessionToken String   @unique
+  expiresAt    DateTime @db.Timestamptz
+  createdAt    DateTime @default(now()) @db.Timestamptz
+
+  @@index([sessionToken])
+}
+
+// ──────────────────────────────────────────────
+// Activity Log — tracks all POS actions by employee
+// ──────────────────────────────────────────────
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  employeeId  String?  // null = action by admin via email login
+  employeeName String? // Denormalized for fast display
+  action      String   // e.g. "CREATE_BOOKING", "COMPLETE_BOOKING", "ADD_ORDER"
+  entityType  String   // e.g. "BOOKING", "ORDER", "INVOICE", "MENU_ITEM", "COUPON", "SETTING"
+  entityId    String?  // ID of the affected entity
+  details     Json?    // Additional context (customer name, amount, etc.)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@index([employeeId, createdAt])
+  @@index([entityType, createdAt])
+  @@index([createdAt])
 }
 
 // ──────────────────────────────────────────────

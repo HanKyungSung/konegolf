@@ -45,20 +45,49 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return next();
     }
 
-    // Otherwise check for session cookie (web app)
+    // Check for regular user session cookie
     const token = (req as any).cookies?.session;
-    if (!token) return res.status(401).json({ error: 'Unauthenticated' });
-    const session = await getSession(token);
-    if (!session) return res.status(401).json({ error: 'Unauthenticated' });
-    (req as any).user = { 
-      id: session.user.id, 
-      email: session.user.email, 
-      name: (session.user as any).name,
-      phone: (session.user as any).phone,
-      role: session.user.role 
-    };
-    (req as any).sessionToken = token;
-    return next();
+    if (token) {
+      const session = await getSession(token);
+      if (session) {
+        (req as any).user = { 
+          id: session.user.id, 
+          email: session.user.email, 
+          name: (session.user as any).name,
+          phone: (session.user as any).phone,
+          role: session.user.role 
+        };
+        (req as any).sessionToken = token;
+        return next();
+      }
+    }
+
+    // Check for employee session cookie
+    const empToken = (req as any).cookies?.employee_session;
+    if (empToken) {
+      const empSession = await prisma.employeeSession.findFirst({
+        where: { sessionToken: empToken, expiresAt: { gt: new Date() } },
+        include: { employee: { select: { id: true, name: true } } },
+      });
+      if (empSession) {
+        // Give employee admin-equivalent permissions
+        (req as any).user = {
+          id: empSession.employee.id,
+          email: null,
+          name: empSession.employee.name,
+          phone: null,
+          role: 'ADMIN',
+        };
+        (req as any).employee = {
+          id: empSession.employee.id,
+          name: empSession.employee.name,
+        };
+        (req as any).sessionToken = empToken;
+        return next();
+      }
+    }
+
+    return res.status(401).json({ error: 'Unauthenticated' });
   } catch (e) {
     logger.error({ err: e }, 'requireAuth error');
     return res.status(500).json({ error: 'Internal server error' });

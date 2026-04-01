@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import POSDashboard from './dashboard';
 import POSBookingDetail from './booking-detail';
 import POSMenuManagement from './menu-management';
-import POSClock from './clock';
 import POSTimeManagement from './time-management';
+import POSPinLogin from './pin-login';
 
 /**
  * POS Routes
- * Requires authenticated user with ADMIN, STAFF, or SALES role
+ * Shows PIN login page if no active session.
+ * PIN login gives full admin-level access.
+ * Regular email/password login also works.
  */
 export default function POSRoutes() {
-  const { user, isLoading } = useAuth();
+  const { user, employee, isLoading } = useAuth();
 
   // Wait for auth to finish loading
   if (isLoading) {
@@ -23,12 +25,13 @@ export default function POSRoutes() {
     );
   }
 
-  // Require authentication and ADMIN, STAFF, or SALES role
+  // No session at all — show PIN login
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <POSPinLogin />;
   }
 
-  if (user.role !== 'ADMIN' && user.role !== 'STAFF' && user.role !== 'SALES') {
+  // Regular user login without POS role — deny access
+  if (!employee && user.role !== 'ADMIN' && user.role !== 'STAFF' && user.role !== 'SALES') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
@@ -50,7 +53,6 @@ export default function POSRoutes() {
       <Route path="dashboard" element={<POSDashboard />} />
       <Route path="booking/:id" element={<BookingDetailWrapper />} />
       <Route path="menu" element={<MenuManagementWrapper />} />
-      <Route path="clock" element={<POSClock />} />
       <Route path="time-management" element={<TimeManagementWrapper />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>

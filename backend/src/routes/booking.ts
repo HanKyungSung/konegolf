@@ -11,6 +11,7 @@ import { UserRole } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { sendBookingConfirmation } from '../services/emailService';
 import { buildAtlanticDate, getAtlanticHourMinute } from '../utils/timezone';
+import { logActivity } from '../lib/activityLog';
 
 const router = Router();
 
@@ -288,6 +289,8 @@ router.patch('/:id/status', requireAuth, requireStaffOrAdmin, async (req, res) =
 
     req.log.info({ bookingId: id, from: booking.bookingStatus, to: status }, 'Booking status changed');
 
+    logActivity({ req, action: 'UPDATE_BOOKING_STATUS', entityType: 'BOOKING', entityId: id, details: { status } });
+
     return res.json({ 
       booking: presentBooking(updated),
       message: `Booking ${status.toLowerCase()} successfully` 
@@ -321,6 +324,8 @@ router.patch('/:id/players', requireAuth, requireStaffOrAdmin, async (req, res) 
         updatedAt: new Date(),
       },
     });
+
+    logActivity({ req, action: 'UPDATE_PLAYERS', entityType: 'BOOKING', entityId: id, details: { players } });
 
     return res.json({ 
       booking: presentBooking(updated),
@@ -936,6 +941,8 @@ router.post('/admin/create', requireAuth, requireStaffOrAdmin, async (req, res) 
 
       req.log.info({ bookingId: result.booking.id, userId: result.user.id, customerMode: 'new', bookingSource, total: pricing.totalPrice }, 'Admin booking created (new customer)');
 
+      logActivity({ req, action: 'CREATE_BOOKING', entityType: 'BOOKING', entityId: result.booking.id, details: { customerName: result.user.name, roomId } });
+
       return res.status(201).json({
         booking: presentBooking(result.booking),
         userCreated: true,
@@ -1007,6 +1014,8 @@ router.post('/admin/create', requireAuth, requireStaffOrAdmin, async (req, res) 
 
         req.log.info({ bookingId: result.booking.id, userId: result.user.id, customerMode: 'guest', bookingSource, total: pricing.totalPrice }, 'Admin booking created (guest)');
 
+        logActivity({ req, action: 'CREATE_BOOKING', entityType: 'BOOKING', entityId: result.booking.id, details: { customerName: result.user.name, roomId } });
+
         return res.status(201).json({
           booking: presentBooking(result.booking),
           userCreated: true,
@@ -1051,6 +1060,8 @@ router.post('/admin/create', requireAuth, requireStaffOrAdmin, async (req, res) 
     });
 
     req.log.info({ bookingId: booking.id, userId, customerMode: 'existing', bookingSource, total: pricing.totalPrice }, 'Admin booking created (existing customer)');
+
+    logActivity({ req, action: 'CREATE_BOOKING', entityType: 'BOOKING', entityId: booking.id, details: { customerName, roomId } });
 
     res.status(201).json({
       booking: presentBooking(booking),
@@ -1218,6 +1229,8 @@ router.post('/:bookingId/orders', requireAuth, async (req, res) => {
 
     req.log.info({ orderId: order.id, bookingId, seatIndex, menuItemId, customItemName, quantity, unitPrice, total: Number(order.totalPrice) }, 'Order added');
 
+    logActivity({ req, action: 'ADD_ORDER', entityType: 'ORDER', entityId: order.id, details: { menuItemId, quantity, seatIndex } });
+
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
@@ -1286,6 +1299,8 @@ router.patch('/orders/:orderId', requireAuth, async (req, res) => {
     const updatedOrder = await orderRepo.updateOrder(orderId, quantity);
     req.log.info({ orderId, bookingId, seatIndex, quantity }, 'Order updated');
 
+    logActivity({ req, action: 'UPDATE_ORDER', entityType: 'ORDER', entityId: orderId, details: { quantity } });
+
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
@@ -1351,6 +1366,8 @@ router.delete('/orders/:orderId', requireAuth, async (req, res) => {
     // Delete order
     await orderRepo.deleteOrder(orderId);
     req.log.info({ orderId, bookingId, seatIndex, unitPrice: Number(order.unitPrice), customItemName: order.customItemName }, 'Order deleted');
+
+    logActivity({ req, action: 'DELETE_ORDER', entityType: 'ORDER', entityId: orderId });
 
     // Recalculate invoice if seat-specific
     if (seatIndex) {
@@ -1491,6 +1508,8 @@ router.patch('/invoices/:invoiceId/pay', requireAuth, async (req, res) => {
 
     req.log.info({ invoiceId, bookingId, seatIndex, paymentMethod, tip: tip || 0, total: Number(updatedInvoice.totalAmount), allPaid, paymentsCount: updatedInvoice.payments.length }, 'Invoice paid');
 
+    logActivity({ req, action: 'PAY_INVOICE', entityType: 'INVOICE', entityId: invoiceId, details: { paymentMethod, amount: Number(updatedInvoice.totalAmount) } });
+
     return res.json({
       invoice: {
         id: updatedInvoice.id,
@@ -1571,6 +1590,8 @@ router.post('/invoices/:invoiceId/add-payment', requireAuth, async (req, res) =>
     const remaining = Math.max(0, Math.round((invoiceTotal - totalPaid) * 100) / 100);
 
     req.log.info({ invoiceId, bookingId, seatIndex, method, amount, remaining, status: updatedInvoice.status }, 'Payment added');
+
+    logActivity({ req, action: 'ADD_PAYMENT', entityType: 'INVOICE', entityId: invoiceId, details: { method, amount } });
 
     return res.json({
       invoice: {
@@ -1660,6 +1681,8 @@ router.patch('/invoices/:invoiceId/unpay', requireAuth, async (req, res) => {
 
     req.log.info({ invoiceId, bookingId, seatIndex: invoice.seatIndex, previousMethod: invoice.paymentMethod }, 'Invoice payment cancelled');
 
+    logActivity({ req, action: 'UNPAY_INVOICE', entityType: 'INVOICE', entityId: invoiceId });
+
     return res.json({
       invoice: {
         id: recalculated.id,
@@ -1742,6 +1765,8 @@ router.post('/:bookingId/complete', requireAuth, async (req, res) => {
     // Mark booking as completed
     const completed = await completeBooking(bookingId);
     req.log.info({ bookingId }, 'Booking completed');
+
+    logActivity({ req, action: 'COMPLETE_BOOKING', entityType: 'BOOKING', entityId: bookingId });
 
     return res.json({
       booking: presentBooking(completed),
