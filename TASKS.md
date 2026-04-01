@@ -3635,6 +3635,22 @@ Refactor booking status model from complex 4-field approach to simplified 2-fiel
 ## ✅ Completed Tasks Archive
 
 <details>
+<summary>PIN-Based POS Login & Activity Logging - 2026-04-01</summary>
+
+**Employee PIN login replaces shared admin account for POS, with full activity tracking:**
+[x] EmployeeSession model + migration — separate from user sessions, admin-equivalent permissions
+[x] PIN login/logout endpoints (POST /api/auth/pin-login, pin-logout) — auto clock-in/out
+[x] requireAuth middleware updated to recognize employee_session cookie
+[x] PIN pad login page at /pos — replaces old /pos/clock kiosk page
+[x] POS dashboard shows employee name + Clock Out button
+[x] ActivityLog model + migration — tracks all POS write operations per employee
+[x] logActivity helper (fire-and-forget) integrated into 20 write endpoints across 5 route files
+[x] Activity tab in Time Management dashboard with date/employee/type filters
+[x] Activity log API endpoint (GET /api/activity-log) with pagination
+Branch: feat/pin-login-activity-log, Commit: 6d2e3c1
+</details>
+
+<details>
 <summary>Gift Card Payment Method - 2026-02-28</summary>
 
 **Added GIFT_CARD as a payment method alongside CARD and CASH:**
