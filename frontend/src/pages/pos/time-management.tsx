@@ -13,8 +13,10 @@ import {
   listTimeEntries,
   listActiveTimeEntries,
   updateTimeEntry,
+  getEmployeeHours,
   type Employee,
   type TimeEntry,
+  type EmployeeHoursSummary,
 } from '@/services/pos-api';
 
 const TIMEZONE = 'America/Halifax';
@@ -50,13 +52,67 @@ function getTodayStr() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE }).format(new Date());
 }
 
+// Week helpers
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function getWeekStart(dateStr: string): Date {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.getDay(); // 0=Sun, 1=Mon...
+  const diff = day === 0 ? 6 : day - 1; // Shift so Mon=0
+  d.setDate(d.getDate() - diff);
+  return d;
+}
+
+function formatWeekRange(start: Date): string {
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: TIMEZONE });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+function getWeekDates(start: Date): string[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE }).format(d);
+  });
+}
+
+function getMonthLabel(year: number, month: number): string {
+  return new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function getMonthRange(year: number, month: number): { startDate: string; endDate: string } {
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+    endDate: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+  };
+}
+
+function formatMinutes(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${m}m`;
+}
+
+function downloadCsv(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 interface TimeManagementProps {
   onBack: () => void;
 }
 
 export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'active' | 'log' | 'employees'>('active');
+  const [tab, setTab] = useState<'active' | 'log' | 'weekly' | 'monthly' | 'employees'>('active');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeEntries, setActiveEntries] = useState<TimeEntry[]>([]);
   const [logEntries, setLogEntries] = useState<TimeEntry[]>([]);
@@ -66,6 +122,19 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   // Filters for log
   const [logDate, setLogDate] = useState(getTodayStr());
   const [logEmployeeId, setLogEmployeeId] = useState('');
+
+  // Weekly state
+  const [weekStart, setWeekStart] = useState(() => getWeekStart(getTodayStr()));
+  const [weeklySummaries, setWeeklySummaries] = useState<EmployeeHoursSummary[]>([]);
+  const [weeklyLoading, setWeeklyLoading] = useState(false);
+
+  // Monthly state
+  const [monthYear, setMonthYear] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
+  const [monthlySummaries, setMonthlySummaries] = useState<EmployeeHoursSummary[]>([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
 
   // Employee form
   const [showAddForm, setShowAddForm] = useState(false);
@@ -109,6 +178,32 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
     }
   }, []);
 
+  const loadWeekly = useCallback(async () => {
+    setWeeklyLoading(true);
+    try {
+      const dates = getWeekDates(weekStart);
+      const result = await getEmployeeHours({ startDate: dates[0], endDate: dates[6] });
+      setWeeklySummaries(result.summaries);
+    } catch (err: any) {
+      console.error('Failed to load weekly:', err);
+    } finally {
+      setWeeklyLoading(false);
+    }
+  }, [weekStart]);
+
+  const loadMonthly = useCallback(async () => {
+    setMonthlyLoading(true);
+    try {
+      const { startDate, endDate } = getMonthRange(monthYear.year, monthYear.month);
+      const result = await getEmployeeHours({ startDate, endDate });
+      setMonthlySummaries(result.summaries);
+    } catch (err: any) {
+      console.error('Failed to load monthly:', err);
+    } finally {
+      setMonthlyLoading(false);
+    }
+  }, [monthYear]);
+
   useEffect(() => {
     Promise.all([loadActive(), loadLog(), loadEmployees()])
       .finally(() => setLoading(false));
@@ -117,6 +212,14 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   useEffect(() => {
     loadLog();
   }, [logDate, logEmployeeId]);
+
+  useEffect(() => {
+    loadWeekly();
+  }, [weekStart]);
+
+  useEffect(() => {
+    loadMonthly();
+  }, [monthYear]);
 
   // Poll active entries every 30 seconds
   useEffect(() => {
@@ -208,8 +311,8 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
         )}
 
         {/* Tab Navigation */}
-        <div className="flex gap-2">
-          {(['active', 'log', 'employees'] as const).map(t => (
+        <div className="flex gap-2 flex-wrap">
+          {(['active', 'log', 'weekly', 'monthly', 'employees'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -219,7 +322,7 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
-              {t === 'active' ? `Active (${activeEntries.length})` : t === 'log' ? 'Daily Log' : 'Employees'}
+              {t === 'active' ? `Active (${activeEntries.length})` : t === 'log' ? 'Daily Log' : t === 'weekly' ? 'Weekly' : t === 'monthly' ? 'Monthly' : 'Employees'}
             </button>
           ))}
         </div>
@@ -348,6 +451,198 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
                     </div>
                   ))}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Weekly Tab ── */}
+        {tab === 'weekly' && (
+          <Card className="bg-slate-800 border-slate-700">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); }}
+                    className="text-slate-400 hover:text-white text-lg px-2"
+                  >◀</button>
+                  <CardTitle className="text-lg">{formatWeekRange(weekStart)}</CardTitle>
+                  <button
+                    onClick={() => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); }}
+                    className="text-slate-400 hover:text-white text-lg px-2"
+                  >▶</button>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto text-slate-300 border-slate-600"
+                  onClick={() => {
+                    const dates = getWeekDates(weekStart);
+                    let csv = 'Employee,Day,Date,Hours\n';
+                    for (const s of weeklySummaries) {
+                      for (const day of dates) {
+                        const dayMins = s.shifts.filter(sh => sh.date === day).reduce((sum, sh) => sum + sh.minutes, 0);
+                        if (dayMins > 0) {
+                          const dayName = new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', timeZone: TIMEZONE });
+                          csv += `"${s.employeeName}","${dayName}","${day}","${formatMinutes(dayMins)}"\n`;
+                        }
+                      }
+                      csv += `"${s.employeeName}","TOTAL","","${formatMinutes(s.totalMinutes)}"\n`;
+                    }
+                    downloadCsv(`hours-${dates[0]}-to-${dates[6]}.csv`, csv);
+                  }}
+                >
+                  Export CSV
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {weeklyLoading ? (
+                <p className="text-slate-500 text-sm">Loading...</p>
+              ) : weeklySummaries.length === 0 ? (
+                <p className="text-slate-500 text-sm">No hours recorded this week.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-700">
+                        <th className="text-left py-2 px-2 text-slate-400 font-medium">Employee</th>
+                        {DAY_NAMES.map(d => (
+                          <th key={d} className="text-center py-2 px-2 text-slate-400 font-medium">{d}</th>
+                        ))}
+                        <th className="text-center py-2 px-2 text-slate-400 font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {weeklySummaries.map(s => {
+                        const dates = getWeekDates(weekStart);
+                        const dayMinutes = dates.map(d =>
+                          s.shifts.filter(sh => sh.date === d).reduce((sum, sh) => sum + sh.minutes, 0)
+                        );
+                        const isOvertime = s.totalMinutes > 40 * 60;
+                        return (
+                          <tr key={s.employeeId} className="border-b border-slate-700/50">
+                            <td className="py-2 px-2 font-medium">{s.employeeName}</td>
+                            {dayMinutes.map((mins, i) => {
+                              const hasOpen = s.shifts.some(sh => sh.date === dates[i] && sh.isOpen);
+                              const isLong = mins > 8 * 60;
+                              return (
+                                <td key={i} className={`text-center py-2 px-2 ${
+                                  mins === 0 ? 'text-slate-600' :
+                                  isLong ? 'text-orange-400' : 'text-slate-300'
+                                }`}>
+                                  {mins === 0 ? '—' : formatMinutes(mins)}
+                                  {hasOpen && <span title="Still clocked in"> ⚠️</span>}
+                                </td>
+                              );
+                            })}
+                            <td className={`text-center py-2 px-2 font-semibold ${isOvertime ? 'text-red-400' : 'text-white'}`}>
+                              {formatMinutes(s.totalMinutes)}
+                              {isOvertime && <span title="Overtime (>40h)"> 🔴</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <div className="mt-3 flex gap-4 text-xs text-slate-500">
+                    <span>⚠️ = still clocked in</span>
+                    <span className="text-orange-400">Orange = shift &gt;8h</span>
+                    <span>🔴 = weekly overtime (&gt;40h)</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Monthly Tab ── */}
+        {tab === 'monthly' && (
+          <Card className="bg-slate-800 border-slate-700">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setMonthYear(prev => prev.month === 1 ? { year: prev.year - 1, month: 12 } : { ...prev, month: prev.month - 1 })}
+                    className="text-slate-400 hover:text-white text-lg px-2"
+                  >◀</button>
+                  <CardTitle className="text-lg">{getMonthLabel(monthYear.year, monthYear.month)}</CardTitle>
+                  <button
+                    onClick={() => setMonthYear(prev => prev.month === 12 ? { year: prev.year + 1, month: 1 } : { ...prev, month: prev.month + 1 })}
+                    className="text-slate-400 hover:text-white text-lg px-2"
+                  >▶</button>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto text-slate-300 border-slate-600"
+                  onClick={() => {
+                    const { startDate, endDate } = getMonthRange(monthYear.year, monthYear.month);
+                    let csv = 'Employee,Date,Clock In,Clock Out,Duration\n';
+                    for (const s of monthlySummaries) {
+                      for (const sh of s.shifts) {
+                        csv += `"${s.employeeName}","${sh.date}","${new Date(sh.clockIn).toLocaleTimeString('en-US', { timeZone: TIMEZONE })}","${sh.clockOut ? new Date(sh.clockOut).toLocaleTimeString('en-US', { timeZone: TIMEZONE }) : 'Open'}","${formatMinutes(sh.minutes)}"\n`;
+                      }
+                    }
+                    downloadCsv(`hours-${startDate}-to-${endDate}.csv`, csv);
+                  }}
+                >
+                  Export CSV
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {monthlyLoading ? (
+                <p className="text-slate-500 text-sm">Loading...</p>
+              ) : monthlySummaries.length === 0 ? (
+                <p className="text-slate-500 text-sm">No hours recorded this month.</p>
+              ) : (
+                <>
+                  {/* Summary cards */}
+                  <div className="mb-4 flex flex-wrap gap-3">
+                    <div className="bg-slate-900/50 rounded-lg px-4 py-2 border border-slate-700">
+                      <p className="text-xs text-slate-500">Total Hours</p>
+                      <p className="font-semibold">{formatMinutes(monthlySummaries.reduce((sum, s) => sum + s.totalMinutes, 0))}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg px-4 py-2 border border-slate-700">
+                      <p className="text-xs text-slate-500">Total Shifts</p>
+                      <p className="font-semibold">{monthlySummaries.reduce((sum, s) => sum + s.shiftCount, 0)}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg px-4 py-2 border border-slate-700">
+                      <p className="text-xs text-slate-500">Active Employees</p>
+                      <p className="font-semibold">{monthlySummaries.length}</p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-700">
+                          <th className="text-left py-2 px-2 text-slate-400 font-medium">Employee</th>
+                          <th className="text-center py-2 px-2 text-slate-400 font-medium">Total Hours</th>
+                          <th className="text-center py-2 px-2 text-slate-400 font-medium">Shifts</th>
+                          <th className="text-center py-2 px-2 text-slate-400 font-medium">Avg Shift</th>
+                          <th className="text-center py-2 px-2 text-slate-400 font-medium">Longest</th>
+                          <th className="text-center py-2 px-2 text-slate-400 font-medium">Days</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthlySummaries.map(s => (
+                          <tr key={s.employeeId} className="border-b border-slate-700/50">
+                            <td className="py-2 px-2 font-medium">{s.employeeName}</td>
+                            <td className="text-center py-2 px-2">{formatMinutes(s.totalMinutes)}</td>
+                            <td className="text-center py-2 px-2">{s.shiftCount}</td>
+                            <td className="text-center py-2 px-2 text-slate-400">{formatMinutes(s.avgShiftMinutes)}</td>
+                            <td className={`text-center py-2 px-2 ${s.longestShiftMinutes > 8 * 60 ? 'text-orange-400' : 'text-slate-400'}`}>
+                              {formatMinutes(s.longestShiftMinutes)}
+                            </td>
+                            <td className="text-center py-2 px-2 text-slate-400">{s.daysWorked}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

@@ -102,6 +102,31 @@ All cron jobs run inside the backend container using `node-cron` with `America/H
 |---|---|---|---|
 | Coupon expiry | Daily | `src/jobs/couponScheduler.ts` | Expires coupons past their end date |
 | Booking report | 7:00 AM Atlantic | `src/jobs/bookingReportScheduler.ts` | Emails uncompleted bookings from previous day |
+| Shift report | 11:00 PM Atlantic | `src/jobs/shiftReportScheduler.ts` | Emails daily employee clock-in/out summary |
+| Stale shift cleanup | Hourly | `src/jobs/staleShiftCleanup.ts` | Auto-closes shifts open >16h (sets clockOut = clockIn+8h) |
+| Weekly hours report | Mon 8:00 AM Atlantic | `src/jobs/weeklyHoursReport.ts` | Emails previous week's per-employee hours with overtime flags |
+
+### Employee Clock In/Out
+
+Employee time tracking via PIN-based identification on the POS dashboard.
+
+| Component | Details |
+|---|---|
+| **Models** | `Employee` (name, pinHash, active), `TimeEntry` (employeeId, clockIn, clockOut) |
+| **PIN storage** | scrypt hash via `authService.hashPassword()` — same as user passwords |
+| **API routes** | `backend/src/routes/employees.ts` (CRUD), `backend/src/routes/timeEntries.ts` (clock in/out/status) |
+| **Dashboard** | "Clock In/Out" button → PIN pad modal (clock-modal.tsx) |
+| **Admin view** | Time Management page (`/pos/time-management`) — Active, Daily Log, Employees tabs |
+| **Shift report** | Daily email at 11 PM Atlantic via `shiftReportScheduler.ts` |
+
+**Flow:**
+```
+Admin logs in (email/pw) → POS dashboard
+Staff taps "Clock In/Out" → enters PIN → check status → clock in or out
+Multiple employees can be clocked in simultaneously
+```
+
+> **Security note:** Admin login (email/password) secures the POS session. PIN is used only for employee identification (time tracking), not authentication.
 
 ### Versioning
 
@@ -217,7 +242,7 @@ cd backend && npx jest pricing.test.ts     # Run specific file
 
 - **Config:** `backend/jest.config.js` (ts-jest, 70% coverage threshold)
 - **Pattern:** Mirror functions locally, test with describe/it blocks
-- **Files:** `pricing.test.ts` (tax/price calc), `phone.test.ts` (phone normalization), `tax-distribution.test.ts` (split payment rounding)
+- **Files:** `pricing.test.ts` (tax/price calc), `phone.test.ts` (phone normalization), `tax-distribution.test.ts` (split payment rounding), `clock-in-out.test.ts` (employee PIN/clock validation)
 
 ### E2E Tests (Playwright)
 

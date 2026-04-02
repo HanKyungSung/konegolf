@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/use-auth';
 import POSDashboard from './dashboard';
 import POSBookingDetail from './booking-detail';
 import POSMenuManagement from './menu-management';
-import POSClock from './clock';
 import POSTimeManagement from './time-management';
 
 /**
@@ -50,7 +49,6 @@ export default function POSRoutes() {
       <Route path="dashboard" element={<POSDashboard />} />
       <Route path="booking/:id" element={<BookingDetailWrapper />} />
       <Route path="menu" element={<MenuManagementWrapper />} />
-      <Route path="clock" element={<POSClock />} />
       <Route path="time-management" element={<TimeManagementWrapper />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
