@@ -139,9 +139,28 @@ export default function ClockModal({ isOpen, onClose }: ClockModalProps) {
           <>
             <h2 className="text-lg font-bold text-white text-center mb-4">Enter Your PIN</h2>
 
+            {/* Hidden input for keyboard entry */}
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="\d*"
+              autoFocus
+              value={pin}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                setPin(val);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pin.length >= 4) handlePinSubmit();
+                if (e.key === 'Escape') handleClose();
+              }}
+              className="sr-only"
+              aria-label="PIN input"
+            />
+
             {/* PIN dots */}
             <div className="flex justify-center gap-2 mb-4">
-              {[0, 1, 2, 3, 4, 5].map(i => (
+              {[0, 1, 2, 3].map(i => (
                 <div
                   key={i}
                   className={`w-3 h-3 rounded-full ${
@@ -179,7 +198,7 @@ export default function ClockModal({ isOpen, onClose }: ClockModalProps) {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleClose} className="flex-1">
+              <Button variant="outline" onClick={handleClose} className="flex-1 border-slate-500 text-slate-200 hover:bg-slate-700">
                 Cancel
               </Button>
               <Button
@@ -210,7 +229,7 @@ export default function ClockModal({ isOpen, onClose }: ClockModalProps) {
             )}
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={reset} className="flex-1">
+              <Button variant="outline" onClick={reset} className="flex-1 border-slate-500 text-slate-200 hover:bg-slate-700">
                 Back
               </Button>
               {statusData.isClockedIn ? (
