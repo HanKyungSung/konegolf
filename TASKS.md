@@ -3410,7 +3410,7 @@ Refactor booking status model from complex 4-field approach to simplified 2-fiel
 
 ## ⏱️ Employee Clock In/Out — Aggregation Reports
 
-**Status:** 📋 PLANNED
+**Status:** ✅ COMPLETED
 **Priority:** MEDIUM
 **Depends on:** Employee clock in/out system (✅ completed)
 
@@ -3419,13 +3419,13 @@ Build aggregation reports for employee hours so the business owner can review we
 
 ### Tasks
 
-- [ ] **Weekly hours summary API** — `GET /api/reports/employee-hours?startDate=&endDate=` returns per-employee total hours, shift count, avg shift length for the date range
-- [ ] **Weekly summary view** — Add "Weekly" tab to Time Management page showing Mon–Sun breakdown per employee with total hours
-- [ ] **Monthly summary view** — Add "Monthly" tab with calendar-month aggregation, totals per employee
-- [ ] **CSV/PDF export** — Export button on weekly/monthly views to download hours report (CSV for spreadsheet, PDF for records)
-- [ ] **Overtime flagging** — Highlight shifts > 8 hours and weekly totals > 40 hours in the report UI
-- [ ] **Auto-clock-out for stale shifts** — Cron job to auto-close TimeEntries open > 16 hours (forgot to clock out)
-- [ ] **Email weekly summary** — Scheduled email (e.g. Monday morning) with previous week's hours to admin
+- [x] **Hours summary API** — `GET /api/reports/employee-hours?startDate=&endDate=&employeeId=` returns per-employee total hours, shift count, avg shift length, shifts array
+- [x] **Weekly summary view** — "Weekly" tab in Time Management with Mon–Sun breakdown, overtime (>40h) and long shift (>8h) flags
+- [x] **Monthly summary view** — "Monthly" tab with per-employee totals, summary cards (total hours, shifts, active employees)
+- [x] **CSV export** — Export button on weekly/monthly views downloads hours as CSV
+- [x] **Overtime flagging** — Weekly >40h flagged with 🔴, shifts >8h in orange, open shifts with ⚠️
+- [x] **Auto-clock-out for stale shifts** — Hourly cron closes entries open >16h, sets clockOut=clockIn+8h, marks `autoClockOut=true`
+- [x] **Weekly email report** — Monday 8 AM Atlantic, per-employee hours with overtime flags
 
 ### Notes
 - Timezone: America/Halifax for all hour calculations

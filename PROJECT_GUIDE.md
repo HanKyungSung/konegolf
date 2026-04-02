@@ -103,6 +103,8 @@ All cron jobs run inside the backend container using `node-cron` with `America/H
 | Coupon expiry | Daily | `src/jobs/couponScheduler.ts` | Expires coupons past their end date |
 | Booking report | 7:00 AM Atlantic | `src/jobs/bookingReportScheduler.ts` | Emails uncompleted bookings from previous day |
 | Shift report | 11:00 PM Atlantic | `src/jobs/shiftReportScheduler.ts` | Emails daily employee clock-in/out summary |
+| Stale shift cleanup | Hourly | `src/jobs/staleShiftCleanup.ts` | Auto-closes shifts open >16h (sets clockOut = clockIn+8h) |
+| Weekly hours report | Mon 8:00 AM Atlantic | `src/jobs/weeklyHoursReport.ts` | Emails previous week's per-employee hours with overtime flags |
 
 ### Employee Clock In/Out
 
