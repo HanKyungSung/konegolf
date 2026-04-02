@@ -21,6 +21,7 @@ import {
 import { BookingModal } from './booking-modal';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
+import ClockModal from './clock-modal';
 import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString, toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
 
 export default function POSDashboard() {
@@ -50,6 +51,9 @@ export default function POSDashboard() {
   // Booking modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
+
+  // Clock in/out modal state
+  const [showClockModal, setShowClockModal] = useState(false);
 
   // Timeline timezone: 'venue' (Atlantic) or 'browser' (local)
   const [timelineTz, setTimelineTz] = useState<'venue' | 'browser'>(() => {
@@ -358,7 +362,7 @@ export default function POSDashboard() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Button 
-                onClick={() => navigate('/pos/clock')}
+                onClick={() => setShowClockModal(true)}
                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm"
                 size="sm"
               >
@@ -724,6 +728,9 @@ export default function POSDashboard() {
         onOpenChange={setBookingModalOpen}
         onClose={closeBookingDetail}
       />
+
+      {/* Clock In/Out Modal */}
+      <ClockModal isOpen={showClockModal} onClose={() => setShowClockModal(false)} />
     </div>
   );
 }

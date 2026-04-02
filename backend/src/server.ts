@@ -24,6 +24,8 @@ import { WebSocketManager } from './services/websocket-manager';
 import { startCouponScheduler } from './jobs/couponScheduler';
 import { startBookingReportScheduler } from './jobs/bookingReportScheduler';
 import { startShiftReportScheduler } from './jobs/shiftReportScheduler';
+import { startStaleShiftCleanup } from './jobs/staleShiftCleanup';
+import { startWeeklyHoursReportScheduler } from './jobs/weeklyHoursReport';
 
 const app = express();
 
@@ -114,6 +116,8 @@ server.listen(port, () => {
   startCouponScheduler();
   startBookingReportScheduler();
   startShiftReportScheduler();
+  startStaleShiftCleanup();
+  startWeeklyHoursReportScheduler();
 });
 
 // Graceful shutdown

@@ -940,3 +940,43 @@ export async function updateTimeEntry(id: string, data: { clockIn?: string; cloc
   if (!res.ok) throw new Error(json.error || 'Failed to update time entry');
   return json.entry;
 }
+
+// ============= Employee Hours Report API =============
+
+export interface ShiftSummary {
+  date: string;
+  clockIn: string;
+  clockOut: string | null;
+  minutes: number;
+  isOpen: boolean;
+  autoClockOut?: boolean;
+}
+
+export interface EmployeeHoursSummary {
+  employeeId: string;
+  employeeName: string;
+  totalMinutes: number;
+  shiftCount: number;
+  avgShiftMinutes: number;
+  longestShiftMinutes: number;
+  daysWorked: number;
+  shifts: ShiftSummary[];
+}
+
+export async function getEmployeeHours(params: {
+  startDate: string;
+  endDate: string;
+  employeeId?: string;
+}): Promise<{ summaries: EmployeeHoursSummary[]; startDate: string; endDate: string }> {
+  const query = new URLSearchParams({ startDate: params.startDate, endDate: params.endDate });
+  if (params.employeeId) query.set('employeeId', params.employeeId);
+
+  const res = await fetch(`${API_BASE}/api/reports/employee-hours?${query.toString()}`, {
+    credentials: 'include',
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to load employee hours');
+  return json;
+}
+

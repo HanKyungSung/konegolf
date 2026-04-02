@@ -906,3 +906,75 @@ export async function sendShiftReportEmail({ to, date, employees }: ShiftReportE
 
   log.info({ to, subject, totalEmployees }, 'Shift report email sent successfully');
 }
+
+// ============= Weekly Hours Report Email =============
+
+export interface WeeklyHoursEmailParams {
+  to: string;
+  weekLabel: string; // e.g. "Mar 24 – Mar 30, 2026"
+  employees: Array<{
+    name: string;
+    totalHours: number;
+    totalMinutes: number;
+    shiftCount: number;
+    daysWorked: number;
+    isOvertime: boolean;
+  }>;
+}
+
+export async function sendWeeklyHoursEmail({ to, weekLabel, employees }: WeeklyHoursEmailParams) {
+  const totalEmployees = employees.length;
+  const overtimeCount = employees.filter(e => e.isOvertime).length;
+  const subject = `[Kone Golf] Weekly Hours Report — ${weekLabel}`;
+
+  const employeeRows = employees.map(emp => {
+    const totalStr = `${emp.totalHours}h ${emp.totalMinutes}m`;
+    const overtimeFlag = emp.isOvertime ? ' <span style="color:#e53e3e">🔴 OT</span>' : '';
+    return `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:500">${emp.name}${overtimeFlag}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${emp.shiftCount}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${emp.daysWorked}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:600;text-align:right${emp.isOvertime ? ';color:#e53e3e' : ''}">${totalStr}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html>
+<body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+  <h2 style="color:#1a202c;margin-bottom:4px">Weekly Hours Report</h2>
+  <p style="color:#718096;margin-top:0">${weekLabel} · ${totalEmployees} employee${totalEmployees !== 1 ? 's' : ''}${overtimeCount > 0 ? ` · <span style="color:#e53e3e">${overtimeCount} overtime</span>` : ''}</p>
+  <table style="width:100%;border-collapse:collapse;margin-top:16px">
+    <thead>
+      <tr style="background:#f7fafc">
+        <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e2e8f0;color:#4a5568;font-size:13px">Employee</th>
+        <th style="padding:8px 12px;text-align:center;border-bottom:2px solid #e2e8f0;color:#4a5568;font-size:13px">Shifts</th>
+        <th style="padding:8px 12px;text-align:center;border-bottom:2px solid #e2e8f0;color:#4a5568;font-size:13px">Days</th>
+        <th style="padding:8px 12px;text-align:right;border-bottom:2px solid #e2e8f0;color:#4a5568;font-size:13px">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${employeeRows}
+    </tbody>
+  </table>
+  <p style="color:#a0aec0;font-size:12px;margin-top:24px">This is an automated report from Kone Golf. Overtime = &gt;40 hours/week.</p>
+</body>
+</html>`;
+
+  const text = `Weekly Hours Report — ${weekLabel}\n\n${employees.map(e => `${e.name}: ${e.totalHours}h ${e.totalMinutes}m (${e.shiftCount} shifts, ${e.daysWorked} days)${e.isOvertime ? ' [OVERTIME]' : ''}`).join('\n')}`;
+
+  const transport = getTransport();
+  if (!transport) {
+    log.info({ to, weekLabel, employees: employees.map(e => ({ name: e.name, total: `${e.totalHours}h ${e.totalMinutes}m`, overtime: e.isOvertime })) }, 'Dev-log: weekly hours email (no transport)');
+    return;
+  }
+
+  await transport.sendMail({
+    from: process.env.EMAIL_FROM || 'K one Golf <no-reply@konegolf.ca>',
+    to,
+    subject,
+    text,
+    html,
+  });
+
+  log.info({ to, subject, totalEmployees }, 'Weekly hours email sent successfully');
+}

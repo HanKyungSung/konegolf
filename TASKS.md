@@ -14,9 +14,11 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 4. [POS Electron App - Phase 0](#pos-electron-app---phase-0)
 5. [Backend & Admin Features - Phase 1](#backend--admin-features---phase-1)
 6. [Simplified Booking Status & Invoice System - Phase 1.3](#phase-13-simplified-booking-status--full-pos-invoice-system)
-7. [Code Cleanup & Technical Debt](#code-cleanup--technical-debt)
-8. [Testing & Quality Assurance](#testing--quality-assurance)
-9. [Completed Tasks Archive](#completed-tasks-archive)
+7. [Employee Clock In/Out — Aggregation Reports](#employee-clock-inout--aggregation-reports)
+8. [Device Whitelisting](#device-whitelisting)
+9. [Code Cleanup & Technical Debt](#code-cleanup--technical-debt)
+10. [Testing & Quality Assurance](#testing--quality-assurance)
+11. [Completed Tasks Archive](#completed-tasks-archive)
 
 ---
 
@@ -3406,6 +3408,88 @@ Refactor booking status model from complex 4-field approach to simplified 2-fiel
 
 ---
 
+## ⏱️ Employee Clock In/Out — Aggregation Reports
+
+**Status:** ✅ COMPLETED
+**Priority:** MEDIUM
+**Depends on:** Employee clock in/out system (✅ completed)
+
+### Overview
+Build aggregation reports for employee hours so the business owner can review weekly/monthly totals, overtime, and export data.
+
+### Tasks
+
+- [x] **Hours summary API** — `GET /api/reports/employee-hours?startDate=&endDate=&employeeId=` returns per-employee total hours, shift count, avg shift length, shifts array
+- [x] **Weekly summary view** — "Weekly" tab in Time Management with Mon–Sun breakdown, overtime (>40h) and long shift (>8h) flags
+- [x] **Monthly summary view** — "Monthly" tab with per-employee totals, summary cards (total hours, shifts, active employees)
+- [x] **CSV export** — Export button on weekly/monthly views downloads hours as CSV
+- [x] **Overtime flagging** — Weekly >40h flagged with 🔴, shifts >8h in orange, open shifts with ⚠️
+- [x] **Auto-clock-out for stale shifts** — Hourly cron closes entries open >16h, sets clockOut=clockIn+8h, marks `autoClockOut=true`
+- [x] **Weekly email report** — Monday 8 AM Atlantic, per-employee hours with overtime flags
+
+### Notes
+- Timezone: America/Halifax for all hour calculations
+- The daily shift report email already exists (`shiftReportScheduler.ts`) — weekly builds on this
+- Consider: should employees see their own hours? (future feature)
+
+---
+
+## 🔒 Device Whitelisting
+
+**Status:** 📋 PLANNED
+**Priority:** HIGH
+**Depends on:** POS works on web (✅ completed)
+
+### Overview
+Restrict POS access to approved devices only. The business has one desktop, one tablet, and a few whitelisted phones. This prevents staff from accessing the POS from unauthorized devices/locations.
+
+### Approach Options
+
+**Option A: Device Fingerprint + Admin Approval (Recommended)**
+```
+New device visits /pos → sees "Device not registered" screen
+  → Generates a device fingerprint (browser + hardware signals)
+  → Shows a registration code
+Admin approves the code in Settings → device is whitelisted
+Approved devices can access POS normally
+```
+
+- Uses `fingerprintjs` or similar library to generate a stable device ID
+- Device ID stored in a `WhitelistedDevice` table with label (e.g. "Front desk tablet")
+- Admin can view, label, and revoke devices from Settings page
+- Device ID sent as a header on every POS request → backend validates
+
+**Option B: IP Whitelist (Simple but fragile)**
+- Store allowed IPs in settings
+- Reject POS requests from unknown IPs
+- ⚠️ ISP can change IP; mobile devices roam
+
+**Option C: One-Time Token per Device (QR code)**
+- Admin generates a token → displays QR code
+- Staff scans QR on new device → registers it
+- Token is consumed, device is whitelisted
+- Good for onboarding new devices
+
+### Recommended: Option A + C combined
+Use device fingerprinting for enforcement, QR code for easy onboarding.
+
+### Tasks
+
+- [ ] **WhitelistedDevice model** — `id, fingerprint, label, approvedAt, lastSeenAt, revokedAt`
+- [ ] **Device fingerprint frontend** — Generate stable device ID on POS load, send with requests
+- [ ] **Backend middleware** — `requireWhitelistedDevice` checks fingerprint for POS routes
+- [ ] **Device registration flow** — Unregistered device shows pending screen with code
+- [ ] **Admin device management** — Settings page to view/label/revoke devices
+- [ ] **QR code onboarding** (optional) — Admin generates QR → new device scans to register
+- [ ] **Graceful fallback** — If device whitelisting is disabled in settings, allow all (for initial setup)
+
+### Notes
+- Fingerprinting is not 100% stable (browser updates can change it) — include a fallback (e.g. localStorage token + fingerprint)
+- Admin login from any device should always work (whitelisting only applies to POS routes)
+- Devices: 1 desktop (Windows), 1 tablet (Android/iPad), 2-3 phones (iOS/Android)
+
+---
+
 ## 🧹 Code Cleanup & Technical Debt
 
 ### Payment Status Simplification
@@ -3633,6 +3717,26 @@ Refactor booking status model from complex 4-field approach to simplified 2-fiel
 ---
 
 ## ✅ Completed Tasks Archive
+
+<details>
+<summary>Employee Clock In/Out — Dashboard Modal - 2026-04-02</summary>
+
+**Simplified from PIN-as-auth to dashboard clock widget (admin login secures session, PIN is time tracking only):**
+[x] Reverted EmployeeSession, ActivityLog models, PIN auth endpoints, activity logging
+[x] Admin logs in with email/password (existing flow unchanged)
+[x] Clock In/Out modal on POS dashboard — PIN pad → status check → clock in or out → auto-close
+[x] Multiple employees can be clocked in simultaneously
+[x] Uses existing /api/time-entries/clock-in, clock-out, status endpoints
+[x] Time Management dashboard with Active, Daily Log, Employees tabs (unchanged from v1)
+Branch: feat/pin-login-activity-log, Commit: 1db0d6b
+</details>
+
+<details>
+<summary>PIN-Based POS Login & Activity Logging - 2026-04-01 (Superseded)</summary>
+
+**Superseded by dashboard modal approach above. PIN auth was too vulnerable.**
+Branch: feat/pin-login-activity-log, Commit: 6d2e3c1 (reverted in 1db0d6b)
+</details>
 
 <details>
 <summary>Gift Card Payment Method - 2026-02-28</summary>
