@@ -11,10 +11,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null
-  employee: { id: string; name: string } | null
   login: (email: string, password: string) => Promise<void>
-  pinLogin: (pin: string) => Promise<void>
-  pinLogout: () => Promise<void>
   signup: (name: string, email: string, phone: string, password: string, dateOfBirth: string) => Promise<{ message: string; expiresAt?: string }>
   logout: () => Promise<void>
   isLoading: boolean
@@ -27,7 +24,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [employee, setEmployee] = useState<{ id: string; name: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // Revalidate session from server; clear user on 401 or non-OK
@@ -38,7 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (res.ok) {
         const data = await res.json();
         setUser(data.user);
-        setEmployee(data.employee || null);
       } else {
         // 401 or any non-OK → treat as signed out
         if (user) {
@@ -117,31 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }
 
-  const pinLogin = async (pin: string) => {
-    const apiBase = process.env.REACT_APP_API_BASE !== undefined ? process.env.REACT_APP_API_BASE : 'http://localhost:8080';
-    const res = await fetch(`${apiBase}/api/auth/pin-login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ pin })
-    });
-    if (!res.ok) throw new Error(await getErrorMessage(res));
-    const data = await res.json();
-    setUser(data.user);
-    setEmployee(data.employee || null);
-  }
-
-  const pinLogout = async () => {
-    setUser(null);
-    setEmployee(null);
-    const apiBase = process.env.REACT_APP_API_BASE !== undefined ? process.env.REACT_APP_API_BASE : 'http://localhost:8080';
-    try {
-      await fetch(`${apiBase}/api/auth/pin-logout`, { method: 'POST', credentials: 'include' });
-    } catch {
-      // ignore network errors
-    }
-  }
-
   const signup = async (name: string, email: string, phone: string, password: string, dateOfBirth: string) => {
     const apiBase = process.env.REACT_APP_API_BASE !== undefined ? process.env.REACT_APP_API_BASE : 'http://localhost:8080';
     const res = await fetch(`${apiBase}/api/auth/register`, {
@@ -198,7 +168,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     setUser(null);
-    setEmployee(null);
     const apiBase = process.env.REACT_APP_API_BASE !== undefined ? process.env.REACT_APP_API_BASE : 'http://localhost:8080';
     try {
       await fetch(`${apiBase}/api/auth/logout`, { method: 'POST', credentials: 'include' });
@@ -207,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <AuthContext.Provider value={{ user, employee, login, pinLogin, pinLogout, signup, logout, isLoading, resendVerification, forgotPassword, resetPassword }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, signup, logout, isLoading, resendVerification, forgotPassword, resetPassword }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

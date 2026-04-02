@@ -6,7 +6,7 @@ import { buttonStyles } from '@/styles/buttonStyles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingBag, Users } from 'lucide-react';
+import { Plus, ShoppingBag, Clock, Users } from 'lucide-react';
 import { 
   listBookings, 
   listRooms, 
@@ -21,10 +21,11 @@ import {
 import { BookingModal } from './booking-modal';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
+import ClockModal from './clock-modal';
 import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString, toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
 
 export default function POSDashboard() {
-  const { user, employee, pinLogout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const isReadOnly = user?.role === 'SALES';
   
@@ -50,6 +51,9 @@ export default function POSDashboard() {
   // Booking modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
+
+  // Clock in/out modal state
+  const [showClockModal, setShowClockModal] = useState(false);
 
   // Timeline timezone: 'venue' (Atlantic) or 'browser' (local)
   const [timelineTz, setTimelineTz] = useState<'venue' | 'browser'>(() => {
@@ -357,22 +361,14 @@ export default function POSDashboard() {
               <CardDescription>Live view of currently occupied rooms</CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {employee && (
-                <div className="flex items-center gap-2 mr-2">
-                  <span className="text-sm text-slate-300 font-medium">{employee.name}</span>
-                  <Button
-                    onClick={async () => {
-                      await pinLogout();
-                      navigate('/pos');
-                    }}
-                    variant="outline"
-                    className="text-xs text-red-400 border-red-800 hover:bg-red-900/30"
-                    size="sm"
-                  >
-                    Clock Out
-                  </Button>
-                </div>
-              )}
+              <Button 
+                onClick={() => setShowClockModal(true)}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm"
+                size="sm"
+              >
+                <Clock className="h-4 w-4" />
+                <span>Clock In/Out</span>
+              </Button>
               {user?.role === 'ADMIN' && (
               <Button 
                 onClick={() => navigate('/pos/time-management')}
@@ -732,6 +728,9 @@ export default function POSDashboard() {
         onOpenChange={setBookingModalOpen}
         onClose={closeBookingDetail}
       />
+
+      {/* Clock In/Out Modal */}
+      <ClockModal isOpen={showClockModal} onClose={() => setShowClockModal(false)} />
     </div>
   );
 }

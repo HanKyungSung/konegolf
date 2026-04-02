@@ -3,7 +3,6 @@ import { prisma } from '../lib/prisma';
 // Provides endpoints for managing system-wide key-value settings
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/requireAuth';
-import { logActivity } from '../lib/activityLog';
 
 const router = Router();
 
@@ -246,7 +245,6 @@ router.put('/:key', requireAuth, async (req: Request, res: Response) => {
     });
 
     req.log.info({ key, updatedBy: user.id }, 'Setting updated');
-    logActivity({ req, action: 'UPDATE_SETTING', entityType: 'SETTING', entityId: String(updatedSetting.id), details: { key, value: stringValue } });
     res.json({
       ...updatedSetting,
       parsedValue: parseSettingValue(updatedSetting.value, updatedSetting.valueType),

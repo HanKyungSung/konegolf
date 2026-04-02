@@ -6,7 +6,6 @@ import { requireAdmin, requireStaffOrAdmin, requireSalesOrAbove } from '../middl
 import { createCoupon, validateCoupon, redeemCoupon, getPublicCoupon } from '../services/couponService';
 import * as invoiceRepo from '../repositories/invoiceRepo';
 import { sendCouponEmail } from '../services/emailService';
-import { logActivity } from '../lib/activityLog';
 
 const router = Router();
 
@@ -75,7 +74,6 @@ router.post('/:code/redeem', requireAuth, requireStaffOrAdmin, async (req: Reque
       invoiceSubtotal: Number(updatedInvoice.subtotal),
       invoiceTotal: Number(updatedInvoice.totalAmount),
     }, 'Coupon redeemed, invoice recalculated');
-    logActivity({ req, action: 'REDEEM_COUPON', entityType: 'COUPON', entityId: coupon.id, details: { code: req.params.code.toUpperCase(), bookingId } });
     res.json({ success: true, coupon, updatedInvoice });
   } catch (err: any) {
     req.log.error({ err, code: req.params.code }, 'Coupon redeem failed');
@@ -125,7 +123,6 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res: Response) 
     }
 
     req.log.info({ couponId: coupon.id, code: coupon.code, userId, couponTypeId, amount: Number(coupon.discountAmount) }, 'Coupon created');
-    logActivity({ req, action: 'CREATE_COUPON', entityType: 'COUPON', entityId: coupon.id, details: { code: coupon.code } });
     res.status(201).json(coupon);
   } catch (err: any) {
     req.log.error({ err }, 'Coupon create failed');

@@ -1,20 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import POSDashboard from './dashboard';
 import POSBookingDetail from './booking-detail';
 import POSMenuManagement from './menu-management';
 import POSTimeManagement from './time-management';
-import POSPinLogin from './pin-login';
 
 /**
  * POS Routes
- * Shows PIN login page if no active session.
- * PIN login gives full admin-level access.
- * Regular email/password login also works.
+ * Requires authenticated user with ADMIN, STAFF, or SALES role
  */
 export default function POSRoutes() {
-  const { user, employee, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Wait for auth to finish loading
   if (isLoading) {
@@ -25,13 +22,12 @@ export default function POSRoutes() {
     );
   }
 
-  // No session at all — show PIN login
+  // Require authentication and ADMIN, STAFF, or SALES role
   if (!user) {
-    return <POSPinLogin />;
+    return <Navigate to="/login" replace />;
   }
 
-  // Regular user login without POS role — deny access
-  if (!employee && user.role !== 'ADMIN' && user.role !== 'STAFF' && user.role !== 'SALES') {
+  if (user.role !== 'ADMIN' && user.role !== 'STAFF' && user.role !== 'SALES') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">

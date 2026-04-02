@@ -108,178 +108,18 @@ router.post('/verify', async (req, res) => {
 
 // GET /auth/me
 router.get('/me', async (req, res) => {
-  // Check regular user session first
   const token = readAuthCookie(req);
-  if (token) {
-    const session = await getSession(token);
-    if (session) {
-      return res.json({ user: { id: session.user.id, email: session.user.email, name: (session.user as any).name, phone: (session.user as any).phone, role: (session.user as any).role } });
-    }
-  }
-
-  // Check employee session
-  const empToken = readEmployeeCookie(req);
-  if (empToken) {
-    const empSession = await prisma.employeeSession.findFirst({
-      where: { sessionToken: empToken, expiresAt: { gt: new Date() } },
-      include: { employee: { select: { id: true, name: true } } },
-    });
-    if (empSession) {
-      return res.json({
-        user: {
-          id: empSession.employee.id,
-          name: empSession.employee.name,
-          email: null,
-          phone: null,
-          role: 'ADMIN',
-        },
-        employee: {
-          id: empSession.employee.id,
-          name: empSession.employee.name,
-        },
-      });
-    }
-  }
-
-  return res.status(401).json({ error: 'Unauthenticated' });
+  if (!token) return res.status(401).json({ error: 'Unauthenticated' });
+  const session = await getSession(token);
+  if (!session) return res.status(401).json({ error: 'Unauthenticated' });
+  return res.json({ user: { id: session.user.id, email: session.user.email, name: (session.user as any).name, phone: (session.user as any).phone, role: (session.user as any).role } });
 });
 
 // POST /auth/logout
 router.post('/logout', async (req, res) => {
   const token = readAuthCookie(req);
   if (token) await invalidateSession(token);
-
-  // Also check for employee session
-  const empToken = readEmployeeCookie(req);
-  if (empToken) {
-    try {
-      const empSession = await prisma.employeeSession.findFirst({
-        where: { sessionToken: empToken, expiresAt: { gt: new Date() } },
-      });
-      if (empSession && empSession.timeEntryId) {
-        // Auto clock-out
-        await prisma.timeEntry.updateMany({
-          where: { id: empSession.timeEntryId, clockOut: null },
-          data: { clockOut: new Date() },
-        });
-        req.log.info({ employeeId: empSession.employeeId, timeEntryId: empSession.timeEntryId }, 'Employee auto clocked out on logout');
-      }
-      await prisma.employeeSession.deleteMany({ where: { sessionToken: empToken } });
-    } catch (err) {
-      req.log.error({ err }, 'Error cleaning up employee session on logout');
-    }
-  }
   clearAuthCookie(res);
-  clearEmployeeCookie(res);
-  return res.json({ ok: true });
-});
-
-// ── PIN-based employee login/logout ──
-
-const pinLoginSchema = z.object({
-  pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must be digits only'),
-});
-
-// POST /auth/pin-login — authenticate via PIN, auto clock-in
-router.post('/pin-login', async (req, res) => {
-  const parsed = pinLoginSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Invalid PIN format' });
-
-  const { pin } = parsed.data;
-
-  // Find employee by PIN
-  const employees = await prisma.employee.findMany({
-    where: { active: true },
-    select: { id: true, name: true, pinHash: true },
-  });
-
-  let matchedEmployee: { id: string; name: string } | null = null;
-  for (const emp of employees) {
-    const ok = await verifyPassword(pin, emp.pinHash);
-    if (ok) {
-      matchedEmployee = { id: emp.id, name: emp.name };
-      break;
-    }
-  }
-
-  if (!matchedEmployee) {
-    return res.status(401).json({ error: 'Invalid PIN' });
-  }
-
-  // Close any existing open time entries for this employee
-  await prisma.timeEntry.updateMany({
-    where: { employeeId: matchedEmployee.id, clockOut: null },
-    data: { clockOut: new Date() },
-  });
-
-  // Create clock-in entry
-  const timeEntry = await prisma.timeEntry.create({
-    data: {
-      employeeId: matchedEmployee.id,
-      clockIn: new Date(),
-    },
-  });
-
-  // Create employee session
-  const { generatePlainToken } = require('../services/authService');
-  const sessionToken = generatePlainToken(24);
-  const expiresAt = new Date(Date.now() + 16 * 3600 * 1000); // 16 hour session
-
-  await prisma.employeeSession.create({
-    data: {
-      employeeId: matchedEmployee.id,
-      timeEntryId: timeEntry.id,
-      sessionToken,
-      expiresAt,
-    },
-  });
-
-  setEmployeeCookie(res, sessionToken);
-  req.log.info({ employeeId: matchedEmployee.id, name: matchedEmployee.name }, 'Employee PIN login + clock-in');
-
-  return res.json({
-    user: {
-      id: matchedEmployee.id,
-      name: matchedEmployee.name,
-      email: null,
-      phone: null,
-      role: 'ADMIN', // Full POS permissions
-    },
-    employee: {
-      id: matchedEmployee.id,
-      name: matchedEmployee.name,
-    },
-    clockIn: timeEntry.clockIn,
-  });
-});
-
-// POST /auth/pin-logout — auto clock-out + destroy session
-router.post('/pin-logout', async (req, res) => {
-  const empToken = readEmployeeCookie(req);
-  if (!empToken) return res.json({ ok: true });
-
-  try {
-    const empSession = await prisma.employeeSession.findFirst({
-      where: { sessionToken: empToken, expiresAt: { gt: new Date() } },
-      include: { employee: { select: { id: true, name: true } } },
-    });
-
-    if (empSession) {
-      // Auto clock-out
-      if (empSession.timeEntryId) {
-        await prisma.timeEntry.updateMany({
-          where: { id: empSession.timeEntryId, clockOut: null },
-          data: { clockOut: new Date() },
-        });
-      }
-      await prisma.employeeSession.deleteMany({ where: { sessionToken: empToken } });
-      req.log.info({ employeeId: empSession.employeeId, name: empSession.employee.name }, 'Employee PIN logout + clock-out');
-    }
-  } catch (err) {
-    req.log.error({ err }, 'Error during pin-logout');
-  }
-
-  clearEmployeeCookie(res);
   return res.json({ ok: true });
 });
 
@@ -387,8 +227,6 @@ router.post('/reset-password', async (req, res) => {
 // --- Cookie Helpers ---
 import type { Response, Request } from 'express';
 const COOKIE_NAME = 'session';
-const EMPLOYEE_COOKIE_NAME = 'employee_session';
-
 function setAuthCookie(res: Response, token: string) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
@@ -408,27 +246,6 @@ function clearAuthCookie(res: Response) {
 }
 function readAuthCookie(req: Request) {
   return (req.cookies && req.cookies[COOKIE_NAME]) || null;
-}
-
-function setEmployeeCookie(res: Response, token: string) {
-  res.cookie(EMPLOYEE_COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 16 * 3600 * 1000, // 16 hours
-  });
-}
-function clearEmployeeCookie(res: Response) {
-  res.clearCookie(EMPLOYEE_COOKIE_NAME, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-  });
-}
-function readEmployeeCookie(req: Request) {
-  return (req.cookies && req.cookies[EMPLOYEE_COOKIE_NAME]) || null;
 }
 
 export { router as authRouter };

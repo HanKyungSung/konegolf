@@ -13,10 +13,8 @@ import {
   listTimeEntries,
   listActiveTimeEntries,
   updateTimeEntry,
-  listActivityLog,
   type Employee,
   type TimeEntry,
-  type ActivityLogEntry,
 } from '@/services/pos-api';
 
 const TIMEZONE = 'America/Halifax';
@@ -58,23 +56,16 @@ interface TimeManagementProps {
 
 export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'active' | 'log' | 'activity' | 'employees'>('active');
+  const [tab, setTab] = useState<'active' | 'log' | 'employees'>('active');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeEntries, setActiveEntries] = useState<TimeEntry[]>([]);
   const [logEntries, setLogEntries] = useState<TimeEntry[]>([]);
-  const [activityEntries, setActivityEntries] = useState<ActivityLogEntry[]>([]);
-  const [activityTotal, setActivityTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Filters for log
   const [logDate, setLogDate] = useState(getTodayStr());
   const [logEmployeeId, setLogEmployeeId] = useState('');
-
-  // Filters for activity log
-  const [actDate, setActDate] = useState(getTodayStr());
-  const [actEmployeeId, setActEmployeeId] = useState('');
-  const [actEntityType, setActEntityType] = useState('');
 
   // Employee form
   const [showAddForm, setShowAddForm] = useState(false);
@@ -118,34 +109,14 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
     }
   }, []);
 
-  const loadActivity = useCallback(async () => {
-    try {
-      const result = await listActivityLog({
-        startDate: actDate,
-        endDate: actDate,
-        employeeId: actEmployeeId || undefined,
-        entityType: actEntityType || undefined,
-        limit: 100,
-      });
-      setActivityEntries(result.entries);
-      setActivityTotal(result.total);
-    } catch (err: any) {
-      console.error('Failed to load activity log:', err);
-    }
-  }, [actDate, actEmployeeId, actEntityType]);
-
   useEffect(() => {
-    Promise.all([loadActive(), loadLog(), loadEmployees(), loadActivity()])
+    Promise.all([loadActive(), loadLog(), loadEmployees()])
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     loadLog();
   }, [logDate, logEmployeeId]);
-
-  useEffect(() => {
-    loadActivity();
-  }, [actDate, actEmployeeId, actEntityType]);
 
   // Poll active entries every 30 seconds
   useEffect(() => {
@@ -238,7 +209,7 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
 
         {/* Tab Navigation */}
         <div className="flex gap-2">
-          {(['active', 'log', 'activity', 'employees'] as const).map(t => (
+          {(['active', 'log', 'employees'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -248,7 +219,7 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
-              {t === 'active' ? `Active (${activeEntries.length})` : t === 'log' ? 'Daily Log' : t === 'activity' ? 'Activity' : 'Employees'}
+              {t === 'active' ? `Active (${activeEntries.length})` : t === 'log' ? 'Daily Log' : 'Employees'}
             </button>
           ))}
         </div>
@@ -376,88 +347,6 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
                       )}
                     </div>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Activity Log Tab ── */}
-        {tab === 'activity' && (
-          <Card className="bg-slate-800 border-slate-700">
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <CardTitle className="text-lg">Activity Log</CardTitle>
-                <div className="flex gap-2 ml-auto flex-wrap">
-                  <Input
-                    type="date"
-                    value={actDate}
-                    onChange={(e) => setActDate(e.target.value)}
-                    className="bg-slate-900 border-slate-600 text-white w-40"
-                  />
-                  <select
-                    value={actEmployeeId}
-                    onChange={(e) => setActEmployeeId(e.target.value)}
-                    className="bg-slate-900 border border-slate-600 text-white rounded-md px-3 py-1.5 text-sm"
-                  >
-                    <option value="">All staff</option>
-                    {employees.filter(e => e.active).map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.name}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={actEntityType}
-                    onChange={(e) => setActEntityType(e.target.value)}
-                    className="bg-slate-900 border border-slate-600 text-white rounded-md px-3 py-1.5 text-sm"
-                  >
-                    <option value="">All types</option>
-                    <option value="BOOKING">Booking</option>
-                    <option value="ORDER">Order</option>
-                    <option value="INVOICE">Invoice</option>
-                    <option value="MENU_ITEM">Menu Item</option>
-                    <option value="COUPON">Coupon</option>
-                    <option value="SETTING">Setting</option>
-                  </select>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {activityEntries.length === 0 ? (
-                <p className="text-slate-500 text-sm">No activity for this date.</p>
-              ) : (
-                <div className="space-y-2">
-                  {activityEntries.map(entry => (
-                    <div key={entry.id} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm">{entry.employeeName || 'Admin'}</span>
-                            <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
-                              {entry.action.replace(/_/g, ' ')}
-                            </Badge>
-                            <Badge className="text-xs bg-slate-700 text-slate-300">
-                              {entry.entityType}
-                            </Badge>
-                          </div>
-                          {entry.details && Object.keys(entry.details).length > 0 && (
-                            <p className="text-slate-500 text-xs mt-1 truncate">
-                              {Object.entries(entry.details)
-                                .map(([k, v]) => `${k}: ${v}`)
-                                .join(' · ')}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-slate-500 text-xs whitespace-nowrap">
-                          {formatTime(entry.createdAt)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                  {activityTotal > activityEntries.length && (
-                    <p className="text-slate-500 text-xs text-center pt-2">
-                      Showing {activityEntries.length} of {activityTotal} entries
-                    </p>
-                  )}
                 </div>
               )}
             </CardContent>

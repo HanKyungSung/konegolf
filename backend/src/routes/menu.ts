@@ -8,7 +8,6 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireRole';
-import { logActivity } from '../lib/activityLog';
 
 const router = Router();
 
@@ -137,7 +136,6 @@ router.post('/items', requireAuth, requireAdmin, async (req: Request, res: Respo
 		};
 
 		req.log.info({ menuItemId: menuItem.id, name: menuItem.name, price: Number(menuItem.price), category: menuItem.category }, 'Menu item created');
-		logActivity({ req, action: 'CREATE_MENU_ITEM', entityType: 'MENU_ITEM', entityId: menuItem.id, details: { name: menuItem.name, price: Number(menuItem.price) } });
 		res.status(201).json({ success: true, item });
 	} catch (error: any) {
 		req.log.error({ err: error }, 'Create menu item failed');
@@ -187,7 +185,6 @@ router.patch('/items/:id', requireAuth, requireAdmin, async (req: Request, res: 
 		};
 
 		req.log.info({ menuItemId: id, name: menuItem.name, price: Number(menuItem.price) }, 'Menu item updated');
-		logActivity({ req, action: 'UPDATE_MENU_ITEM', entityType: 'MENU_ITEM', entityId: id, details: { name: menuItem.name } });
 		res.json({ success: true, item });
 	} catch (error: any) {
 		req.log.error({ err: error, menuItemId: req.params.id }, 'Update menu item failed');
@@ -220,7 +217,6 @@ router.delete('/items/:id', requireAuth, requireAdmin, async (req: Request, res:
 		});
 
 		req.log.info({ menuItemId: id }, 'Menu item deleted');
-		logActivity({ req, action: 'DELETE_MENU_ITEM', entityType: 'MENU_ITEM', entityId: id });
 		res.json({ success: true, message: 'Menu item deleted successfully' });
 	} catch (error: any) {
 		req.log.error({ err: error, menuItemId: req.params.id }, 'Delete menu item failed');
