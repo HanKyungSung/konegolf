@@ -3635,19 +3635,23 @@ Refactor booking status model from complex 4-field approach to simplified 2-fiel
 ## ✅ Completed Tasks Archive
 
 <details>
-<summary>PIN-Based POS Login & Activity Logging - 2026-04-01</summary>
+<summary>Employee Clock In/Out — Dashboard Modal - 2026-04-02</summary>
 
-**Employee PIN login replaces shared admin account for POS, with full activity tracking:**
-[x] EmployeeSession model + migration — separate from user sessions, admin-equivalent permissions
-[x] PIN login/logout endpoints (POST /api/auth/pin-login, pin-logout) — auto clock-in/out
-[x] requireAuth middleware updated to recognize employee_session cookie
-[x] PIN pad login page at /pos — replaces old /pos/clock kiosk page
-[x] POS dashboard shows employee name + Clock Out button
-[x] ActivityLog model + migration — tracks all POS write operations per employee
-[x] logActivity helper (fire-and-forget) integrated into 20 write endpoints across 5 route files
-[x] Activity tab in Time Management dashboard with date/employee/type filters
-[x] Activity log API endpoint (GET /api/activity-log) with pagination
-Branch: feat/pin-login-activity-log, Commit: 6d2e3c1
+**Simplified from PIN-as-auth to dashboard clock widget (admin login secures session, PIN is time tracking only):**
+[x] Reverted EmployeeSession, ActivityLog models, PIN auth endpoints, activity logging
+[x] Admin logs in with email/password (existing flow unchanged)
+[x] Clock In/Out modal on POS dashboard — PIN pad → status check → clock in or out → auto-close
+[x] Multiple employees can be clocked in simultaneously
+[x] Uses existing /api/time-entries/clock-in, clock-out, status endpoints
+[x] Time Management dashboard with Active, Daily Log, Employees tabs (unchanged from v1)
+Branch: feat/pin-login-activity-log, Commit: 1db0d6b
+</details>
+
+<details>
+<summary>PIN-Based POS Login & Activity Logging - 2026-04-01 (Superseded)</summary>
+
+**Superseded by dashboard modal approach above. PIN auth was too vulnerable.**
+Branch: feat/pin-login-activity-log, Commit: 6d2e3c1 (reverted in 1db0d6b)
 </details>
 
 <details>
