@@ -3719,6 +3719,15 @@ Use device fingerprinting for enforcement, QR code for easy onboarding.
 ## ✅ Completed Tasks Archive
 
 <details>
+<summary>Favicon — K Lettermark SVG - 2026-04-02</summary>
+
+[x] Created SVG favicon with bold "K" on emerald gradient rounded square
+[x] Added `<link rel="icon">` to `frontend/index.html`
+[x] Webpack CopyWebpackPlugin serves from `frontend/public/`
+Branch: main, Commit: 49f72f9
+</details>
+
+<details>
 <summary>Employee Clock In/Out — Dashboard Modal - 2026-04-02</summary>
 
 **Simplified from PIN-as-auth to dashboard clock widget (admin login secures session, PIN is time tracking only):**

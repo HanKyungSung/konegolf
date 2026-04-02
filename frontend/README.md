@@ -94,6 +94,7 @@ k-golf/
 ├── lib/                  # Utility functions
 │   └── utils.ts
 ├── public/               # Static assets
+│   └── favicon.svg      # K lettermark SVG favicon (emerald gradient)
 ├── src/                  # Application entry point
 │   ├── main.tsx         # React app entry
 │   ├── App.tsx          # Main app component with routing
