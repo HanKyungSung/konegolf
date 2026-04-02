@@ -900,10 +900,10 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
                 <div className="flex items-start gap-3">
                   <div className="min-w-[90px]"></div>
                   <div className="flex-1 flex">
-                    {Array.from({ length: 15 }, (_, i) => {
+                    {Array.from({ length: 14 }, (_, i) => {
                       const hour = i + 10; // Start at 10 AM
-                      const displayHour = hour === 24 ? 12 : hour > 12 ? hour - 12 : hour;
-                      const period = hour < 12 || hour === 24 ? 'A' : 'P';
+                      const displayHour = hour > 12 ? hour - 12 : hour;
+                      const period = hour < 12 ? 'A' : 'P';
                       return (
                         <div key={i} className="flex-1 text-left">
                           <span className="text-[9px] text-slate-500 pl-1">{displayHour}{period}</span>
@@ -933,7 +933,7 @@ function TimelineView({ bookings, rooms, onBookingClick, currentWeekStart, setCu
                       <div className="flex-1 relative h-14 bg-slate-700/30 rounded-lg border border-slate-700 overflow-hidden">
                         {/* Hour Grid Lines */}
                         <div className="absolute inset-0 flex">
-                          {Array.from({ length: 15 }, (_, i) => (
+                          {Array.from({ length: 14 }, (_, i) => (
                             <div key={i} className="flex-1 border-r border-slate-700/40 last:border-r-0"></div>
                           ))}
                         </div>
