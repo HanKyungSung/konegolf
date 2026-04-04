@@ -114,7 +114,7 @@ server.listen(port, () => {
 
   // Start daily schedulers
   startCouponScheduler();
-  startBookingReportScheduler();
+  // startBookingReportScheduler(); // Paused — re-enable when needed
   startShiftReportScheduler();
   startStaleShiftCleanup();
   startWeeklyHoursReportScheduler();
