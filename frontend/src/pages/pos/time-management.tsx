@@ -142,6 +142,8 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   const [newPin, setNewPin] = useState('');
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
+  const [resetPinId, setResetPinId] = useState<string | null>(null);
+  const [resetPinValue, setResetPinValue] = useState('');
 
   // Edit time entry
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
@@ -252,6 +254,19 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
       await loadEmployees();
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  const handleResetPin = async (empId: string) => {
+    if (!/^\d{4,6}$/.test(resetPinValue)) { setFormError('PIN must be 4–6 digits'); return; }
+    try {
+      await updateEmployee(empId, { pin: resetPinValue });
+      setResetPinId(null);
+      setResetPinValue('');
+      setFormError('');
+      await loadEmployees();
+    } catch (err: any) {
+      setFormError(err.message);
     }
   };
 
@@ -692,24 +707,59 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
               {/* Employee List */}
               <div className="space-y-2">
                 {employees.map(emp => (
-                  <div key={emp.id} className="flex items-center justify-between bg-slate-900/50 rounded-lg p-3 border border-slate-700">
-                    <div>
-                      <span className="font-medium">{emp.name}</span>
-                      {!emp.active && (
-                        <Badge variant="outline" className="ml-2 text-slate-500 border-slate-600">Inactive</Badge>
-                      )}
+                  <div key={emp.id} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">{emp.name}</span>
+                        {emp.pin && (
+                          <span className="text-xs text-slate-400 font-mono bg-slate-800 px-2 py-0.5 rounded">PIN: {emp.pin}</span>
+                        )}
+                        {!emp.pin && (
+                          <span className="text-xs text-amber-400">No PIN visible</span>
+                        )}
+                        {!emp.active && (
+                          <Badge variant="outline" className="text-slate-500 border-slate-600">Inactive</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-slate-300 border-slate-600 hover:bg-slate-700"
+                          onClick={() => { setResetPinId(resetPinId === emp.id ? null : emp.id); setResetPinValue(''); setFormError(''); }}
+                        >
+                          Reset PIN
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className={emp.active
+                            ? 'text-red-400 border-red-800 hover:bg-red-900/30'
+                            : 'text-green-400 border-green-800 hover:bg-green-900/30'
+                          }
+                          onClick={() => handleToggleActive(emp)}
+                        >
+                          {emp.active ? 'Deactivate' : 'Reactivate'}
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={emp.active
-                        ? 'text-red-400 border-red-800 hover:bg-red-900/30'
-                        : 'text-green-400 border-green-800 hover:bg-green-900/30'
-                      }
-                      onClick={() => handleToggleActive(emp)}
-                    >
-                      {emp.active ? 'Deactivate' : 'Reactivate'}
-                    </Button>
+                    {resetPinId === emp.id && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="New PIN (4–6 digits)"
+                            type="text"
+                            value={resetPinValue}
+                            onChange={(e) => { setResetPinValue(e.target.value.replace(/\D/g, '').slice(0, 6)); setFormError(''); }}
+                            className="bg-slate-900 border-slate-600 text-white w-48"
+                            autoFocus
+                          />
+                          <Button size="sm" onClick={() => handleResetPin(emp.id)}>Save</Button>
+                          <Button size="sm" variant="ghost" className="text-slate-400" onClick={() => { setResetPinId(null); setFormError(''); }}>Cancel</Button>
+                        </div>
+                        {formError && <p className="text-red-400 text-xs">{formError}</p>}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {employees.length === 0 && (

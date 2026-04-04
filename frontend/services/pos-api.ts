@@ -776,6 +776,7 @@ export async function sendReceiptEmail(
 export interface Employee {
   id: string;
   name: string;
+  pin: string | null;
   active: boolean;
   createdAt: string;
   updatedAt?: string;

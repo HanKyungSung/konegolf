@@ -314,6 +314,7 @@ model Coupon {
 model Employee {
   id               String            @id @default(uuid())
   name             String
+  pin              String?           // plaintext PIN for admin display
   pinHash          String            // scrypt-hashed PIN
   active           Boolean           @default(true)
   createdAt        DateTime          @default(now()) @db.Timestamptz

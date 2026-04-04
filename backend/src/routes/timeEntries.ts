@@ -37,12 +37,18 @@ const editSchema = z.object({
 async function findEmployeeByPin(pin: string) {
   const employees = await prisma.employee.findMany({
     where: { active: true },
-    select: { id: true, name: true, pinHash: true },
+    select: { id: true, name: true, pin: true, pinHash: true },
   });
 
   for (const emp of employees) {
     const match = await verifyPassword(pin, emp.pinHash);
-    if (match) return { id: emp.id, name: emp.name };
+    if (match) {
+      // Backfill plaintext pin for employees created before this field existed
+      if (!emp.pin) {
+        await prisma.employee.update({ where: { id: emp.id }, data: { pin } });
+      }
+      return { id: emp.id, name: emp.name };
+    }
   }
   return null;
 }
