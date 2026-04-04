@@ -18,6 +18,7 @@ import {
   getBooking, 
   updateBookingStatus as apiUpdateBookingStatus,
   updateBookingPlayers as apiUpdateBookingPlayers,
+  extendBooking as apiExtendBooking,
   listRooms,
   listMenuItems,
   getGlobalTaxRate,
@@ -1010,6 +1011,16 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
     }
   };
 
+  const handleExtendBooking = async () => {
+    try {
+      await apiExtendBooking(bookingId);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to extend booking:', err);
+      alert(`${err instanceof Error ? err.message : 'Failed to extend booking'}`);
+    }
+  };
+
   const handleReopenBooking = async () => {
     try {
       await apiUpdateBookingStatus(bookingId, 'BOOKED');
@@ -1747,41 +1758,42 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       </TabsList>
                     </div>
                     
-                    {/* Custom Item Button */}
-                    <div className="mt-4">
+                    {/* Action Buttons */}
+                    <div className={`grid ${booking.bookingSource !== 'QUICK_SALE' ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-4`}>
                       <Button
                         onClick={() => setShowCustomItemDialog(true)}
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-6 text-lg shadow-lg"
+                        className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold h-auto p-2"
                       >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Custom Item
+                        <Plus className="w-5 h-5 mb-1" />
+                        <span className="text-xs leading-tight">Custom</span>
                       </Button>
-                    </div>
-
-                    {/* Discount Button */}
-                    <div className="mt-2">
                       <Button
                         onClick={() => setShowDiscountDialog(true)}
-                        className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-6 text-lg shadow-lg"
+                        className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold h-auto p-2"
                       >
-                        <Minus className="w-5 h-5 mr-2" />
-                        Discount
+                        <Minus className="w-5 h-5 mb-1" />
+                        <span className="text-xs leading-tight">Discount</span>
                       </Button>
-                    </div>
-
-                    {/* Apply Coupon Button */}
-                    <div className="mt-2">
                       <Button
                         onClick={() => {
                           setCouponCode('');
                           setCouponData(null);
                           setShowCouponDialog(true);
                         }}
-                        className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold py-6 text-lg shadow-lg"
+                        className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold h-auto p-2"
                       >
-                        <Ticket className="w-5 h-5 mr-2" />
-                        Apply Coupon
+                        <Ticket className="w-5 h-5 mb-1" />
+                        <span className="text-xs leading-tight">Coupon</span>
                       </Button>
+                      {booking.bookingSource !== 'QUICK_SALE' && (
+                        <Button
+                          onClick={handleExtendBooking}
+                          className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-semibold h-auto p-2"
+                        >
+                          <Clock className="w-5 h-5 mb-1" />
+                          <span className="text-xs leading-tight">+30m</span>
+                        </Button>
+                      )}
                     </div>
 
                     {(['hours', 'food', 'drinks', 'appetizers', 'desserts'] as const).map((category) => (

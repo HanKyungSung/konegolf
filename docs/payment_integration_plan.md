@@ -6,34 +6,358 @@
 
 ---
 
-## Phase 1 — Receipt Photo Upload & Auto-Match (Near-term) ⬅️ START HERE
+## Phase 1 — Receipt Photo Upload & Reconciliation (Near-term) ⬅️ START HERE
 
-**Problem:** Staff currently send receipt photos via messaging app. Han manually cross-checks each receipt against bookings — time-consuming and error-prone.
+**Problem:** Staff complete card payments on the Move/5000 terminal, then send receipt photos via messaging app. Han manually cross-checks each receipt photo against bookings — time-consuming and error-prone.
 
-**Solution:** Staff photograph the card receipt on the store tablet, upload it through the POS, and the system auto-matches it to the corresponding booking.
+**Solution:** Staff photograph the card receipt on the store tablet and attach it directly to the payment inside the POS. An admin reconciliation view shows which card payments have receipts and which don't.
 
-### Flow
+---
+
+### How It Works Today (Pain Points)
+
 ```
-Staff completes card payment on Move/5000
-  → Takes photo of receipt on tablet
-  → Opens booking in POS → taps "Attach Receipt"
-  → Uploads photo + enters amount & last 4 digits of card
-  → System marks booking as paid, stores receipt image as proof
-  → Admin dashboard shows matched vs unmatched receipts
+Terminal processes card → staff gets paper receipt
+  → Staff takes phone photo → sends to Han via text/WhatsApp
+  → Han opens photo, reads amount/date
+  → Han searches bookings, finds the matching one
+  → Han mentally marks it as "verified"
+  → No audit trail, easy to miss receipts
 ```
 
-### Implementation Tasks
-- [ ] **Receipt Upload API** — `POST /api/receipts/upload` (multipart, stores image in S3 or local volume)
-- [ ] **Receipt model** — `Receipt { id, bookingId, imagePath, amount, last4, authCode?, uploadedBy, createdAt }`
-- [ ] **POS UI: Attach Receipt** — button on booking detail, opens camera/file picker, form for amount + last 4
-- [ ] **Auto-match logic** — match receipt to booking by amount + date proximity, flag conflicts
-- [ ] **Admin Reconciliation Dashboard** — list of receipts with match status (matched / unmatched / mismatch)
-- [ ] **Unmatched alerts** — highlight bookings marked "CARD" with no receipt after 24h
+### Proposed Flow
 
-### Benefits
-- Eliminates manual photo checking via messaging apps
-- Receipt images stored with booking as audit trail
-- Reconciliation dashboard gives admin visibility without being on-site
+```
+Terminal processes card → staff gets paper receipt → keeps receipt aside
+
+  ... later, during downtime ...
+
+  → Staff opens "Pending Receipts" queue in POS
+  → Sees list of card payments missing receipts
+  → Taps [ 📸 Add ] → camera opens → snaps receipt → uploads
+  → Item disappears from queue → repeat until queue is empty
+
+  ... or from booking detail ...
+
+  → Staff opens specific booking → taps 📷 next to CARD payment → uploads
+
+  ... admin checks remotely ...
+
+  → Admin opens Reconciliation view → sees all card payments
+  → Green = receipt attached, Red = missing → click to view photo
+```
+
+---
+
+### Architecture Decisions
+
+#### 1. Where to attach the receipt?
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Payment record** ✅ | 1:1 with card swipe; most accurate | Split payments = multiple records |
+| Invoice | Simpler (one per seat) | Doesn't map to individual card swipes |
+| Booking | Simplest | Too coarse — booking has multiple seats/payments |
+
+**Decision:** Attach to the **Payment** model. Each card swipe = one Payment record = one receipt photo. This matches reality: staff swipes card, gets one receipt, uploads one photo.
+
+#### 2. File storage strategy
+
+The project already uses local filesystem uploads for score screenshots:
+- `uploads/screenshots/` with Docker volume `score_uploads:/app/uploads`
+- multer `memoryStorage()` → write to disk pattern (in `scores.ts`)
+- Serving via `res.sendFile()` with auth check
+
+**Decision:** Follow the same pattern. Store receipt images in `uploads/receipts/{date}/{paymentId}.jpg`. The existing Docker volume already covers `/app/uploads`.
+
+#### 3. When does staff upload?
+
+| Option | Pros | Cons |
+|--------|------|------|
+| During payment dialog | Fewest steps | Slows down payment flow; camera on every card swipe |
+| Immediately after payment | Fresh context | Still interrupts workflow during busy periods |
+| **Later, from booking detail** ✅ | Non-disruptive; staff does it during downtime | Receipts pile up if forgotten |
+| Batch upload (separate page) | Upload many at once | Needs auto-match logic; more complex |
+
+**Decision:** Staff uploads receipts **later when free** — they open the booking, tap the 📷 icon next to the CARD payment, snap a photo. To help them find bookings that need receipts, the POS booking list shows a "needs receipt" badge, and a dedicated **Pending Receipts** queue lets them work through unmatched card payments quickly.
+
+---
+
+### Data Model Changes
+
+```prisma
+model Payment {
+  id          String   @id @default(uuid())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId   String
+  method      String   // CARD | CASH | GIFT_CARD
+  amount      Decimal  @db.Decimal(10, 2)
+  receiptPath String?  // NEW — relative path: "receipts/2026-04-02/abc123.jpg"
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@index([invoiceId])
+}
+```
+
+**Migration:** One new nullable column — zero downtime, no data loss.
+
+---
+
+### API Endpoints
+
+#### Upload Receipt
+```
+POST /api/payments/:paymentId/receipt
+Content-Type: multipart/form-data
+Body: { image: File (JPEG/PNG, max 5MB) }
+Auth: requireAuth + requireStaffOrAdmin
+
+Response 200: { receiptPath: "receipts/2026-04-02/abc123.jpg" }
+Response 404: Payment not found
+Response 400: No image / invalid format / file too large
+```
+
+#### View Receipt
+```
+GET /api/payments/:paymentId/receipt
+Auth: requireAuth + requireStaffOrAdmin
+
+Response 200: image/jpeg binary stream
+Response 404: No receipt attached / file missing
+```
+
+#### Delete Receipt
+```
+DELETE /api/payments/:paymentId/receipt
+Auth: requireAuth + requireAdmin
+
+Response 200: { success: true }
+```
+
+#### Reconciliation Report
+```
+GET /api/reports/receipt-reconciliation?startDate=&endDate=
+Auth: requireAuth + requireAdmin
+
+Response 200: {
+  summary: { total: 42, withReceipt: 35, missing: 7 },
+  payments: [
+    {
+      paymentId, method, amount, createdAt, hasReceipt,
+      invoice: { id, seatIndex, status },
+      booking: { id, customerName, startTime, roomName }
+    }
+  ]
+}
+```
+
+#### Pending Receipts (for staff queue)
+```
+GET /api/payments/pending-receipts?date=2026-04-02
+Auth: requireAuth + requireStaffOrAdmin
+
+Response 200: [
+  {
+    paymentId, method, amount, createdAt,
+    booking: { id, customerName, startTime, roomName }
+  }
+]
+```
+
+Returns CARD/GIFT_CARD payments with no `receiptPath`. Defaults to today.
+
+---
+
+### POS UI Changes
+
+#### 1. Booking List — "Needs Receipt" Badge (dashboard / booking list)
+
+Card-paid bookings without receipt photos show a small badge so staff can spot them:
+
+```
+┌─────────────────────────────────────────────────┐
+│  Today's Bookings                                │
+│                                                  │
+│  10:00  Room 1  Bob Lee      $45.00  PAID ✅     │
+│  11:30  Room 2  Alice Kim    $90.00  PAID ✅     │
+│  2:00   Room 1  John Smith   $45.00  PAID 📷    │  ← needs receipt
+│  3:30   Room 2  Walk-in      $45.00  PAID 📷    │  ← needs receipt
+│  5:00   Room 1  Jane Doe     $67.50  UNPAID      │
+└─────────────────────────────────────────────────┘
+```
+
+- 📷 badge = at least one CARD/GIFT_CARD payment has no receipt
+- ✅ = all card payments have receipts (or payment was cash-only)
+- Tapping the booking opens detail → staff can attach receipt there
+
+#### 2. Pending Receipts Queue (new page or tab)
+
+A dedicated view so staff can batch-process receipts during downtime:
+
+```
+┌──────────────────────────────────────────────────────┐
+│  📷 Pending Receipts                    3 remaining  │
+│                                                      │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  Room 1 │ 2:00 PM │ John Smith                 │  │
+│  │  💳 Card  $45.00                   [ 📸 Add ]  │  │
+│  └────────────────────────────────────────────────┘  │
+│                                                      │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  Room 2 │ 3:30 PM │ Walk-in                    │  │
+│  │  💳 Card  $45.00                   [ 📸 Add ]  │  │
+│  └────────────────────────────────────────────────┘  │
+│                                                      │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  Room 1 │ 5:30 PM │ Jane Doe                   │  │
+│  │  💳 Card  $67.50                   [ 📸 Add ]  │  │
+│  └────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────┘
+```
+
+- Shows only CARD/GIFT_CARD payments missing receipts (today by default)
+- One-tap to open camera → snap → upload → item disappears from queue
+- Counter shows remaining — satisfying to clear to zero
+- Date filter to catch older missed receipts
+
+#### 3. Booking Detail — Receipt Attachment (booking-detail.tsx)
+
+After a CARD payment is recorded, each payment row shows:
+
+```
+┌─────────────────────────────────────────────┐
+│  💳 Card           $45.00    📷  ✅         │
+│  💵 Cash (tip)      $8.00                   │
+├─────────────────────────────────────────────┤
+│  Total Paid        $53.00                   │
+└─────────────────────────────────────────────┘
+```
+
+- 📷 = "Attach Receipt" button (opens camera/file picker)
+- ✅ = receipt already uploaded (click to view full-screen)
+- Only shown for CARD and GIFT_CARD payments (cash doesn't need receipts)
+
+#### 4. Receipt Capture Modal
+
+```
+┌──────────────────────────────────┐
+│  📷 Attach Receipt               │
+│                                  │
+│  ┌────────────────────────────┐  │
+│  │                            │  │
+│  │     [Camera Preview /      │  │
+│  │      Photo Preview]        │  │
+│  │                            │  │
+│  └────────────────────────────┘  │
+│                                  │
+│  [ 📸 Take Photo ]  [ 📁 File ] │
+│                                  │
+│  [ Cancel ]         [ Upload ✓ ] │
+└──────────────────────────────────┘
+```
+
+- On tablet: camera opens directly (mobile browser `capture="environment"`)
+- Fallback: file picker for desktop browsers
+- Preview before upload
+- Compress image client-side before upload (target ~500KB)
+
+#### 5. Admin Reconciliation View (new tab in time-management or reports)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Receipt Reconciliation          April 2, 2026          │
+│  [◀ Prev Day]  [Date Picker]  [Next Day ▶]            │
+│                                                         │
+│  Summary: 12 card payments │ 10 receipts │ 2 missing   │
+│  ████████████████████░░░░ 83% matched                   │
+│                                                         │
+│  ┌─ MISSING RECEIPTS ──────────────────────────────┐   │
+│  │ ⚠️  Room 1 │ 2:00 PM │ John Smith │ $45.00     │   │
+│  │ ⚠️  Room 2 │ 5:30 PM │ Jane Doe   │ $67.50     │   │
+│  └─────────────────────────────────────────────────┘   │
+│                                                         │
+│  ┌─ MATCHED ───────────────────────────────────────┐   │
+│  │ ✅ Room 1 │ 10:00 AM │ Bob Lee    │ $45.00  👁  │   │
+│  │ ✅ Room 2 │ 11:30 AM │ Alice Kim  │ $90.00  👁  │   │
+│  │ ...                                              │   │
+│  └─────────────────────────────────────────────────┘   │
+│                                                         │
+│  [ Export CSV ]                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+- 👁 = click to view receipt photo full-screen
+- Missing receipts shown first (action needed)
+- Date range filter
+- CSV export for accounting
+
+---
+
+### File Storage Details
+
+```
+uploads/
+├── screenshots/        # Existing — score capture screenshots
+│   └── 1/2026-04-02/
+└── receipts/           # NEW — payment receipt photos
+    └── 2026-04-02/
+        ├── abc123.jpg  # {paymentId}.jpg
+        └── def456.jpg
+```
+
+- **Format:** JPEG (converted client-side if PNG/HEIC)
+- **Max size:** 5MB upload, compressed client-side to ~500KB
+- **Naming:** `{paymentId}.jpg` (guaranteed unique)
+- **Docker:** Already covered by `score_uploads:/app/uploads` volume
+
+---
+
+### Client-Side Image Compression
+
+Since receipt photos from a tablet camera can be 3-8MB, compress before upload:
+
+```typescript
+// Using browser canvas API (no library needed)
+async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<Blob> {
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, maxWidth / img.width);
+  const canvas = new OffscreenCanvas(img.width * scale, img.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.convertToBlob({ type: 'image/jpeg', quality });
+}
+```
+
+No external library needed — browser Canvas API handles it.
+
+---
+
+### Implementation Tasks (ordered)
+
+| # | Task | Depends On | Effort |
+|---|------|------------|--------|
+| 1 | Add `receiptPath` to Payment model + migration | — | Small |
+| 2 | Receipt upload endpoint (`POST /api/payments/:id/receipt`) | 1 | Small |
+| 3 | Receipt serve endpoint (`GET /api/payments/:id/receipt`) | 1 | Small |
+| 4 | Receipt delete endpoint (`DELETE /api/payments/:id/receipt`) | 1 | Small |
+| 5 | Pending receipts endpoint (`GET /api/payments/pending-receipts`) | 1 | Small |
+| 6 | Client-side image compression utility | — | Small |
+| 7 | Receipt capture modal component | 6 | Medium |
+| 8 | Pending Receipts queue page (staff view) | 5, 7 | Medium |
+| 9 | "Needs receipt" badge on booking list | 5 | Small |
+| 10 | Attach Receipt button in booking detail payment rows | 2, 7 | Medium |
+| 11 | Reconciliation API endpoint | 1 | Medium |
+| 12 | Reconciliation UI (admin view) | 11 | Medium |
+| 13 | Tests (unit + e2e) | All above | Medium |
+
+---
+
+### What This Does NOT Cover (deferred)
+
+- ❌ OCR / auto-extraction of receipt data (→ Phase 2)
+- ❌ Auto-matching receipts to bookings (staff links manually by opening the booking)
+- ❌ Auth code or last-4-digits entry (keep it simple — just the photo)
+- ❌ Direct terminal integration (→ Phase 3)
 
 ---
 

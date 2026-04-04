@@ -206,6 +206,25 @@ export async function cancelBooking(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to cancel booking');
 }
 
+export async function extendBooking(id: string): Promise<Booking> {
+  const res = await fetch(`${API_BASE}/api/bookings/${id}/extend`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-pos-admin-key': 'pos-dev-key-change-in-production',
+    },
+  });
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error || 'Failed to extend booking');
+  }
+
+  const json = await res.json();
+  return json.booking;
+}
+
 // ============= Rooms API =============
 
 export interface Room {

@@ -332,6 +332,113 @@ router.patch('/:id/players', requireAuth, requireStaffOrAdmin, async (req, res) 
   }
 });
 
+// PATCH /api/bookings/:id/extend - Extend booking by 30 minutes ($20 + tax)
+const EXTENSION_PRICE = 20; // $20 per 30-minute extension
+const EXTENSION_MINUTES = 30;
+const EXTENSION_ORDER_NAME = 'Extension (30 min)';
+
+router.patch('/:id/extend', requireAuth, requireStaffOrAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const booking = await getBooking(id);
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Must be BOOKED status
+    if (booking.bookingStatus !== 'BOOKED') {
+      return res.status(400).json({ error: 'Can only extend active (BOOKED) bookings' });
+    }
+
+    // Cannot extend Quick Sales
+    if (booking.bookingSource === 'QUICK_SALE') {
+      return res.status(400).json({ error: 'Cannot extend Quick Sale bookings' });
+    }
+
+    // Calculate new endTime
+    const currentEndTime = new Date(booking.endTime);
+    const newEndTime = new Date(currentEndTime.getTime() + EXTENSION_MINUTES * 60 * 1000);
+
+    // Check operating hours
+    const { closeMinutes } = await getOperatingHours();
+    const { hour, minute } = getAtlanticHourMinute(newEndTime);
+    const newEndMinutes = hour * 60 + minute;
+    // closeMinutes=1440 means midnight; allow up to close time
+    if (closeMinutes < 1440 && newEndMinutes > closeMinutes) {
+      return res.status(400).json({ error: 'Extension would exceed operating hours' });
+    }
+
+    // Check room conflict
+    const conflict = await findConflict(booking.roomId, currentEndTime, newEndTime);
+    if (conflict && conflict.id !== booking.id) {
+      return res.status(409).json({ error: 'Room has another booking at that time — cannot extend' });
+    }
+
+    // Update booking endTime
+    await prisma.booking.update({
+      where: { id },
+      data: { endTime: newEndTime, updatedAt: new Date() },
+    });
+
+    // Find existing extension order on seat 1, or create one
+    const existingExtOrder = await prisma.order.findFirst({
+      where: {
+        bookingId: id,
+        seatIndex: 1,
+        customItemName: EXTENSION_ORDER_NAME,
+      },
+    });
+
+    if (existingExtOrder) {
+      // Increment quantity
+      const newQty = existingExtOrder.quantity + 1;
+      await prisma.order.update({
+        where: { id: existingExtOrder.id },
+        data: {
+          quantity: newQty,
+          totalPrice: EXTENSION_PRICE * newQty,
+        },
+      });
+    } else {
+      // Create new extension order on seat 1
+      await prisma.order.create({
+        data: {
+          bookingId: id,
+          seatIndex: 1,
+          customItemName: EXTENSION_ORDER_NAME,
+          customItemPrice: EXTENSION_PRICE,
+          quantity: 1,
+          unitPrice: EXTENSION_PRICE,
+          totalPrice: EXTENSION_PRICE,
+        },
+      });
+    }
+
+    // Recalculate all invoices (tax distribution)
+    await invoiceRepo.recalculateAllInvoices(id);
+
+    // Sync booking.price
+    await syncBookingPriceFromInvoices(id);
+
+    const updated = await getBooking(id);
+    req.log.info({
+      bookingId: id,
+      previousEndTime: currentEndTime.toISOString(),
+      newEndTime: newEndTime.toISOString(),
+      extensionCount: existingExtOrder ? existingExtOrder.quantity + 1 : 1,
+    }, 'Booking extended by 30 minutes');
+
+    return res.json({
+      booking: presentBooking(updated!),
+      message: 'Booking extended by 30 minutes',
+    });
+  } catch (error) {
+    req.log.error({ err: error, bookingId: id }, 'Extend booking failed');
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Cancel a booking (own bookings only for now)
 router.patch('/:id/cancel', requireAuth, async (req, res) => {
   const { id } = req.params as { id: string };
