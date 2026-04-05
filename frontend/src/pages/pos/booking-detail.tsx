@@ -128,6 +128,9 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   const [couponValidating, setCouponValidating] = useState(false);
   const [couponData, setCouponData] = useState<{ code: string; description: string; discountAmount: number; couponType: { label: string }; user: { name: string }; isValid: boolean; error?: string | null } | null>(null);
   const [couponApplying, setCouponApplying] = useState(false);
+  // Gift card dialog state
+  const [showGiftCardDialog, setShowGiftCardDialog] = useState(false);
+  const [giftCardAmount, setGiftCardAmount] = useState('');
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
   const [selectedOrderItem, setSelectedOrderItem] = useState<OrderItem | null>(null);
@@ -643,6 +646,35 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
       alert(`Failed to apply coupon: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setCouponApplying(false);
+    }
+  };
+
+  const handleAddGiftCard = async (seat: number) => {
+    if (!booking || !giftCardAmount || parseFloat(giftCardAmount) <= 0) {
+      alert('Please enter a valid gift card amount');
+      return;
+    }
+
+    setOrderLoading(true);
+    try {
+      const amount = parseFloat(giftCardAmount);
+      await apiCreateOrder({
+        bookingId: booking.id,
+        customItemName: `Gift Card ($${amount.toFixed(2)})`,
+        customItemPrice: amount,
+        seatIndex: seat,
+        quantity: 1,
+        taxExempt: true,
+      });
+
+      await loadData();
+      setGiftCardAmount('');
+      setShowGiftCardDialog(false);
+    } catch (err) {
+      console.error('Failed to add gift card:', err);
+      alert(`Failed to add gift card: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setOrderLoading(false);
     }
   };
 
@@ -1759,7 +1791,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     </div>
                     
                     {/* Action Buttons */}
-                    <div className={`grid ${booking.bookingSource !== 'QUICK_SALE' ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-4`}>
+                    <div className="grid grid-cols-4 gap-2 mt-4">
                       <Button
                         onClick={() => setShowCustomItemDialog(true)}
                         className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold h-auto p-2"
@@ -1792,6 +1824,18 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         >
                           <Clock className="w-5 h-5 mb-1" />
                           <span className="text-xs leading-tight">+30m</span>
+                        </Button>
+                      )}
+                      {booking.bookingSource === 'QUICK_SALE' && (
+                        <Button
+                          onClick={() => {
+                            setGiftCardAmount('');
+                            setShowGiftCardDialog(true);
+                          }}
+                          className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold h-auto p-2"
+                        >
+                          <Gift className="w-5 h-5 mb-1" />
+                          <span className="text-xs leading-tight">Gift Card</span>
                         </Button>
                       )}
                     </div>
@@ -2319,6 +2363,76 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                 setShowCouponDialog(false);
                 setCouponCode('');
                 setCouponData(null);
+              }}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Gift Card Dialog */}
+      <Dialog open={showGiftCardDialog} onOpenChange={setShowGiftCardDialog}>
+        <DialogContent className="bg-slate-800 border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle>Gift Card Sale</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Gift cards are tax-exempt. Select a preset amount or enter a custom value.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-3 gap-2">
+              {[25, 50, 100].map((preset) => (
+                <Button
+                  key={preset}
+                  onClick={() => setGiftCardAmount(String(preset))}
+                  variant={giftCardAmount === String(preset) ? 'default' : 'outline'}
+                  className={giftCardAmount === String(preset) 
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white h-12 text-lg font-bold'
+                    : 'border-slate-600 text-slate-300 hover:bg-slate-700 h-12 text-lg font-bold'
+                  }
+                >
+                  ${preset}
+                </Button>
+              ))}
+            </div>
+            <div>
+              <Label className="text-white">Custom Amount</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={giftCardAmount}
+                onChange={(e) => setGiftCardAmount(e.target.value)}
+                placeholder="Enter amount..."
+                className="bg-slate-700 border-slate-600 text-white mt-1"
+              />
+            </div>
+            {giftCardAmount && parseFloat(giftCardAmount) > 0 && (
+              <div className="space-y-2">
+                <Label className="text-white">Add to Seat</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                    <Button
+                      key={seat}
+                      onClick={() => handleAddGiftCard(seat)}
+                      disabled={orderLoading}
+                      className={`h-16 ${seatColors[seat - 1]} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
+                    >
+                      {orderLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : `Seat ${seat}`}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowGiftCardDialog(false);
+                setGiftCardAmount('');
               }}
               className="border-slate-600 text-slate-300 hover:bg-slate-700"
             >

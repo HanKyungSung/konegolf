@@ -453,6 +453,7 @@ export async function createOrder(data: {
   seatIndex: number;
   quantity: number;
   discountType?: 'FLAT' | 'PERCENT';
+  taxExempt?: boolean;
 }): Promise<{ order: Order; updatedInvoice?: Invoice }> {
   const body: any = {
     seatIndex: data.seatIndex,
@@ -470,6 +471,11 @@ export async function createOrder(data: {
   // Add discount type if present
   if (data.discountType) {
     body.discountType = data.discountType;
+  }
+
+  // Add tax exempt flag if present
+  if (data.taxExempt) {
+    body.taxExempt = data.taxExempt;
   }
   
   const res = await fetch(`${API_BASE}/api/bookings/${data.bookingId}/orders`, {

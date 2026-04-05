@@ -10,6 +10,7 @@ export interface CreateOrderInput {
   quantity: number;
   unitPrice: number | string;
   discountType?: string; // "FLAT" or "PERCENT" (null = not a discount)
+  taxExempt?: boolean;
 }
 
 export async function createOrder(data: CreateOrderInput): Promise<Order> {
@@ -23,6 +24,7 @@ export async function createOrder(data: CreateOrderInput): Promise<Order> {
       customItemName: data.customItemName ?? null,
       customItemPrice: data.customItemPrice ? Number(data.customItemPrice) : null,
       discountType: data.discountType ?? null,
+      taxExempt: data.taxExempt ?? false,
       seatIndex: data.seatIndex,
       quantity: data.quantity,
       unitPrice: unitPrice,

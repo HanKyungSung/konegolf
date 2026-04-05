@@ -83,6 +83,7 @@ PostgreSQL uses **exact casing** with double quotes for camelCase columns. Lower
 | customItemName | `"customItemName"` | String? | |
 | customItemPrice | `"customItemPrice"` | Decimal? | |
 | discountType | `"discountType"` | String? | FLAT or PERCENT |
+| taxExempt | `"taxExempt"` | Boolean | Default false. True for gift cards |
 | seatIndex | `"seatIndex"` | Int? | 1–4 or null (shared) |
 | quantity | `quantity` | Int | |
 | unitPrice | `"unitPrice"` | Decimal(10,2) | |

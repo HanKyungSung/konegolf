@@ -2768,7 +2768,7 @@ This feature will be implemented after the web POS is stable and in use. See `/P
 [ ] Setting import/export
 [ ] Tax rate history chart
 [ ] Per-room tax rates
-[ ] Tax exemption flags
+[x] Tax exemption flags
 [ ] Multiple tax types (sales tax, service charge)
 [ ] Settings cache layer (Redis)
 [ ] Settings versioning
@@ -2788,6 +2788,7 @@ This feature will be implemented after the web POS is stable and in use. See `/P
 [ ] Optimistic updates + rollback
 [ ] Unit tests for reducers/helpers
 [ ] E2E smoke tests
+[ ] Gift card code generation, redemption tracking, and balance management
 
 ### Follow-Ups (Post 0.6e) – Advanced POS Features
 [ ] Backend integration: Database-backed menu items
@@ -3958,8 +3959,26 @@ npm run test:e2e
 
 ---
 
-**Last Updated:** 2026-03-03
+**Last Updated:** 2026-04-05
 **Version:** 1.2 (Updated: Frontend build path simplification)
+
+<details>
+<summary>Gift Card Tax-Exempt Sale - 2026-04-05</summary>
+
+**Gift Card Sale (Tax-Exempt) Feature:**
+[x] Schema: Added `taxExempt Boolean @default(false)` to Order model (migration `20260405081055_add_order_tax_exempt`)
+[x] Backend: Updated `recalculateAllInvoices()` to split taxable vs exempt orders — tax applied only to taxable subtotal
+[x] Backend: Added `taxExempt` to `CreateOrderInput` and `createOrderSchema` (Zod)
+[x] Frontend API: `createOrder()` in `pos-api.ts` now passes `taxExempt` flag
+[x] Frontend: Gift Card button in Quick Sale action grid (rose/pink gradient, Gift icon)
+[x] Frontend: Gift Card dialog with $25/$50/$100 presets + custom amount input
+[x] Gift card orders created as `customItemName: "Gift Card ($X.XX)"` with `taxExempt: true`
+[x] Regular bookings unaffected — still show +30m button, no Gift Card button
+[x] Unit tests: 14 tests in `tax-exempt.test.ts` (fully exempt, mixed, multi-seat, edge cases)
+[x] E2E tests: 7 tests in `11-gift-card-sale.spec.ts` (UI visibility, dialog, API tax calc)
+
+**Future:** Gift card code generation/redemption integration (tracked in Follow-Ups section)
+</details>
 
 <details>
 <summary>Monthly PDF Report Fix & Quick Sale Feature - 2026-03-03</summary>

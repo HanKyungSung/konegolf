@@ -1249,6 +1249,7 @@ const createOrderSchema = z.object({
   seatIndex: z.number().int().min(1).max(4).optional(), // null for shared orders
   quantity: z.number().int().min(1),
   discountType: z.enum(['FLAT', 'PERCENT']).optional(), // Non-null = discount order
+  taxExempt: z.boolean().optional(),
 }).refine(
   (data) => {
     // Discount orders use customItemName + negative customItemPrice + discountType
@@ -1277,7 +1278,7 @@ router.post('/:bookingId/orders', requireAuth, async (req, res) => {
       });
     }
 
-    const { menuItemId, customItemName, customItemPrice, seatIndex, quantity, discountType } = parsed.data;
+    const { menuItemId, customItemName, customItemPrice, seatIndex, quantity, discountType, taxExempt } = parsed.data;
 
     // Verify booking exists
     const booking = await getBooking(bookingId);
@@ -1321,6 +1322,7 @@ router.post('/:bookingId/orders', requireAuth, async (req, res) => {
       quantity,
       unitPrice,
       discountType: discountType || undefined,
+      taxExempt: taxExempt || undefined,
     });
 
     req.log.info({ orderId: order.id, bookingId, seatIndex, menuItemId, customItemName, quantity, unitPrice, total: Number(order.totalPrice) }, 'Order added');

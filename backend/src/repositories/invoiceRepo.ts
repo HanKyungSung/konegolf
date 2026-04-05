@@ -94,26 +94,30 @@ export async function recalculateAllInvoices(bookingId: string): Promise<Invoice
   // Get tax rate once
   const taxRate = await getGlobalTaxRate();
 
-  // Calculate subtotal for each seat
-  const seatData: { seatIndex: number; subtotal: number; tip: number }[] = [];
+  // Calculate subtotal for each seat (split taxable vs exempt)
+  const seatData: { seatIndex: number; subtotal: number; taxableSubtotal: number; tip: number }[] = [];
   for (const seatIndex of allSeatIndices) {
     const orders = await orderRepo.getOrdersForInvoice(bookingId, seatIndex);
     const subtotal = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
+    const taxableSubtotal = orders
+      .filter(order => !order.taxExempt)
+      .reduce((sum, order) => sum + Number(order.totalPrice), 0);
     const existingInv = existingInvoices.find(inv => inv.seatIndex === seatIndex);
     seatData.push({
       seatIndex,
       subtotal,
+      taxableSubtotal,
       tip: Number(existingInv?.tip || 0),
     });
   }
 
-  // Calculate total tax on the combined subtotal (single source of truth)
-  const totalSubtotal = seatData.reduce((sum, s) => sum + s.subtotal, 0);
-  const totalTaxRaw = totalSubtotal * taxRate;
+  // Calculate total tax on the combined TAXABLE subtotal only (single source of truth)
+  const totalTaxableSubtotal = seatData.reduce((sum, s) => sum + s.taxableSubtotal, 0);
+  const totalTaxRaw = totalTaxableSubtotal * taxRate;
   const totalTaxCents = Math.round(totalTaxRaw * 100); // Round once to cents
 
-  // Distribute tax to each seat using largest remainder method
-  const seatTaxRaw = seatData.map(s => s.subtotal * taxRate * 100); // in cents, unrounded
+  // Distribute tax to each seat using largest remainder method (based on taxable portion only)
+  const seatTaxRaw = seatData.map(s => s.taxableSubtotal * taxRate * 100); // in cents, unrounded
   const seatTaxFloored = seatTaxRaw.map(t => Math.floor(t));
   let remainderCents = totalTaxCents - seatTaxFloored.reduce((sum, t) => sum + t, 0);
 

@@ -157,6 +157,9 @@ model Order {
   // Discount support (non-null = discount order)
   discountType    String?   // "FLAT" or "PERCENT" (null = not a discount)
   
+  // Tax exemption (e.g. gift card sales are not taxable)
+  taxExempt       Boolean   @default(false)
+  
   seatIndex       Int?      // 1-4 = specific seat, null = shared order
   quantity        Int
   unitPrice       Decimal   @db.Decimal(10, 2)  // Price per unit at time of order
