@@ -63,12 +63,23 @@ Terminal processes card → staff gets paper receipt → keeps receipt aside
 
 #### 2. File storage strategy
 
-The project already uses local filesystem uploads for score screenshots:
-- `uploads/screenshots/` with Docker volume `score_uploads:/app/uploads`
-- multer `memoryStorage()` → write to disk pattern (in `scores.ts`)
-- Serving via `res.sendFile()` with auth check
+| Option | Pros | Cons |
+|--------|------|------|
+| Local filesystem | Simple, no config, already works for screenshots | Lost if server dies, no remote access |
+| **Google Cloud Storage (GCS)** ✅ | Durable, accessible from anywhere, auto-backup, cheap | Requires service account setup |
+| AWS S3 | Industry standard | Extra vendor (already using Google) |
 
-**Decision:** Follow the same pattern. Store receipt images in `uploads/receipts/{date}/{paymentId}.jpg`. The existing Docker volume already covers `/app/uploads`.
+**Decision:** Use **Google Cloud Storage** (GCS). The user already has a GCP project. Receipt images upload to a private GCS bucket. The backend uses a service account key. Locally and in dev, fall back to local filesystem so no GCS dependency during development.
+
+**Setup required:**
+1. Create a GCS bucket (e.g., `konegolf-receipts`)
+2. Create a service account with `Storage Object Admin` role on that bucket
+3. Download the JSON key file
+4. Add env vars: `GCS_BUCKET=konegolf-receipts`, `GCS_KEY_FILE=/path/to/key.json`
+5. In production Docker: mount key file or use workload identity
+
+**Storage path:** `receipts/{YYYY-MM-DD}/{paymentId}.jpg`
+**Access:** Backend generates signed URLs (valid ~15 min) for the frontend to display images. No public access to the bucket.
 
 #### 3. When does staff upload?
 
@@ -112,6 +123,7 @@ Content-Type: multipart/form-data
 Body: { image: File (JPEG/PNG, max 5MB) }
 Auth: requireAuth + requireStaffOrAdmin
 
+Flow: multer memoryStorage → upload to GCS bucket → save GCS path to Payment.receiptPath
 Response 200: { receiptPath: "receipts/2026-04-02/abc123.jpg" }
 Response 404: Payment not found
 Response 400: No image / invalid format / file too large
@@ -122,8 +134,9 @@ Response 400: No image / invalid format / file too large
 GET /api/payments/:paymentId/receipt
 Auth: requireAuth + requireStaffOrAdmin
 
-Response 200: image/jpeg binary stream
-Response 404: No receipt attached / file missing
+Flow: read Payment.receiptPath → generate GCS signed URL (15 min TTL) → redirect/return URL
+Response 200: { url: "https://storage.googleapis.com/..." } (signed URL)
+Response 404: No receipt attached
 ```
 
 #### Delete Receipt
@@ -131,6 +144,7 @@ Response 404: No receipt attached / file missing
 DELETE /api/payments/:paymentId/receipt
 Auth: requireAuth + requireAdmin
 
+Flow: delete object from GCS → clear Payment.receiptPath
 Response 200: { success: true }
 ```
 
@@ -295,15 +309,27 @@ After a CARD payment is recorded, each payment row shows:
 
 ### File Storage Details
 
+**Google Cloud Storage layout:**
+```
+gs://konegolf-receipts/
+└── receipts/
+    └── 2026-04-02/
+        ├── abc123.jpg    # {paymentId}.jpg
+        └── def456.jpg
+```
+
+**Local fallback (dev only):**
 ```
 uploads/
 ├── screenshots/        # Existing — score capture screenshots
-│   └── 1/2026-04-02/
-└── receipts/           # NEW — payment receipt photos
+└── receipts/           # Fallback when GCS not configured
     └── 2026-04-02/
-        ├── abc123.jpg  # {paymentId}.jpg
-        └── def456.jpg
+        └── abc123.jpg
 ```
+
+- **Backend storage service** abstracts GCS vs local — single interface, swap via env var
+- **GCS in production:** `GCS_BUCKET` + `GCS_KEY_FILE` env vars
+- **Local in dev:** when `GCS_BUCKET` is not set, falls back to `uploads/receipts/`
 
 - **Format:** JPEG (converted client-side if PNG/HEIC)
 - **Max size:** 5MB upload, compressed client-side to ~500KB
@@ -337,18 +363,19 @@ No external library needed — browser Canvas API handles it.
 | # | Task | Depends On | Effort |
 |---|------|------------|--------|
 | 1 | Add `receiptPath` to Payment model + migration | — | Small |
-| 2 | Receipt upload endpoint (`POST /api/payments/:id/receipt`) | 1 | Small |
-| 3 | Receipt serve endpoint (`GET /api/payments/:id/receipt`) | 1 | Small |
-| 4 | Receipt delete endpoint (`DELETE /api/payments/:id/receipt`) | 1 | Small |
-| 5 | Pending receipts endpoint (`GET /api/payments/pending-receipts`) | 1 | Small |
-| 6 | Client-side image compression utility | — | Small |
-| 7 | Receipt capture modal component | 6 | Medium |
-| 8 | Pending Receipts queue page (staff view) | 5, 7 | Medium |
-| 9 | "Needs receipt" badge on booking list | 5 | Small |
-| 10 | Attach Receipt button in booking detail payment rows | 2, 7 | Medium |
-| 11 | Reconciliation API endpoint | 1 | Medium |
-| 12 | Reconciliation UI (admin view) | 11 | Medium |
-| 13 | Tests (unit + e2e) | All above | Medium |
+| 2 | GCS storage service (`storageService.ts`) — upload/download/delete with local fallback | — | Medium |
+| 3 | Receipt upload endpoint (`POST /api/payments/:id/receipt`) | 1, 2 | Small |
+| 4 | Receipt serve endpoint (`GET /api/payments/:id/receipt`) — returns signed URL | 1, 2 | Small |
+| 5 | Receipt delete endpoint (`DELETE /api/payments/:id/receipt`) | 1, 2 | Small |
+| 6 | Pending receipts endpoint (`GET /api/payments/pending-receipts`) | 1 | Small |
+| 7 | Client-side image compression utility | — | Small |
+| 8 | Receipt capture modal component | 7 | Medium |
+| 9 | Pending Receipts queue page (staff view) | 6, 8 | Medium |
+| 10 | "Needs receipt" badge on booking list | 6 | Small |
+| 11 | Attach Receipt button in booking detail payment rows | 3, 8 | Medium |
+| 12 | Reconciliation API endpoint | 1 | Medium |
+| 13 | Reconciliation UI (admin view) | 12 | Medium |
+| 14 | Tests (unit + e2e) | All above | Medium |
 
 ---
 

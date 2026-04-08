@@ -407,7 +407,7 @@ export interface Invoice {
   paymentMethod: string | null;
   paidAt: string | null;
   orders?: Order[];
-  payments?: { id: string; method: string; amount: number }[];
+  payments?: { id: string; method: string; amount: number; receiptPath?: string | null }[];
 }
 
 export interface PaymentStatus {
@@ -1003,6 +1003,96 @@ export async function getEmployeeHours(params: {
 
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || 'Failed to load employee hours');
+  return json;
+}
+
+// ─── Receipt Photo Management ───
+
+export interface PendingReceipt {
+  paymentId: string;
+  method: string;
+  amount: number;
+  createdAt: string;
+  booking: {
+    id: string;
+    customerName: string;
+    startTime: string;
+    roomName: string;
+  };
+}
+
+export interface ReceiptReconciliation {
+  summary: { total: number; withReceipt: number; missing: number };
+  payments: Array<{
+    paymentId: string;
+    method: string;
+    amount: number;
+    createdAt: string;
+    hasReceipt: boolean;
+    invoice: { id: string; seatIndex: number; status: string };
+    booking: { id: string; customerName: string; startTime: string; roomName: string };
+  }>;
+}
+
+export async function uploadReceipt(paymentId: string, imageBlob: Blob): Promise<{ receiptPath: string }> {
+  const formData = new FormData();
+  formData.append('image', imageBlob, 'receipt.jpg');
+
+  const res = await fetch(`${API_BASE}/api/payments/${paymentId}/receipt`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to upload receipt');
+  return json;
+}
+
+export async function getReceiptUrl(paymentId: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/payments/${paymentId}/receipt`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    if (res.status === 404) return '';
+    throw new Error('Failed to get receipt');
+  }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+export async function deleteReceipt(paymentId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/payments/${paymentId}/receipt`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({ error: 'Failed to delete receipt' }));
+    throw new Error(json.error);
+  }
+}
+
+export async function getPendingReceipts(date?: string): Promise<PendingReceipt[]> {
+  const params = date ? `?date=${date}` : '';
+  const res = await fetch(`${API_BASE}/api/payments/pending-receipts${params}`, {
+    credentials: 'include',
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to load pending receipts');
+  return json;
+}
+
+export async function getReceiptReconciliation(startDate: string, endDate: string): Promise<ReceiptReconciliation> {
+  const res = await fetch(`${API_BASE}/api/reports/receipt-reconciliation?startDate=${startDate}&endDate=${endDate}`, {
+    credentials: 'include',
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to load reconciliation data');
   return json;
 }
 

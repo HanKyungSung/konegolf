@@ -153,6 +153,92 @@ router.get('/employee-hours', requireAuth, requireAdmin, async (req: any, res: R
   }
 });
 
+/**
+ * GET /api/reports/receipt-reconciliation?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ * Returns receipt reconciliation data: summary counts + payment list with receipt status.
+ * Admin only.
+ */
+router.get('/receipt-reconciliation', requireAuth, requireAdmin, async (req: any, res: Response) => {
+  try {
+    const startParam = req.query.startDate as string | undefined;
+    const endParam = req.query.endDate as string | undefined;
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (startParam && endParam) {
+      startDate = new Date(`${startParam}T00:00:00-04:00`);
+      endDate = new Date(`${endParam}T23:59:59-04:00`);
+    } else {
+      // Default to today
+      const now = new Date();
+      const atlantic = new Date(now.toLocaleString('en-US', { timeZone: 'America/Halifax' }));
+      const dateStr = atlantic.toISOString().slice(0, 10);
+      startDate = new Date(`${dateStr}T00:00:00-04:00`);
+      endDate = new Date(`${dateStr}T23:59:59-04:00`);
+    }
+
+    const payments = await prisma.payment.findMany({
+      where: {
+        method: { in: ['CARD', 'GIFT_CARD'] },
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      include: {
+        invoice: {
+          select: {
+            id: true,
+            seatIndex: true,
+            status: true,
+            booking: {
+              select: {
+                id: true,
+                customerName: true,
+                startTime: true,
+                room: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const withReceipt = payments.filter((p) => p.receiptPath != null).length;
+    const missing = payments.length - withReceipt;
+
+    const result = {
+      summary: {
+        total: payments.length,
+        withReceipt,
+        missing,
+      },
+      payments: payments.map((p) => ({
+        paymentId: p.id,
+        method: p.method,
+        amount: Number(p.amount),
+        createdAt: p.createdAt,
+        hasReceipt: p.receiptPath != null,
+        invoice: {
+          id: p.invoice.id,
+          seatIndex: p.invoice.seatIndex,
+          status: p.invoice.status,
+        },
+        booking: {
+          id: p.invoice.booking.id,
+          customerName: p.invoice.booking.customerName,
+          startTime: p.invoice.booking.startTime,
+          roomName: p.invoice.booking.room.name,
+        },
+      })),
+    };
+
+    return res.json(result);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to fetch receipt reconciliation');
+    return res.status(500).json({ error: 'Failed to fetch receipt reconciliation' });
+  }
+});
+
 export default router;
 
 // ─── Shared helper for employee hours aggregation ───

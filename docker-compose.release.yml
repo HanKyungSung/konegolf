@@ -74,6 +74,7 @@ services:
     volumes:
       - score_uploads:/app/uploads
       - /var/log/kgolf:/app/logs
+      - ./gdrive-key.json:/app/gdrive-key.json:ro
     networks:
       - kgolf_net
     healthcheck:

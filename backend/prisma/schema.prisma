@@ -132,12 +132,13 @@ model Invoice {
 
 // Individual payment record for split payments
 model Payment {
-  id         String   @id @default(uuid())
-  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  invoiceId  String
-  method     String   // CARD | CASH | GIFT_CARD
-  amount     Decimal  @db.Decimal(10, 2)
-  createdAt  DateTime @default(now()) @db.Timestamptz
+  id          String   @id @default(uuid())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId   String
+  method      String   // CARD | CASH | GIFT_CARD
+  amount      Decimal  @db.Decimal(10, 2)
+  receiptPath String?  // GCS object path: "receipts/2026-04-02/{paymentId}.jpg"
+  createdAt   DateTime @default(now()) @db.Timestamptz
 
   @@index([invoiceId])
 }

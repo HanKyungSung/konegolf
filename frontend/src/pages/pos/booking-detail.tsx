@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2 } from 'lucide-react';
+import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2, Camera } from 'lucide-react';
 import Receipt from '../../components/Receipt';
 import { VENUE_TIMEZONE } from '@/lib/timezone';
 import { useAuth } from '@/hooks/use-auth';
@@ -38,6 +38,7 @@ import {
   type Order,
   type ReceiptData
 } from '@/services/pos-api';
+import ReceiptCaptureModal from './receipt-capture-modal';
 
 const API_BASE = process.env.REACT_APP_API_BASE !== undefined ? process.env.REACT_APP_API_BASE : 'http://localhost:8080';
 
@@ -156,6 +157,11 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   const [receiptMode, setReceiptMode] = useState<'full' | 'seat'>('full');
   const [receiptSeatIndex, setReceiptSeatIndex] = useState<number | undefined>(undefined);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
+
+  // Receipt photo capture state
+  const [capturePaymentId, setCapturePaymentId] = useState<string | null>(null);
+  const [captureMode, setCaptureMode] = useState<'upload' | 'view'>('upload');
+  const [receiptPhotos, setReceiptPhotos] = useState<Record<string, boolean>>({});
   const [deliveryMethod, setDeliveryMethod] = useState<'print' | 'email'>('print');
   const [printerType, setPrinterType] = useState<'thermal' | 'regular'>('thermal');
   const [emailAddress, setEmailAddress] = useState<string>('');
@@ -299,6 +305,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   // Load payment status from invoices (with split payment support)
   function loadPaymentStatusFromInvoices(invoicesData: Invoice[]) {
     const payments: Record<number, { status: 'UNPAID' | 'PAID'; method?: string; tip?: number; total?: number; payments?: { id: string; method: string; amount: number }[] }> = {};
+    const photos: Record<string, boolean> = {};
     
     invoicesData.forEach((invoice) => {
       payments[invoice.seatIndex] = {
@@ -308,9 +315,14 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
         total: parseFloat(String(invoice.totalAmount)) || 0,
         payments: invoice.payments || [],
       };
+      // Track which payments have receipt photos
+      invoice.payments?.forEach((p) => {
+        if (p.receiptPath) photos[p.id] = true;
+      });
     });
     
     setSeatPayments(payments);
+    setReceiptPhotos(photos);
     console.log('[BookingDetail] Loaded payment status for', Object.keys(payments).length, 'seats');
   }
 
@@ -1556,15 +1568,41 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                               <CheckCircle2 className="h-5 w-5" />
                               <span className="font-semibold">PAID</span>
                             </div>
-                            <div className="text-sm text-slate-300 space-y-1">
+                            <div className="text-sm text-slate-300 space-y-2">
                               {payment?.payments && payment.payments.length > 0 ? (
                                 <>
                                   {payment.payments.length > 1 && <p className="font-medium text-slate-200">Payment History:</p>}
                                   {payment.payments.map((p, idx) => (
-                                    <p key={idx} className="inline-flex items-center gap-1 ml-2">
-                                      {p.method === 'CARD' ? <CreditCard className="h-3 w-3" /> : p.method === 'GIFT_CARD' ? <Gift className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
-                                      {p.method === 'GIFT_CARD' ? 'Gift Card' : p.method === 'CARD' ? 'Card' : 'Cash'}: ${Number(p.amount).toFixed(2)}
-                                    </p>
+                                    <div key={idx} className="bg-slate-800/60 rounded-lg p-3 space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="inline-flex items-center gap-1.5 font-medium">
+                                          {p.method === 'CARD' ? <CreditCard className="h-4 w-4" /> : p.method === 'GIFT_CARD' ? <Gift className="h-4 w-4" /> : <Banknote className="h-4 w-4" />}
+                                          {p.method === 'GIFT_CARD' ? 'Gift Card' : p.method === 'CARD' ? 'Card' : 'Cash'}
+                                        </span>
+                                        <span className="font-semibold text-emerald-400">${Number(p.amount).toFixed(2)}</span>
+                                      </div>
+                                      {(p.method === 'CARD' || p.method === 'GIFT_CARD') && (
+                                        <div className="flex items-center gap-2 pt-1 border-t border-slate-700">
+                                          {receiptPhotos[p.id] ? (
+                                            <button
+                                              onClick={() => { setCaptureMode('view'); setCapturePaymentId(p.id); }}
+                                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-md text-emerald-400 hover:bg-emerald-500/25 transition-colors text-xs font-medium"
+                                            >
+                                              <CheckCircle2 className="h-3.5 w-3.5" />
+                                              View Receipt
+                                            </button>
+                                          ) : (
+                                            <button
+                                              onClick={() => { setCaptureMode('upload'); setCapturePaymentId(p.id); }}
+                                              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-md text-amber-400 hover:bg-amber-500/25 transition-colors text-xs font-medium"
+                                            >
+                                              <Camera className="h-3.5 w-3.5" />
+                                              Upload Receipt
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                   ))}
                                 </>
                               ) : (
@@ -2919,6 +2957,18 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Receipt Photo Capture Modal */}
+      {capturePaymentId && (
+        <ReceiptCaptureModal
+          paymentId={capturePaymentId}
+          mode={captureMode}
+          onClose={() => setCapturePaymentId(null)}
+          onUploaded={() => {
+            setReceiptPhotos(prev => ({ ...prev, [capturePaymentId]: true }));
+          }}
+        />
+      )}
     </div>
   );
 }

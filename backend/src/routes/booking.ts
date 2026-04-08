@@ -1516,6 +1516,7 @@ router.get('/:bookingId/invoices', async (req, res) => {
         id: p.id,
         method: p.method,
         amount: p.amount,
+        receiptPath: p.receiptPath,
       })),
     }));
 

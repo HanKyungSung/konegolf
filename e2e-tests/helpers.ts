@@ -5,7 +5,7 @@ import { Page, expect } from '@playwright/test';
  */
 
 // Backend API base URL
-const API_BASE = 'http://localhost:8080';
+export const API_BASE = 'http://localhost:8080';
 
 // Test credentials (from seed.ts)
 export const ADMIN_USER = {

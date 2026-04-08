@@ -6,7 +6,7 @@ import { buttonStyles } from '@/styles/buttonStyles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingBag, Clock, Users } from 'lucide-react';
+import { Plus, ShoppingBag, Clock, Users, Camera } from 'lucide-react';
 import { 
   listBookings, 
   listRooms, 
@@ -380,6 +380,15 @@ export default function POSDashboard() {
                 <span>Time Mgmt</span>
               </Button>
               )}
+              <Button 
+                onClick={() => navigate('/pos/pending-receipts')}
+                variant="outline"
+                className="flex items-center gap-2 text-xs sm:text-sm text-amber-400 border-amber-500/50 hover:bg-amber-500/10"
+                size="sm"
+              >
+                <Camera className="h-4 w-4" />
+                <span>Receipts</span>
+              </Button>
               {!isReadOnly && (
               <Button 
                 onClick={async () => {

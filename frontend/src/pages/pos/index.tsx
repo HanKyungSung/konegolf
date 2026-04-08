@@ -5,6 +5,7 @@ import POSDashboard from './dashboard';
 import POSBookingDetail from './booking-detail';
 import POSMenuManagement from './menu-management';
 import POSTimeManagement from './time-management';
+import PendingReceiptsPage from './pending-receipts';
 
 /**
  * POS Routes
@@ -50,6 +51,7 @@ export default function POSRoutes() {
       <Route path="booking/:id" element={<BookingDetailWrapper />} />
       <Route path="menu" element={<MenuManagementWrapper />} />
       <Route path="time-management" element={<TimeManagementWrapper />} />
+      <Route path="pending-receipts" element={<PendingReceiptsWrapper />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
@@ -77,4 +79,10 @@ function TimeManagementWrapper() {
   const { user } = useAuth();
   if (user?.role !== 'ADMIN') return <Navigate to="/pos/dashboard" replace />;
   return <POSTimeManagement onBack={() => navigate('/pos/dashboard')} />;
+}
+
+// Wrapper for pending receipts page
+function PendingReceiptsWrapper() {
+  const navigate = useNavigate();
+  return <PendingReceiptsPage onBack={() => navigate('/pos/dashboard')} />;
 }

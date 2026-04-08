@@ -14,9 +14,12 @@ import {
   listActiveTimeEntries,
   updateTimeEntry,
   getEmployeeHours,
+  getReceiptReconciliation,
+  getReceiptUrl,
   type Employee,
   type TimeEntry,
   type EmployeeHoursSummary,
+  type ReceiptReconciliation,
 } from '@/services/pos-api';
 
 const TIMEZONE = 'America/Halifax';
@@ -112,7 +115,7 @@ interface TimeManagementProps {
 
 export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'active' | 'log' | 'weekly' | 'monthly' | 'employees'>('active');
+  const [tab, setTab] = useState<'active' | 'log' | 'weekly' | 'monthly' | 'employees' | 'receipts'>('active');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeEntries, setActiveEntries] = useState<TimeEntry[]>([]);
   const [logEntries, setLogEntries] = useState<TimeEntry[]>([]);
@@ -148,6 +151,12 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   // Edit time entry
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editClockOut, setEditClockOut] = useState('');
+
+  // Receipt reconciliation state
+  const [reconciliation, setReconciliation] = useState<ReceiptReconciliation | null>(null);
+  const [reconciliationLoading, setReconciliationLoading] = useState(false);
+  const [reconciliationDate, setReconciliationDate] = useState(getTodayStr());
+  const [viewingReceiptUrl, setViewingReceiptUrl] = useState<string | null>(null);
 
   const loadActive = useCallback(async () => {
     try {
@@ -206,6 +215,18 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
     }
   }, [monthYear]);
 
+  const loadReconciliation = useCallback(async () => {
+    setReconciliationLoading(true);
+    try {
+      const data = await getReceiptReconciliation(reconciliationDate, reconciliationDate);
+      setReconciliation(data);
+    } catch (err: any) {
+      console.error('Failed to load reconciliation:', err);
+    } finally {
+      setReconciliationLoading(false);
+    }
+  }, [reconciliationDate]);
+
   useEffect(() => {
     Promise.all([loadActive(), loadLog(), loadEmployees()])
       .finally(() => setLoading(false));
@@ -222,6 +243,10 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   useEffect(() => {
     loadMonthly();
   }, [monthYear]);
+
+  useEffect(() => {
+    if (tab === 'receipts') loadReconciliation();
+  }, [tab, reconciliationDate]);
 
   // Poll active entries every 30 seconds
   useEffect(() => {
@@ -327,7 +352,7 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
 
         {/* Tab Navigation */}
         <div className="flex gap-2 flex-wrap">
-          {(['active', 'log', 'weekly', 'monthly', 'employees'] as const).map(t => (
+          {(['active', 'log', 'weekly', 'monthly', 'employees', 'receipts'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -337,7 +362,7 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
-              {t === 'active' ? `Active (${activeEntries.length})` : t === 'log' ? 'Daily Log' : t === 'weekly' ? 'Weekly' : t === 'monthly' ? 'Monthly' : 'Employees'}
+              {t === 'active' ? `Active (${activeEntries.length})` : t === 'log' ? 'Daily Log' : t === 'weekly' ? 'Weekly' : t === 'monthly' ? 'Monthly' : t === 'employees' ? 'Employees' : 'Receipts'}
             </button>
           ))}
         </div>
@@ -768,6 +793,176 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* ── Receipts Tab ── */}
+        {tab === 'receipts' && (
+          <Card className="bg-slate-800/60 border-slate-700">
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <CardTitle className="text-white">Receipt Reconciliation</CardTitle>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const d = new Date(reconciliationDate + 'T12:00:00');
+                      d.setDate(d.getDate() - 1);
+                      setReconciliationDate(d.toISOString().slice(0, 10));
+                    }}
+                    className="px-2 py-1 text-slate-400 hover:text-white"
+                  >
+                    ◀
+                  </button>
+                  <Input
+                    type="date"
+                    value={reconciliationDate}
+                    onChange={(e) => setReconciliationDate(e.target.value)}
+                    className="bg-slate-900 border-slate-600 text-white w-40"
+                  />
+                  <button
+                    onClick={() => {
+                      const d = new Date(reconciliationDate + 'T12:00:00');
+                      d.setDate(d.getDate() + 1);
+                      setReconciliationDate(d.toISOString().slice(0, 10));
+                    }}
+                    className="px-2 py-1 text-slate-400 hover:text-white"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {reconciliationLoading && <p className="text-slate-400 text-center py-4">Loading...</p>}
+
+              {reconciliation && !reconciliationLoading && (
+                <>
+                  {/* Summary bar */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-slate-900/60 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-white">{reconciliation.summary.total}</p>
+                      <p className="text-xs text-slate-400">Card Payments</p>
+                    </div>
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-emerald-400">{reconciliation.summary.withReceipt}</p>
+                      <p className="text-xs text-slate-400">With Receipt</p>
+                    </div>
+                    <div className={`rounded-lg p-3 text-center ${reconciliation.summary.missing > 0 ? 'bg-red-500/10 border border-red-500/30' : 'bg-slate-900/60'}`}>
+                      <p className={`text-2xl font-bold ${reconciliation.summary.missing > 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                        {reconciliation.summary.missing}
+                      </p>
+                      <p className="text-xs text-slate-400">Missing</p>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  {reconciliation.summary.total > 0 && (
+                    <div className="w-full bg-slate-700 rounded-full h-2">
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full transition-all"
+                        style={{ width: `${Math.round((reconciliation.summary.withReceipt / reconciliation.summary.total) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Payment list */}
+                  {reconciliation.payments.length === 0 ? (
+                    <p className="text-center text-slate-500 py-8">No card payments for this day</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Missing first, then matched */}
+                      {reconciliation.payments
+                        .sort((a, b) => (a.hasReceipt === b.hasReceipt ? 0 : a.hasReceipt ? 1 : -1))
+                        .map((p) => (
+                          <div
+                            key={p.paymentId}
+                            className={`flex items-center justify-between p-3 rounded-lg border ${
+                              p.hasReceipt
+                                ? 'bg-slate-900/40 border-slate-700'
+                                : 'bg-red-500/5 border-red-500/30'
+                            }`}
+                          >
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className={p.hasReceipt ? 'text-emerald-400' : 'text-red-400'}>
+                                  {p.hasReceipt ? '✅' : '⚠️'}
+                                </span>
+                                <span className="text-slate-400">{p.booking.roomName}</span>
+                                <span className="text-slate-500">•</span>
+                                <span className="text-slate-400">
+                                  {new Date(p.booking.startTime).toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    timeZone: TIMEZONE,
+                                  })}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-white font-medium">{p.booking.customerName}</span>
+                                <span className="text-amber-400 font-medium">${p.amount.toFixed(2)}</span>
+                                <span className="text-slate-500 text-xs">Seat {p.invoice.seatIndex}</span>
+                              </div>
+                            </div>
+                            {p.hasReceipt && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const url = await getReceiptUrl(p.paymentId);
+                                    if (url) setViewingReceiptUrl(url);
+                                  } catch {
+                                    console.error('Failed to load receipt');
+                                  }
+                                }}
+                                className="text-slate-400 hover:text-white text-sm px-3 py-1 rounded bg-slate-700 hover:bg-slate-600"
+                              >
+                                👁 View
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* CSV Export */}
+                  {reconciliation.payments.length > 0 && (
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-slate-300 border-slate-600"
+                        onClick={() => {
+                          const header = 'Date,Room,Customer,Amount,Method,Seat,Has Receipt\n';
+                          const rows = reconciliation.payments.map(p =>
+                            `${reconciliationDate},${p.booking.roomName},${p.booking.customerName},${p.amount.toFixed(2)},${p.method},${p.invoice.seatIndex},${p.hasReceipt ? 'Yes' : 'No'}`
+                          ).join('\n');
+                          const blob = new Blob([header + rows], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `receipt-reconciliation-${reconciliationDate}.csv`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        Export CSV
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Receipt photo viewer overlay */}
+        {viewingReceiptUrl && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setViewingReceiptUrl(null)}
+          >
+            <div className="max-w-2xl max-h-[90vh] overflow-auto rounded-lg">
+              <img src={viewingReceiptUrl} alt="Receipt" className="w-full h-auto" />
+            </div>
+          </div>
         )}
       </div>
     </div>
