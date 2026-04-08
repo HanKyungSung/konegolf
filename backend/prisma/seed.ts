@@ -624,6 +624,21 @@ async function main() {
 		}
 	}
 	console.log(`Seed complete: ${employeesCreated} employees created (${sampleEmployees.length - employeesCreated} already existed)`);
+
+	// Seed default coupon types (idempotent by name)
+	const defaultCouponTypes = [
+		{ name: 'birthday', label: 'Birthday', defaultDescription: '1 hour free, tax included.', defaultAmount: 35.00 },
+		{ name: 'loyalty', label: 'Loyalty Reward', defaultDescription: '1 Hour Free — Thank You!', defaultAmount: 35.00 },
+	];
+
+	for (const ct of defaultCouponTypes) {
+		await prisma.couponType.upsert({
+			where: { name: ct.name },
+			update: { label: ct.label, defaultDescription: ct.defaultDescription, defaultAmount: ct.defaultAmount },
+			create: { name: ct.name, label: ct.label, defaultDescription: ct.defaultDescription, defaultAmount: ct.defaultAmount },
+		});
+	}
+	console.log('Seeded default coupon types: birthday, loyalty');
 }
 
 main()

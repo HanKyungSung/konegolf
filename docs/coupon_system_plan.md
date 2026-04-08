@@ -70,7 +70,7 @@ Staff can be logged in on **multiple devices simultaneously** (each login create
 - `id` — UUID primary key
 - `name` — unique String (e.g. `"BIRTHDAY"`, `"LOYALTY"`, `"VIP"`, `"APOLOGY"`)
 - `label` — display name (e.g. "Birthday", "Loyalty Reward", "VIP Perk")
-- `defaultDescription` — default coupon message (e.g. "1 Hour Free — Happy Birthday!")
+- `defaultDescription` — default coupon message (e.g. "1 hour free, tax included.")
 - `defaultAmount` — Decimal, default discount amount (e.g. `35.00`)
 - `active` — Boolean, default `true` (soft-delete/disable types)
 - `createdAt` — DateTime
@@ -80,7 +80,7 @@ Relations: `CouponType.coupons[]`
 **Seed with initial types:**
 | name | label | defaultDescription | defaultAmount |
 |---|---|---|---|
-| BIRTHDAY | Birthday | 1 Hour Free — Happy Birthday! | 35.00 |
+| BIRTHDAY | Birthday | 1 hour free, tax included. | 35.00 |
 | LOYALTY | Loyalty Reward | 1 Hour Free — Thank You! | 35.00 |
 | CUSTOM | Custom | Complimentary 1 Hour | 35.00 |
 
