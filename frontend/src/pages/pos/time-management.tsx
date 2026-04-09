@@ -143,6 +143,7 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPin, setNewPin] = useState('');
+  const [newRole, setNewRole] = useState<'STAFF' | 'MANAGER'>('STAFF');
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [resetPinId, setResetPinId] = useState<string | null>(null);
@@ -261,9 +262,10 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
 
     setFormLoading(true);
     try {
-      await createEmployee(newName.trim(), newPin);
+      await createEmployee(newName.trim(), newPin, newRole);
       setNewName('');
       setNewPin('');
+      setNewRole('STAFF');
       setShowAddForm(false);
       await loadEmployees();
     } catch (err: any) {
@@ -721,6 +723,14 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
                       onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       className="bg-slate-900 border-slate-600 text-white w-40"
                     />
+                    <select
+                      value={newRole}
+                      onChange={(e) => setNewRole(e.target.value as 'STAFF' | 'MANAGER')}
+                      className="bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-sm"
+                    >
+                      <option value="STAFF">Staff</option>
+                      <option value="MANAGER">Manager</option>
+                    </select>
                     <Button onClick={handleAddEmployee} disabled={formLoading}>
                       {formLoading ? '...' : 'Add'}
                     </Button>
@@ -742,11 +752,29 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
                         {!emp.pin && (
                           <span className="text-xs text-amber-400">No PIN visible</span>
                         )}
+                        <Badge variant="outline" className={emp.role === 'MANAGER' ? 'text-amber-400 border-amber-600' : 'text-slate-400 border-slate-600'}>
+                          {emp.role === 'MANAGER' ? '👔 Manager' : 'Staff'}
+                        </Badge>
                         {!emp.active && (
                           <Badge variant="outline" className="text-slate-500 border-slate-600">Inactive</Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        <select
+                          value={emp.role}
+                          onChange={async (e) => {
+                            try {
+                              await updateEmployee(emp.id, { role: e.target.value });
+                              await loadEmployees();
+                            } catch (err: any) {
+                              setError(err.message);
+                            }
+                          }}
+                          className="bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-xs"
+                        >
+                          <option value="STAFF">Staff</option>
+                          <option value="MANAGER">Manager</option>
+                        </select>
                         <Button
                           size="sm"
                           variant="outline"

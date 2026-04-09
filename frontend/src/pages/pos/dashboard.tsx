@@ -22,12 +22,14 @@ import { BookingModal } from './booking-modal';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
 import ClockModal from './clock-modal';
+import ManagerPanel from './manager-panel';
 import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString, toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
 
 export default function POSDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isReadOnly = user?.role === 'SALES';
+  const isStaff = user?.role === 'STAFF';
   
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -514,11 +516,12 @@ export default function POSDashboard() {
 
         {/* Tabs for different management views */}
         <Tabs defaultValue="timeline" className="space-y-6">
-          <TabsList className={`grid w-full ${isReadOnly ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-4'}`}>
+          <TabsList className={`grid w-full ${isReadOnly ? 'grid-cols-1' : isStaff ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'}`}>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             {!isReadOnly && <TabsTrigger value="rooms">Room Management</TabsTrigger>}
             {!isReadOnly && <TabsTrigger value="menu">Menu</TabsTrigger>}
             {!isReadOnly && <TabsTrigger value="tax">Tax Settings</TabsTrigger>}
+            {isStaff && <TabsTrigger value="manager">Manager 🔒</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="timeline">
@@ -691,6 +694,12 @@ export default function POSDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {isStaff && (
+            <TabsContent value="manager">
+              <ManagerPanel />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Debug Info */}

@@ -29,19 +29,57 @@ async function isPinTaken(pin: string, excludeId?: string): Promise<boolean> {
   return false;
 }
 
-// All routes require admin auth
+/**
+ * POST /api/employees/verify-manager
+ * Verify a PIN belongs to an active MANAGER employee.
+ * Available to any authenticated user (STAFF needs this).
+ */
+router.post('/verify-manager', requireAuth, async (req, res) => {
+  try {
+    const schema = z.object({ pin: z.string().min(4).max(6).regex(/^\d+$/) });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ authorized: false, reason: 'Invalid PIN format' });
+    }
+
+    const employees = await prisma.employee.findMany({
+      where: { active: true },
+      select: { id: true, name: true, role: true, pinHash: true },
+    });
+
+    for (const emp of employees) {
+      const match = await verifyPassword(parsed.data.pin, emp.pinHash);
+      if (match) {
+        if (emp.role === 'MANAGER') {
+          log.info({ employeeId: emp.id, name: emp.name }, 'Manager PIN verified');
+          return res.json({ authorized: true, employeeName: emp.name });
+        }
+        return res.json({ authorized: false, reason: 'Access denied — manager role required' });
+      }
+    }
+
+    return res.json({ authorized: false, reason: 'Invalid PIN' });
+  } catch (err) {
+    log.error({ err }, 'Manager PIN verification failed');
+    res.status(500).json({ authorized: false, reason: 'Internal server error' });
+  }
+});
+
+// All remaining routes require admin auth
 router.use(requireAuth);
 router.use(requireAdmin);
 
 const createEmployeeSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   pin: z.string().min(4, 'PIN must be at least 4 digits').max(6).regex(/^\d+$/, 'PIN must be digits only'),
+  role: z.enum(['STAFF', 'MANAGER']).default('STAFF'),
 });
 
 const updateEmployeeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must be digits only').optional(),
   active: z.boolean().optional(),
+  role: z.enum(['STAFF', 'MANAGER']).optional(),
 });
 
 /**
@@ -57,6 +95,7 @@ router.get('/', async (req, res) => {
         id: true,
         name: true,
         pin: true,
+        role: true,
         active: true,
         createdAt: true,
         updatedAt: true,
@@ -81,7 +120,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: parsed.error.issues[0].message });
     }
 
-    const { name, pin } = parsed.data;
+    const { name, pin, role } = parsed.data;
 
     if (await isPinTaken(pin)) {
       return res.status(409).json({ error: 'This PIN is already in use by another employee' });
@@ -90,8 +129,8 @@ router.post('/', async (req, res) => {
     const pinHash = await hashPassword(pin);
 
     const employee = await prisma.employee.create({
-      data: { name, pin, pinHash },
-      select: { id: true, name: true, pin: true, active: true, createdAt: true },
+      data: { name, pin, pinHash, role },
+      select: { id: true, name: true, pin: true, role: true, active: true, createdAt: true },
     });
 
     log.info({ employeeId: employee.id, name }, 'Employee created');
@@ -122,6 +161,7 @@ router.put('/:id', async (req, res) => {
     const data: any = {};
     if (parsed.data.name !== undefined) data.name = parsed.data.name;
     if (parsed.data.active !== undefined) data.active = parsed.data.active;
+    if (parsed.data.role !== undefined) data.role = parsed.data.role;
     if (parsed.data.pin !== undefined) {
       if (await isPinTaken(parsed.data.pin, id)) {
         return res.status(409).json({ error: 'This PIN is already in use by another employee' });
@@ -133,7 +173,7 @@ router.put('/:id', async (req, res) => {
     const employee = await prisma.employee.update({
       where: { id },
       data,
-      select: { id: true, name: true, pin: true, active: true, createdAt: true, updatedAt: true },
+      select: { id: true, name: true, pin: true, role: true, active: true, createdAt: true, updatedAt: true },
     });
 
     log.info({ employeeId: id, updates: Object.keys(data) }, 'Employee updated');

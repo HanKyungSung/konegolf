@@ -802,6 +802,7 @@ export interface Employee {
   id: string;
   name: string;
   pin: string | null;
+  role: string;
   active: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -878,6 +879,25 @@ export async function checkClockStatus(pin: string): Promise<ClockStatusResponse
   return json;
 }
 
+export interface VerifyManagerResponse {
+  authorized: boolean;
+  employeeName?: string;
+  reason?: string;
+}
+
+export async function verifyManager(pin: string): Promise<VerifyManagerResponse> {
+  const res = await fetch(`${API_BASE}/api/employees/verify-manager`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.reason || 'Verification failed');
+  return json;
+}
+
 // ── Admin endpoints ──
 
 export async function listEmployees(activeOnly = false): Promise<Employee[]> {
@@ -891,12 +911,12 @@ export async function listEmployees(activeOnly = false): Promise<Employee[]> {
   return json.employees;
 }
 
-export async function createEmployee(name: string, pin: string): Promise<Employee> {
+export async function createEmployee(name: string, pin: string, role: string = 'STAFF'): Promise<Employee> {
   const res = await fetch(`${API_BASE}/api/employees`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, pin }),
+    body: JSON.stringify({ name, pin, role }),
   });
 
   const json = await res.json();
@@ -904,7 +924,7 @@ export async function createEmployee(name: string, pin: string): Promise<Employe
   return json.employee;
 }
 
-export async function updateEmployee(id: string, data: { name?: string; pin?: string; active?: boolean }): Promise<Employee> {
+export async function updateEmployee(id: string, data: { name?: string; pin?: string; active?: boolean; role?: string }): Promise<Employee> {
   const res = await fetch(`${API_BASE}/api/employees/${id}`, {
     method: 'PUT',
     credentials: 'include',
