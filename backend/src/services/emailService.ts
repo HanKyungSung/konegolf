@@ -646,7 +646,7 @@ export interface CouponEmailParams {
 function getCouponEmailContent(type: string): { emoji: string; heading: string; subtext: string } {
   switch (type) {
     case 'birthday':
-      return { emoji: '🎂', heading: 'Happy Birthday!', subtext: 'Here\'s a birthday coupon from K one Golf.' };
+      return { emoji: '🎂', heading: 'Happy Birthday!', subtext: 'You\'ve earned 1 hour free at K one Golf — tax included!' };
     case 'loyalty':
       return { emoji: '⭐', heading: 'Thank You for Your Loyalty!', subtext: 'You\'ve reached a milestone and earned a reward!' };
     default:
@@ -675,12 +675,17 @@ export async function sendCouponEmail(params: CouponEmailParams) {
     : '';
 
   const subject = couponType === 'birthday'
-    ? `${emoji} Happy Birthday, ${customerName}! Birthday Coupon from K one Golf`
+    ? `${emoji} Happy Birthday, ${customerName}! 1 Hour Free from K one Golf`
     : couponType === 'loyalty'
       ? `${emoji} Thank you, ${customerName}! You've earned a reward from K one Golf!`
       : `${emoji} ${customerName}, you've received a coupon from K one Golf!`;
 
-  const text = `${heading}\n\nHi ${customerName},\n\n${subtext}\n\n${description}\nValue: $${discountAmount.toFixed(2)}\n\nYour coupon code: ${couponCode}\nView your coupon: ${couponUrl}\n\nShow this code or QR to staff to redeem.\n${expiresAt ? `Expires: ${new Date(expiresAt).toLocaleDateString()}\n` : ''}`;
+  const isBirthday = couponType === 'birthday';
+  const valueDisplay = isBirthday
+    ? '1 Hour Free (Tax Included)'
+    : `$${discountAmount.toFixed(2)}`;
+
+  const text = `${heading}\n\nHi ${customerName},\n\n${subtext}\n\n${description}\nValue: ${valueDisplay}\n\nYour coupon code: ${couponCode}\nView your coupon: ${couponUrl}\n\nShow this code or QR to staff to redeem.\n${expiresAt ? `Expires: ${new Date(expiresAt).toLocaleDateString()}\n` : ''}`;
 
   const html = `<!doctype html>
 <html><body style="font-family:system-ui,sans-serif;background:#f8fafc;padding:20px;margin:0">
@@ -696,7 +701,7 @@ export async function sendCouponEmail(params: CouponEmailParams) {
       <p style="margin:0 0 4px;font-size:13px;color:#92400e;text-transform:uppercase;letter-spacing:1px;font-weight:600">Your Coupon</p>
       <p style="margin:0 0 12px;font-size:28px;font-weight:800;color:#1e293b;letter-spacing:2px">${couponCode}</p>
       <p style="margin:0 0 4px;font-size:15px;color:#334155;font-weight:600">${description}</p>
-      <p style="margin:0;font-size:14px;color:#64748b">Value: <strong>$${discountAmount.toFixed(2)}</strong></p>
+      <p style="margin:0;font-size:14px;color:#64748b">Value: <strong>${valueDisplay}</strong></p>
     </div>
     <div style="margin:0 0 24px">
       <p style="font-size:13px;color:#64748b;margin:0 0 12px">Scan QR code to view your coupon:</p>

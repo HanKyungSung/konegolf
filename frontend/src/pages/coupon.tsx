@@ -120,7 +120,12 @@ export default function CouponPage() {
           <div>
             <p className="text-base font-semibold text-slate-200">{coupon.description}</p>
             <p className="text-sm text-slate-400 mt-1">
-              Value: <span className="text-amber-400 font-bold">${coupon.discountAmount.toFixed(2)}</span>
+              Value:{' '}
+              <span className="text-amber-400 font-bold">
+                {coupon.typeName === 'birthday' || coupon.typeName === 'loyalty'
+                  ? '1 Hour Free (Tax Included)'
+                  : `$${coupon.discountAmount.toFixed(2)}`}
+              </span>
             </p>
           </div>
 

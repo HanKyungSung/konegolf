@@ -141,18 +141,32 @@ export async function redeemCoupon(params: {
       include: { couponType: true, user: { select: { id: true, name: true } } },
     });
 
+    // Calculate effective discount amount
+    // For birthday/loyalty coupons: include tax so customer pays $0 for the free hour
+    const baseAmount = Number(coupon.discountAmount);
+    const isTaxInclusive = coupon.couponType.name === 'birthday' || coupon.couponType.name === 'loyalty';
+    let effectiveAmount = baseAmount;
+    let taxExempt = false;
+
+    if (isTaxInclusive) {
+      const taxRateSetting = await tx.setting.findUnique({ where: { key: 'global_tax_rate' } });
+      const taxRate = taxRateSetting ? parseFloat(taxRateSetting.value) / 100 : 0.14;
+      effectiveAmount = Math.round(baseAmount * (1 + taxRate) * 100) / 100;
+      taxExempt = true;
+    }
+
     // Create discount order (negative price)
-    const discountAmount = Number(coupon.discountAmount);
     await tx.order.create({
       data: {
         bookingId,
         seatIndex: seatNumber,
         customItemName: `🎟️ ${coupon.description}`,
-        customItemPrice: -discountAmount,
+        customItemPrice: -effectiveAmount,
         discountType: 'FLAT',
         quantity: 1,
-        unitPrice: -discountAmount,
-        totalPrice: -discountAmount,
+        unitPrice: -effectiveAmount,
+        totalPrice: -effectiveAmount,
+        taxExempt,
       },
     });
 
