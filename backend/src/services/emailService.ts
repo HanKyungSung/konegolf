@@ -680,7 +680,7 @@ export async function sendCouponEmail(params: CouponEmailParams) {
       ? `${emoji} Thank you, ${customerName}! You've earned a reward from K one Golf!`
       : `${emoji} ${customerName}, you've received a coupon from K one Golf!`;
 
-  const isBirthday = couponType === 'birthday';
+  const isBirthday = couponType.toLowerCase() === 'birthday';
   const valueDisplay = isBirthday
     ? '1 Hour Free (Tax Included)'
     : `$${discountAmount.toFixed(2)}`;

@@ -144,7 +144,7 @@ export async function redeemCoupon(params: {
     // Calculate effective discount amount
     // For birthday/loyalty coupons: include tax so customer pays $0 for the free hour
     const baseAmount = Number(coupon.discountAmount);
-    const isTaxInclusive = coupon.couponType.name === 'birthday' || coupon.couponType.name === 'loyalty';
+    const isTaxInclusive = coupon.couponType.name.toLowerCase() === 'birthday' || coupon.couponType.name.toLowerCase() === 'loyalty';
     let effectiveAmount = baseAmount;
     let taxExempt = false;
 
