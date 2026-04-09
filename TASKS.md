@@ -15,10 +15,11 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 5. [Backend & Admin Features - Phase 1](#backend--admin-features---phase-1)
 6. [Simplified Booking Status & Invoice System - Phase 1.3](#phase-13-simplified-booking-status--full-pos-invoice-system)
 7. [Employee Clock In/Out — Aggregation Reports](#employee-clock-inout--aggregation-reports)
-8. [Device Whitelisting](#device-whitelisting)
-9. [Code Cleanup & Technical Debt](#code-cleanup--technical-debt)
-10. [Testing & Quality Assurance](#testing--quality-assurance)
-11. [Completed Tasks Archive](#completed-tasks-archive)
+8. [Manager Panel (PIN-Gated)](#manager-panel-pin-gated)
+9. [Device Whitelisting](#device-whitelisting)
+10. [Code Cleanup & Technical Debt](#code-cleanup--technical-debt)
+11. [Testing & Quality Assurance](#testing--quality-assurance)
+12. [Completed Tasks Archive](#completed-tasks-archive)
 
 ---
 
@@ -3435,7 +3436,73 @@ Build aggregation reports for employee hours so the business owner can review we
 
 ---
 
-## 🔒 Device Whitelisting
+## 🔐 Manager Panel (PIN-Gated)
+
+**Status:** ✅ COMPLETED
+**Priority:** HIGH
+**Deployed:** 2026-04-09
+
+### Overview
+A Manager tab on the POS dashboard that gives trusted staff (MANAGER role) access to customer and booking data without needing the full admin account. Protected by individual employee PINs.
+
+### Tasks
+
+- [x] **Employee role system** — Added `role` column to `Employee` model (`STAFF` default, `MANAGER` for trusted staff)
+- [x] **PIN verification endpoint** — `POST /api/employees/verify-manager` — loops active employees, checks PIN hash, verifies `role === 'MANAGER'`
+- [x] **Manager tab on POS dashboard** — Visible only for `STAFF` login accounts (admin has full Customer page, SALES excluded)
+- [x] **PIN pad unlock UI** — Reusable PIN pad component; unlocked state persists in `sessionStorage` across tab switches
+- [x] **Customers sub-tab** — Searchable, sortable, paginated customer table with detail modal (stats, edit, booking history)
+- [x] **Bookings sub-tab** — Date range, status, and source filters; sortable booking table
+- [x] **Booking detail modal** — Clicking a booking opens `BookingDetailModal` (stacked, same as admin experience)
+- [x] **Null-safe display** — All badge/format helpers handle undefined `registrationSource`, `totalSpent`, `bookingCount`, `price`
+- [x] **Lock button** — Clears `sessionStorage` and returns to PIN prompt
+- [x] **Role management in Time Management** — Dropdown to set employee role when adding/editing
+- [x] **Unit tests** — 20 tests in `backend/tests/unit/employee/manager-role.test.ts` (schema validation, access logic)
+- [x] **E2E tests** — 20 tests in `e2e-tests/16-manager-panel.spec.ts` (role CRUD, PIN flow, tab visibility, sub-tab content, lock, inactive manager, STAFF API access)
+
+### Production Notes
+- Migration auto-ran: all employees defaulted to `STAFF`
+- Habin (PIN 1004) promoted to `MANAGER` via direct DB update
+- The `verify-manager` endpoint is placed **before** `requireAdmin` middleware so STAFF logins can call it
+- `sessionStorage` means unlock resets on browser close (not just tab switch)
+
+### Files
+| Area | Files |
+|------|-------|
+| **DB** | `schema.prisma` (Employee.role), `migrations/20260409081632_add_employee_role/` |
+| **Backend** | `routes/employees.ts` (verify-manager + role in CRUD) |
+| **Frontend** | `manager-panel.tsx`, `dashboard.tsx` (Manager tab), `time-management.tsx` (role dropdown) |
+| **API client** | `pos-api.ts` (Employee.role, verifyManager(), createEmployee role param) |
+| **Tests** | `manager-role.test.ts` (20 unit), `16-manager-panel.spec.ts` (20 e2e) |
+
+---
+
+## 🔴 URGENT: Detail Logging for Staff/Manager Activities
+
+**Status:** 📋 PLANNED
+**Priority:** 🔴 URGENT
+**Depends on:** Manager Panel (✅ completed)
+
+### Overview
+Log all significant actions performed by staff and managers through the POS system. Since all staff share the same login account (`admin@konegolf.ca`), the only way to trace who did what is via their employee PIN. This is critical for accountability and fraud prevention.
+
+### Tasks
+
+- [ ] **Activity log table** — New `ActivityLog` model: `id`, `employeeId` (FK → Employee), `action` (enum), `targetType` (BOOKING/CUSTOMER/PAYMENT/TIME_ENTRY), `targetId`, `details` (JSON), `ipAddress`, `timestamp`
+- [ ] **Manager panel audit trail** — Log when manager unlocks panel, views customer detail, edits customer info
+- [ ] **Booking actions** — Log booking creation, status changes, cancellations (who did it)
+- [ ] **Payment actions** — Log payment collection, receipt uploads, refunds
+- [ ] **Time entry actions** — Log clock in/out, manual time edits by admin
+- [ ] **Employee management actions** — Log role changes, PIN resets, employee creation/deactivation
+- [ ] **API middleware** — Attach employee context to requests when PIN is provided
+- [ ] **Activity log viewer** — New section in Manager Panel or admin page to browse/filter activity logs
+- [ ] **Retention policy** — Auto-purge logs older than N months (configurable via Settings)
+
+### Design Considerations
+- PIN identifies the actor; the shared login session identifies the device
+- Consider: should logs include IP address for location context?
+- Consider: real-time notification for suspicious activity (e.g., multiple failed PIN attempts)?
+- Consider: daily/weekly activity summary email to owner?
 
 **Status:** 📋 PLANNED
 **Priority:** HIGH

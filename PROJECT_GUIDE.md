@@ -128,6 +128,30 @@ Multiple employees can be clocked in simultaneously
 
 > **Security note:** Admin login (email/password) secures the POS session. PIN is used only for employee identification (time tracking), not authentication.
 
+### Manager Panel (PIN-Gated)
+
+Trusted staff with `MANAGER` role can access customer/booking data from a dedicated dashboard tab without the full admin account.
+
+| Component | Details |
+|---|---|
+| **Employee roles** | `STAFF` (default) or `MANAGER` — stored in `Employee.role` column |
+| **Verification** | `POST /api/employees/verify-manager` — checks PIN hash + role, placed before `requireAdmin` middleware |
+| **Dashboard tab** | "Manager 🔒" tab visible only for `STAFF` login accounts |
+| **Unlock persistence** | `sessionStorage` — survives tab switches, clears on browser close or Lock button |
+| **Customers sub-tab** | Searchable/sortable table, detail modal with stats + edit + booking history |
+| **Bookings sub-tab** | Date range, status, source filters; clicking a row opens `BookingDetailModal` (stacked) |
+| **Frontend** | `manager-panel.tsx`, `dashboard.tsx` (tab), `time-management.tsx` (role dropdown) |
+| **Tests** | 20 unit tests (`manager-role.test.ts`), 20 e2e tests (`16-manager-panel.spec.ts`) |
+
+**Flow:**
+```
+STAFF logs in → Dashboard → Manager tab → enter MANAGER employee PIN → unlock
+→ browse Customers / Bookings → click booking → BookingDetailModal (stacked)
+→ Lock button or close browser → re-enter PIN
+```
+
+> **Production:** Habin (PIN 1004) = MANAGER. All others = STAFF. Change roles via Time Management → Employees tab.
+
 ### Versioning
 
 - **Backend:** `backend/VERSION.txt` (current: 1.0.0)

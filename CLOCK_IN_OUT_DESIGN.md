@@ -1,7 +1,7 @@
 # Employee Clock In/Out — Design Notes
 
-> **Date:** 2026-03-25
-> **Status:** Brainstorming — no solution finalized yet
+> **Date:** 2026-03-25 (updated 2026-04-09)
+> **Status:** ✅ Implemented — includes Manager Panel extension
 
 ## Context
 
@@ -70,3 +70,19 @@ Since the POS is accessible from anywhere, we need a way to verify the employee 
 > Individual Employee records (separate from User model) with scrypt-hashed PINs.
 > Daily shift report email at 11 PM Atlantic.
 > Admin dashboard for viewing/editing time entries and managing employees.
+
+## Manager Panel Extension (2026-04-09)
+
+The Employee PIN system was extended to gate a **Manager Panel** on the POS dashboard:
+
+- `Employee.role` column added: `STAFF` (default) or `MANAGER`
+- `POST /api/employees/verify-manager` — verifies PIN + role before granting access
+- Manager tab on dashboard shows customer/booking tables (same data as admin Customer page)
+- Unlock persists in `sessionStorage` — survives tab switches, clears on browser close
+- Booking clicks open `BookingDetailModal` (stacked), matching admin UX
+
+**Production:** Habin (PIN 1004) = MANAGER. All others remain STAFF.
+
+## Next: Activity Logging (URGENT)
+
+All staff share one login — the only way to trace actions is via employee PIN. An `ActivityLog` table is planned to record who did what (booking changes, payment collection, customer edits, manager panel access). See `TASKS.md` for full task breakdown.

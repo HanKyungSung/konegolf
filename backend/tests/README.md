@@ -80,9 +80,19 @@ npm run test:coverage
 | Test Type | Tests | Status | Notes |
 |-----------|-------|--------|-------|
 | Unit      | 59    | ✅ All passing | Phone utilities |
+| Unit      | 42    | ✅ All passing | Coupon logic |
+| Unit      | 48    | ✅ All passing | Receipt routes |
+| Unit      | 20    | ✅ All passing | Manager role (schema validation, access logic) |
 | Database  | 14    | ✅ All passing | Schema validation |
 | E2E       | 21    | ⏭️ Skipped | Awaiting test server auth setup |
-| **Total** | **94** | **73 passing, 21 skipped** | |
+| **Total** | **204** | **183 passing, 21 skipped** | |
+
+### Playwright E2E Tests (separate from Jest)
+
+| Test File | Tests | Status | Notes |
+|-----------|-------|--------|-------|
+| `15-split-payment-receipts.spec.ts` | 7 | ✅ All passing | Split-payment receipt scenarios |
+| `16-manager-panel.spec.ts` | 20 | ✅ All passing | Role CRUD, PIN flow, tab visibility, sub-tab content, lock, inactive manager, STAFF API access |
 
 ## Adding New Tests
 

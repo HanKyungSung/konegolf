@@ -1,7 +1,7 @@
 # Database Schema Explanation
 
 **Created:** October 12, 2025  
-**Last Updated:** March 21, 2026  
+**Last Updated:** April 9, 2026  
 **Purpose:** Explain existing database relationships and provide quick column reference
 
 > **⚠️ MAINTENANCE RULE:** If any code change touches `backend/prisma/schema.prisma` (adding/removing/renaming columns, adding models, changing types), **you MUST update this file** to keep the Quick Column Reference and model documentation in sync. Also update `docs/bank_reconciliation_investigation.md` if Invoice, Booking, User, or Payment tables are affected.
@@ -150,6 +150,30 @@ PostgreSQL uses **exact casing** with double quotes for camelCase columns. Lower
 | ocrName | `"ocrName"` | String | |
 | ocrTotalScore | `"ocrTotalScore"` | Int | |
 | ocrOverPar | `"ocrOverPar"` | Int? | |
+
+### Employee
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| name | `name` | String | Display name |
+| pin | `pin` | String? | Plaintext PIN (4-6 digits) for lookup |
+| pinHash | `"pinHash"` | String? | scrypt hash for verification |
+| role | `role` | String | `STAFF` (default) or `MANAGER` |
+| active | `active` | Boolean | Default true; deactivated employees can't clock in or unlock manager panel |
+| autoClockOut | `"autoClockOut"` | Boolean | Default false; set true by stale shift cleanup cron |
+| createdAt | `"createdAt"` | Timestamptz | |
+| updatedAt | `"updatedAt"` | Timestamptz | |
+
+### TimeEntry
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| employeeId | `"employeeId"` | UUID | FK → Employee |
+| clockIn | `"clockIn"` | Timestamptz | |
+| clockOut | `"clockOut"` | Timestamptz? | Null while shift is open |
+| autoClockOut | `"autoClockOut"` | Boolean | Default false; true if closed by stale shift cron |
+| createdAt | `"createdAt"` | Timestamptz | |
+| updatedAt | `"updatedAt"` | Timestamptz | |
 
 ---
 
@@ -697,6 +721,8 @@ const adminRevenue = await prisma.booking.groupBy({
 - ✅ `MenuItem` — Menu with categories and sorting
 - ✅ `Coupon` / `CouponType` — Loyalty and promotion system
 - ✅ `ScoreCapture` / `ScoreCapturePlayer` — Bay screen OCR results
+- ✅ `Employee` — Staff with PIN-based identification, `role` (STAFF/MANAGER)
+- ✅ `TimeEntry` — Clock in/out records per employee
 - ✅ `Setting` — Global config (tax rate, etc.)
 
 ### **Key Gotchas for Queries**
