@@ -201,11 +201,12 @@ One INVOICE can have many PAYMENTs (incremental/split payments)
 Each PAYMENT belongs to ONE INVOICE
 
 Payment model:
-  id        String   (PK, uuid)
-  invoiceId String   (FK → Invoice)
-  method    String   (CARD / CASH / GIFT_CARD)
-  amount    Decimal  (amount paid in this payment)
-  createdAt DateTime
+  id          String   (PK, uuid)
+  invoiceId   String   (FK → Invoice)
+  method      String   (CARD / CASH / GIFT_CARD / COUPON)
+  amount      Decimal  (amount paid in this payment; $0 for COUPON)
+  receiptPath String?  (Google Drive path for card receipt photo)
+  createdAt   DateTime
 
 When sum(payments.amount) >= invoice.totalAmount → invoice status = PAID
 When multiple payment methods used → invoice.paymentMethod = SPLIT
@@ -218,6 +219,13 @@ Example (split/incremental):
   Invoice (Seat 2, $39.90) ──┐
                              ├─ Payment: CARD  $20.00
                              └─ Payment: CASH  $19.90 ✅ PAID (SPLIT)
+
+Example (coupon covers full amount):
+  Invoice (Seat 1, $0.00) ───┐
+                             └─ Payment: COUPON $0.00 ✅ PAID (auto-created on coupon redeem)
+
+  Birthday coupon: $35 base × (1 + 14% HST) = $39.90 discount (taxExempt order)
+  1hr ($35) + tax ($4.90) - coupon ($39.90) = $0.00 total → auto-PAID
 
 Booking paymentStatus:
   All seats PAID → booking.paymentStatus = PAID

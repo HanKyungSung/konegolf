@@ -72,12 +72,14 @@ model Payment {
   id          String   @id @default(uuid())
   invoice     Invoice  @relation(...)
   invoiceId   String
-  method      String   // CARD | CASH | GIFT_CARD
-  amount      Decimal
+  method      String   // CARD | CASH | GIFT_CARD | COUPON
+  amount      Decimal  // $0 allowed for COUPON method
   receiptPath String?  // null = no receipt uploaded
   createdAt   DateTime
 }
 ```
+
+> **Note:** COUPON payments ($0) do not require receipts. The pending-receipts endpoint only lists CARD and GIFT_CARD payments.
 
 ## Storage Details
 

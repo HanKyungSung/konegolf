@@ -17,6 +17,12 @@
 - **Schema changes:** When modifying `backend/prisma/schema.prisma`, always update:
   - `docs/database_schema_explanation.md` — Quick Column Reference tables
   - `docs/bank_reconciliation_investigation.md` — Schema Reference section (if Invoice/Booking/User/Payment changed)
+- **Payment system changes:** When modifying payment methods or invoice logic, update:
+  - `docs/BOOKING_STATUS_FLOW.md` — Payment model and status transitions
+  - `docs/receipt_storage_schema.md` — If Payment model changes
+  - `docs/coupon_system_plan.md` — If coupon redemption or COUPON payment method changes
+- **Payment methods:** CARD, CASH, GIFT_CARD, COUPON. COUPON allows $0 amount (used when coupon covers full invoice). Selection is forced (no defaults).
+- **Birthday/loyalty coupons:** Tax-inclusive discount at redemption: `$35 × (1 + taxRate)`. Creates taxExempt discount order. Auto-marks invoice PAID if total ≤ $0.
 - **Git:** Use standard git commands with conventional commits (`feat:`, `fix:`, `docs:`, `chore:`). Do not use MCP git tools unless asked.
 - **Testing:** When adding new features or fixing bugs, **always** write tests before considering the task complete:
   - **Unit tests** (`backend/tests/unit/`): For pure logic — tax calculation, pricing, validation, duplicate detection. Use Jest with `ts-jest`. Mirror function locally if testing pure algorithms. Organize by domain folder (e.g., `payment/`, `employee/`, `booking/`).

@@ -70,8 +70,9 @@ PostgreSQL uses **exact casing** with double quotes for camelCase columns. Lower
 |--------|-----------|------|-------|
 | id | `id` | UUID | PK |
 | invoiceId | `"invoiceId"` | UUID | FK → Invoice |
-| method | `method` | String | CARD, CASH, GIFT_CARD |
-| amount | `amount` | Decimal(10,2) | |
+| method | `method` | String | CARD, CASH, GIFT_CARD, COUPON |
+| amount | `amount` | Decimal(10,2) | $0 allowed for COUPON method |
+| receiptPath | `"receiptPath"` | String? | Google Drive path (e.g. `receipts/2026-04-07/{bookingId}/{paymentId}.jpg`) |
 | createdAt | `"createdAt"` | Timestamptz | |
 
 ### Order
@@ -83,7 +84,7 @@ PostgreSQL uses **exact casing** with double quotes for camelCase columns. Lower
 | customItemName | `"customItemName"` | String? | |
 | customItemPrice | `"customItemPrice"` | Decimal? | |
 | discountType | `"discountType"` | String? | FLAT or PERCENT |
-| taxExempt | `"taxExempt"` | Boolean | Default false. True for gift cards |
+| taxExempt | `"taxExempt"` | Boolean | Default false. True for gift cards and tax-inclusive coupon discounts |
 | seatIndex | `"seatIndex"` | Int? | 1–4 or null (shared) |
 | quantity | `quantity` | Int | |
 | unitPrice | `"unitPrice"` | Decimal(10,2) | |

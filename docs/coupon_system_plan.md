@@ -189,7 +189,7 @@ Relations: `User.coupons[]`, `Booking.redeemedCoupons[]`, `CouponType.coupons[]`
 ## Design Decisions
 | Decision | Choice | Notes |
 |---|---|---|
-| Coupon value | Fixed $35 | Email says "1 hour free", POS applies $35 discount |
+| Coupon value | Fixed $35 (base), tax-inclusive at redemption | Email says "1 Hour Free (Tax Included)". At redeem: `$35 × (1 + taxRate)` = $39.90 at 14% HST. Discount order marked `taxExempt: true` |
 | Expiry | null (never expires) | `expiresAt` field ready for future use |
 | Coupon type | Separate `CouponType` table | Admin adds new types from UI — no code changes, no migration |
 | Manual creation | Admin can create & send | From customer detail modal, type dropdown + editable description/amount |
@@ -199,6 +199,20 @@ Relations: `User.coupons[]`, `Booking.redeemedCoupons[]`, `CouponType.coupons[]`
 | Discount mechanism | Negative-price Order row | Same pattern as existing ad-hoc discounts |
 | Multi-device auth | Supported | DB-backed sessions, login doesn't invalidate others, 24h TTL |
 | Public coupon page | No auth required | Shows only safe fields (no user PII) |
+| COUPON payment method | $0 Payment record | When coupon covers full amount, invoice auto-marked PAID with `paymentMethod: 'COUPON'` |
+| Auto-PAID | After coupon redeem | If invoice total ≤ $0 after redeem → auto-create $0 COUPON payment, mark PAID, update booking paymentStatus |
+| Coupon removal revert | UNPAID on coupon delete | If discount order deleted and invoice was PAID by COUPON → revert to UNPAID |
+
+## Payment Method: COUPON
+
+When a birthday/loyalty coupon fully covers the invoice (total ≤ $0):
+
+1. **Backend auto-marks PAID** — after `recalculateInvoice()`, creates $0 COUPON payment record and sets `invoice.status = 'PAID'`, `invoice.paymentMethod = 'COUPON'`
+2. **Booking paymentStatus** — updated to PAID if all invoices are paid
+3. **Frontend** — shows 🎟️ Coupon button in payment method selector (only when total ≤ $0)
+4. **Revert** — deleting the coupon discount order reverts invoice to UNPAID and deletes $0 COUPON payment
+
+When a coupon only partially covers the invoice (total > $0), customer pays remaining via CARD/CASH/GIFT_CARD normally.
 
 ## Open Questions
 - **Admin coupon list/management page** — Dedicated tab to view all issued coupons, filter by status/type, revoke active coupons. Can be added later as a tab on Customers page.

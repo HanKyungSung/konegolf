@@ -7,8 +7,13 @@ This directory contains tests organized by type and feature domain, not by imple
 ```
 tests/
 ├── unit/           # Pure unit tests (no external dependencies)
-│   └── utils/      # Utility function tests
-│       └── phone.test.ts
+│   ├── utils/      # Utility function tests
+│   │   └── phone.test.ts
+│   ├── coupon/     # Coupon system logic tests
+│   │   ├── birthday-tax-included.test.ts
+│   │   └── coupon-payment.test.ts
+│   └── receipt/    # Receipt storage tests
+│       └── receipt-routes.test.ts
 ├── db/             # Database integration tests (Prisma + DB)
 │   └── schema.test.ts
 ├── e2e/            # End-to-end API tests (HTTP + Auth + DB)
@@ -28,6 +33,9 @@ tests/
 
 **Organization**:
 - `utils/phone.test.ts` - Phone normalization, validation, formatting (59 tests)
+- `coupon/birthday-tax-included.test.ts` - Birthday coupon tax-inclusive discount logic (23 tests)
+- `coupon/coupon-payment.test.ts` - COUPON payment method validation, invoice math for all scenarios (19 tests)
+- `receipt/receipt-routes.test.ts` - Receipt upload/download/delete endpoints, storage service (48 tests)
 
 ### Database Tests (`tests/db/`)
 - **Purpose**: Test database schema, constraints, and Prisma operations
