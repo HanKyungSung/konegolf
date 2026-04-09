@@ -149,7 +149,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   // Collect payment dialog state
   const [paymentDialogSeat, setPaymentDialogSeat] = useState<number | null>(null);
   const [paymentDialogAmount, setPaymentDialogAmount] = useState<string>('');
-  const [paymentDialogMethod, setPaymentDialogMethod] = useState<'CARD' | 'CASH' | 'GIFT_CARD' | null>(null);
+  const [paymentDialogMethod, setPaymentDialogMethod] = useState<'CARD' | 'CASH' | 'GIFT_CARD' | 'COUPON' | null>(null);
 
   // Receipt modal state
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -1639,6 +1639,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                               const paidSoFar = existingPayments.reduce((sum, p) => sum + Number(p.amount), 0);
                               const seatTotal = subtotal + tax;
                               const remaining = Math.max(0, Math.round((seatTotal - paidSoFar) * 100) / 100);
+                              const hasCouponDiscount = discountItems.some(item => (item.menuItem?.name || '').includes('🎟️'));
 
                               return (
                                 <>
@@ -1648,8 +1649,8 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                       {existingPayments.map((p, idx) => (
                                         <div key={idx} className="flex items-center justify-between text-sm bg-slate-800/70 rounded-md px-3 py-2">
                                           <span className="inline-flex items-center gap-1.5 text-slate-300">
-                                            {p.method === 'CARD' ? <CreditCard className="h-3.5 w-3.5" /> : p.method === 'GIFT_CARD' ? <Gift className="h-3.5 w-3.5" /> : <Banknote className="h-3.5 w-3.5" />}
-                                            {p.method === 'GIFT_CARD' ? 'Gift Card' : p.method === 'CARD' ? 'Card' : 'Cash'}
+                                            {p.method === 'COUPON' ? <Ticket className="h-3.5 w-3.5" /> : p.method === 'CARD' ? <CreditCard className="h-3.5 w-3.5" /> : p.method === 'GIFT_CARD' ? <Gift className="h-3.5 w-3.5" /> : <Banknote className="h-3.5 w-3.5" />}
+                                            {p.method === 'COUPON' ? 'Coupon' : p.method === 'GIFT_CARD' ? 'Gift Card' : p.method === 'CARD' ? 'Card' : 'Cash'}
                                           </span>
                                           <span className="text-emerald-400 font-medium">${Number(p.amount).toFixed(2)}</span>
                                         </div>
@@ -1669,13 +1670,16 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                       setPaymentDialogMethod(null);
                                       setTipMethodBySeat(prev => ({ ...prev, [seat]: 'CARD' }));
                                     }}
-                                    disabled={subtotal === 0}
+                                    disabled={subtotal === 0 && !hasCouponDiscount}
                                     className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold h-12"
                                   >
-                                    <CreditCard className="h-4 w-4 mr-2" />
-                                    {existingPayments.length > 0 
-                                      ? `Add Payment ($${remaining.toFixed(2)} remaining)` 
-                                      : `Collect Payment — $${seatTotal.toFixed(2)}`}
+                                    {seatTotal <= 0 && hasCouponDiscount ? (
+                                      <><Ticket className="h-4 w-4 mr-2" /> Collect Payment — Coupon Applied</>
+                                    ) : existingPayments.length > 0 ? (
+                                      <><CreditCard className="h-4 w-4 mr-2" /> {`Add Payment ($${remaining.toFixed(2)} remaining)`}</>
+                                    ) : (
+                                      <><CreditCard className="h-4 w-4 mr-2" /> {`Collect Payment — $${seatTotal.toFixed(2)}`}</>
+                                    )}
                                   </Button>
                                   )}
                                 </>
@@ -2712,11 +2716,16 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   <Label className={`text-sm font-semibold ${paymentDialogMethod === null ? 'text-amber-400 animate-pulse' : 'text-slate-300'}`}>
                     {paymentDialogMethod === null ? '⚠️ Select Payment Method' : 'Payment Method'}
                   </Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={`grid gap-2 ${baseTotal <= 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                     {([['CARD', 'Card', CreditCard], ['CASH', 'Cash', Banknote], ['GIFT_CARD', 'Gift Card', Gift]] as const).map(([method, label, Icon]) => (
                       <div
                         key={method}
-                        onClick={() => setPaymentDialogMethod(method)}
+                        onClick={() => {
+                          setPaymentDialogMethod(method);
+                          if (paymentDialogMethod === 'COUPON') {
+                            setPaymentDialogAmount(remaining.toFixed(2));
+                          }
+                        }}
                         className={`flex items-center justify-center gap-1.5 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                           paymentDialogMethod === method
                             ? 'border-amber-500 bg-amber-500/10'
@@ -2727,6 +2736,22 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         <span className="text-white font-medium text-sm">{label}</span>
                       </div>
                     ))}
+                    {baseTotal <= 0 && (
+                      <div
+                        onClick={() => {
+                          setPaymentDialogMethod('COUPON');
+                          setPaymentDialogAmount('0.00');
+                        }}
+                        className={`flex items-center justify-center gap-1.5 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          paymentDialogMethod === 'COUPON'
+                            ? 'border-emerald-500 bg-emerald-500/10'
+                            : 'border-slate-600 bg-slate-800/50 hover:border-slate-500'
+                        }`}
+                      >
+                        <Ticket className="h-4 w-4 text-white" />
+                        <span className="text-white font-medium text-sm">Coupon</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2737,11 +2762,12 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
                     <Input
                       type="number"
-                      min="0.01"
+                      min="0"
                       step="0.01"
                       value={paymentDialogAmount}
                       onChange={e => setPaymentDialogAmount(e.target.value)}
-                      className="pl-7 bg-slate-700 border-slate-600 text-white text-lg font-medium placeholder:text-slate-500"
+                      disabled={paymentDialogMethod === 'COUPON'}
+                      className={`pl-7 bg-slate-700 border-slate-600 text-white text-lg font-medium placeholder:text-slate-500 ${paymentDialogMethod === 'COUPON' ? 'opacity-50' : ''}`}
                       placeholder="0.00"
                     />
                   </div>
@@ -2781,7 +2807,8 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         const inv = invoices.find((i) => i.seatIndex === seat);
                         if (!inv) throw new Error('No invoice found');
                         const amount = parseFloat(paymentDialogAmount);
-                        if (isNaN(amount) || amount <= 0) throw new Error('Enter a valid amount');
+                        if (isNaN(amount)) throw new Error('Enter a valid amount');
+                        if (paymentDialogMethod !== 'COUPON' && amount <= 0) throw new Error('Enter a valid amount');
                         if (!paymentDialogMethod) throw new Error('Select a payment method');
 
                         const tipVal = parseFloat(tipAmountBySeat[seat] || '0') || 0;
@@ -2825,6 +2852,8 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
                     ) : paymentDialogMethod === null ? (
                       'Select Payment Method'
+                    ) : paymentDialogMethod === 'COUPON' ? (
+                      '🎟️ Mark as Paid by Coupon'
                     ) : (
                       `Pay $${paymentDialogAmount || '0.00'} by ${paymentDialogMethod === 'GIFT_CARD' ? 'Gift Card' : paymentDialogMethod === 'CARD' ? 'Card' : 'Cash'}`
                     )}

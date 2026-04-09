@@ -582,7 +582,7 @@ export async function addPayment(data: {
   invoiceId: string;
   bookingId: string;
   seatIndex: number;
-  method: 'CARD' | 'CASH' | 'GIFT_CARD';
+  method: 'CARD' | 'CASH' | 'GIFT_CARD' | 'COUPON';
   amount: number;
   tip?: number;
   tipMethod?: 'CARD' | 'CASH';

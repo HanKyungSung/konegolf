@@ -1464,18 +1464,38 @@ router.delete('/orders/:orderId', requireAuth, async (req, res) => {
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
+
+      // If coupon was removed and invoice was PAID by COUPON, revert to UNPAID when total > 0
+      if (Number(updatedInvoice.totalAmount) > 0 && updatedInvoice.status === 'PAID' && updatedInvoice.paymentMethod === 'COUPON') {
+        const payments = await prisma.payment.findMany({ where: { invoiceId: updatedInvoice.id } });
+        const realPayments = payments.filter(p => p.method !== 'COUPON' || Number(p.amount) > 0);
+        if (realPayments.length === 0) {
+          // Delete the $0 COUPON payment records
+          await prisma.payment.deleteMany({ where: { invoiceId: updatedInvoice.id, method: 'COUPON' } });
+          await prisma.invoice.update({
+            where: { id: updatedInvoice.id },
+            data: { status: 'UNPAID', paymentMethod: null, paidAt: null },
+          });
+          // Also revert booking paymentStatus
+          await updatePaymentStatus(bookingId, { paymentStatus: 'UNPAID' });
+          req.log.info({ invoiceId: updatedInvoice.id, bookingId, seatIndex }, 'Reverted invoice to UNPAID after coupon removal');
+        }
+      }
+
       await syncBookingPriceFromInvoices(bookingId);
+      // Re-fetch invoice to get latest status after possible revert
+      const finalInvoice = await prisma.invoice.findUnique({ where: { id: updatedInvoice.id } });
       return res.json({
         success: true,
         updatedInvoice: {
-          id: updatedInvoice.id,
-          seatIndex: updatedInvoice.seatIndex,
-          subtotal: updatedInvoice.subtotal,
-          tax: updatedInvoice.tax,
-          tip: updatedInvoice.tip,
-          totalAmount: updatedInvoice.totalAmount,
-          status: updatedInvoice.status,
-          paymentMethod: updatedInvoice.paymentMethod,
+          id: finalInvoice!.id,
+          seatIndex: finalInvoice!.seatIndex,
+          subtotal: finalInvoice!.subtotal,
+          tax: finalInvoice!.tax,
+          tip: finalInvoice!.tip,
+          totalAmount: finalInvoice!.totalAmount,
+          status: finalInvoice!.status,
+          paymentMethod: finalInvoice!.paymentMethod,
         },
       });
     }
@@ -1630,10 +1650,19 @@ router.patch('/invoices/:invoiceId/pay', requireAuth, async (req, res) => {
 const addPaymentSchema = z.object({
   bookingId: z.string().uuid(),
   seatIndex: z.number().int().min(1).max(4),
-  method: z.enum(['CARD', 'CASH', 'GIFT_CARD']),
-  amount: z.number().positive(),
+  method: z.enum(['CARD', 'CASH', 'GIFT_CARD', 'COUPON']),
+  amount: z.number().nonnegative(),
   tip: z.number().nonnegative().optional(),
   tipMethod: z.enum(['CARD', 'CASH']).optional(),
+}).superRefine((data, ctx) => {
+  // COUPON method allows $0 amount; all others require positive
+  if (data.method !== 'COUPON' && data.amount <= 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Amount must be positive for non-coupon payments',
+      path: ['amount'],
+    });
+  }
 });
 
 router.post('/invoices/:invoiceId/add-payment', requireAuth, async (req, res) => {

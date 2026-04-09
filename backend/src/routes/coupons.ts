@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin, requireStaffOrAdmin, requireSalesOrAbove } from '../middleware/requireRole';
 import { createCoupon, validateCoupon, redeemCoupon, getPublicCoupon } from '../services/couponService';
 import * as invoiceRepo from '../repositories/invoiceRepo';
+import { updatePaymentStatus } from '../repositories/bookingRepo';
 import { sendCouponEmail } from '../services/emailService';
 
 const router = Router();
@@ -64,6 +65,27 @@ router.post('/:code/redeem', requireAuth, requireStaffOrAdmin, async (req: Reque
 
     // Recalculate invoice totals to reflect the discount order
     const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, Number(seatNumber));
+
+    // Auto-mark invoice as PAID when coupon covers the full amount (total <= 0)
+    if (Number(updatedInvoice.totalAmount) <= 0 && updatedInvoice.status === 'UNPAID') {
+      await prisma.payment.create({
+        data: {
+          invoiceId: updatedInvoice.id,
+          method: 'COUPON',
+          amount: 0,
+        },
+      });
+      await prisma.invoice.update({
+        where: { id: updatedInvoice.id },
+        data: { status: 'PAID', paymentMethod: 'COUPON', paidAt: new Date() },
+      });
+      // Check if all invoices are now paid → update booking paymentStatus
+      const allPaid = await invoiceRepo.checkAllInvoicesPaid(bookingId);
+      if (allPaid) {
+        await updatePaymentStatus(bookingId, { paymentStatus: 'PAID', paidAt: new Date() });
+      }
+      req.log.info({ invoiceId: updatedInvoice.id, bookingId, seatNumber }, 'Invoice auto-marked PAID (coupon covers full amount)');
+    }
 
     req.log.info({
       code: req.params.code.toUpperCase(),
