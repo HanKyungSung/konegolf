@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -228,9 +228,8 @@ function fmtPhone(phone: string | null | undefined) {
 
 // ── Main Component ──
 export default function ManagerPanel() {
-  const navigate = useNavigate();
-  const [unlocked, setUnlocked] = useState(false);
-  const [managerName, setManagerName] = useState('');
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('manager_unlocked') === 'true');
+  const [managerName, setManagerName] = useState(() => sessionStorage.getItem('manager_name') || '');
   const [pinError, setPinError] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
 
@@ -263,6 +262,10 @@ export default function ManagerPanel() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState('ALL');
 
+  // Booking detail modal state
+  const [bookingDetailId, setBookingDetailId] = useState<string | null>(null);
+  const [bookingDetailOpen, setBookingDetailOpen] = useState(false);
+
   // ── PIN Verification ──
   const handlePinSubmit = async (pin: string) => {
     setPinError('');
@@ -272,6 +275,8 @@ export default function ManagerPanel() {
       if (result.authorized) {
         setUnlocked(true);
         setManagerName(result.employeeName || '');
+        sessionStorage.setItem('manager_unlocked', 'true');
+        sessionStorage.setItem('manager_name', result.employeeName || '');
       } else {
         setPinError(result.reason || 'Access denied');
       }
@@ -280,6 +285,13 @@ export default function ManagerPanel() {
     } finally {
       setPinLoading(false);
     }
+  };
+
+  const handleLock = () => {
+    setUnlocked(false);
+    setManagerName('');
+    sessionStorage.removeItem('manager_unlocked');
+    sessionStorage.removeItem('manager_name');
   };
 
   // ── Customer API ──
@@ -430,7 +442,7 @@ export default function ManagerPanel() {
             size="sm"
             variant="ghost"
             className="text-slate-400 hover:text-white"
-            onClick={() => { setUnlocked(false); setManagerName(''); }}
+            onClick={handleLock}
           >
             <Lock className="w-3 h-3 mr-1" /> Lock
           </Button>
@@ -608,7 +620,7 @@ export default function ManagerPanel() {
                       <TableRow
                         key={b.id}
                         className="border-slate-700 hover:bg-slate-800/60 cursor-pointer"
-                        onClick={() => navigate(`/pos/booking/${b.id}`)}
+                        onClick={() => { setBookingDetailId(b.id); setBookingDetailOpen(true); }}
                       >
                         <TableCell className="font-medium">{b.customerName || 'Quick Sale'}</TableCell>
                         <TableCell className="text-slate-300 text-sm hidden md:table-cell">{b.customerPhone ? fmtPhone(b.customerPhone) : '—'}</TableCell>
@@ -727,7 +739,7 @@ export default function ManagerPanel() {
                             <TableRow
                               key={bk.id}
                               className="border-slate-700 hover:bg-slate-800/60 cursor-pointer"
-                              onClick={() => { setSelectedCustomer(null); navigate(`/pos/booking/${bk.id}`); }}
+                              onClick={() => { setBookingDetailId(bk.id); setBookingDetailOpen(true); }}
                             >
                               <TableCell className="text-sm">{fmtDate(bk.startTime)}</TableCell>
                               <TableCell className="text-sm">{bk.roomName}</TableCell>
@@ -745,6 +757,17 @@ export default function ManagerPanel() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Booking Detail Modal — stacks on top of customer detail */}
+        <BookingDetailModal
+          bookingId={bookingDetailId}
+          open={bookingDetailOpen}
+          onOpenChange={setBookingDetailOpen}
+          onClose={() => {
+            loadCustomers();
+            loadBookings();
+          }}
+        />
       </CardContent>
     </Card>
   );
