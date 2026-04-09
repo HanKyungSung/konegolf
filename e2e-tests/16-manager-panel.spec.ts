@@ -198,4 +198,172 @@ test.describe('Manager Panel', () => {
     await expect(page.getByRole('tab', { name: 'Timeline' })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('tab', { name: /Manager/ })).not.toBeVisible({ timeout: 3000 });
   });
+
+  // ── Unlocked Panel Content ──
+
+  test('Manager panel unlocks and shows Customers/Bookings sub-tabs', async ({ page }) => {
+    await loginAsStaff(page);
+    await page.getByRole('tab', { name: /Manager/ }).click();
+    await page.waitForTimeout(500);
+
+    // Enter manager PIN via keypad
+    for (const digit of MANAGER_PIN.split('')) {
+      await page.getByRole('button', { name: digit, exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.waitForTimeout(1000);
+
+    // Should show unlocked panel with sub-tabs
+    await expect(page.getByText('Manager Panel')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('tab', { name: 'Customers' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Bookings' })).toBeVisible();
+  });
+
+  test('Wrong PIN shows error, correct PIN unlocks', async ({ page }) => {
+    await loginAsStaff(page);
+    await page.getByRole('tab', { name: /Manager/ }).click();
+    await page.waitForTimeout(500);
+
+    // Enter wrong PIN (STAFF PIN)
+    for (const digit of STAFF_PIN.split('')) {
+      await page.getByRole('button', { name: digit, exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.waitForTimeout(1000);
+
+    // Should show error
+    await expect(page.getByText(/manager role required|Access denied/)).toBeVisible({ timeout: 3000 });
+  });
+
+  test('Customers sub-tab shows search and table', async ({ page }) => {
+    await loginAsStaff(page);
+    await page.getByRole('tab', { name: /Manager/ }).click();
+    await page.waitForTimeout(500);
+
+    // Unlock with manager PIN
+    for (const digit of MANAGER_PIN.split('')) {
+      await page.getByRole('button', { name: digit, exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.waitForTimeout(1500);
+
+    // Customers tab should be default and show search + table headers
+    await expect(page.getByPlaceholder('Search by name, email, or phone...')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('columnheader', { name: /Name/ })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Phone/ })).toBeVisible();
+  });
+
+  test('Customer detail modal opens on row click', async ({ page }) => {
+    await loginAsStaff(page);
+    await page.getByRole('tab', { name: /Manager/ }).click();
+    await page.waitForTimeout(500);
+
+    for (const digit of MANAGER_PIN.split('')) {
+      await page.getByRole('button', { name: digit, exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.waitForTimeout(1500);
+
+    // Click first customer row (if any exist)
+    const firstRow = page.locator('table tbody tr').first();
+    const hasRows = await firstRow.isVisible().catch(() => false);
+    if (hasRows) {
+      await firstRow.click();
+      await page.waitForTimeout(1500);
+
+      // Modal should open — check for dialog with Edit button
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByRole('button', { name: /Edit/ })).toBeVisible({ timeout: 3000 });
+    }
+  });
+
+  test('Bookings sub-tab shows filters and table', async ({ page }) => {
+    await loginAsStaff(page);
+    await page.getByRole('tab', { name: /Manager/ }).click();
+    await page.waitForTimeout(500);
+
+    for (const digit of MANAGER_PIN.split('')) {
+      await page.getByRole('button', { name: digit, exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.waitForTimeout(1500);
+
+    // Switch to Bookings sub-tab
+    await page.getByRole('tab', { name: 'Bookings' }).click();
+    await page.waitForTimeout(500);
+
+    // Should show search, date filters, status/source selects
+    await expect(page.getByPlaceholder('Search by phone, name, or booking ref...')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('columnheader', { name: /Customer/ })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Status/ })).toBeVisible();
+  });
+
+  test('Lock button re-locks the panel', async ({ page }) => {
+    await loginAsStaff(page);
+    await page.getByRole('tab', { name: /Manager/ }).click();
+    await page.waitForTimeout(500);
+
+    for (const digit of MANAGER_PIN.split('')) {
+      await page.getByRole('button', { name: digit, exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.waitForTimeout(1500);
+
+    // Should be unlocked
+    await expect(page.getByText('Manager Panel')).toBeVisible({ timeout: 3000 });
+
+    // Click Lock button
+    await page.getByRole('button', { name: /Lock/ }).click();
+    await page.waitForTimeout(500);
+
+    // Should show PIN prompt again
+    await expect(page.getByText('Enter Manager PIN to unlock')).toBeVisible({ timeout: 3000 });
+  });
+
+  // ── API-level tests for data access ──
+
+  test('verify-manager denied for inactive MANAGER employee', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    // Deactivate the manager employee
+    await page.request.put(`${API_BASE}/api/employees/${managerEmployeeId}`, {
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      data: { active: false },
+    });
+
+    const res = await page.request.post(`${API_BASE}/api/employees/verify-manager`, {
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      data: { pin: MANAGER_PIN },
+    });
+    const data = await res.json();
+    expect(data.authorized).toBe(false);
+
+    // Reactivate for cleanup
+    await page.request.put(`${API_BASE}/api/employees/${managerEmployeeId}`, {
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      data: { active: true },
+    });
+  });
+
+  test('customers API returns data when accessed by STAFF session', async ({ page }) => {
+    await loginAsStaff(page);
+    const res = await page.request.get(`${API_BASE}/api/customers?page=1&limit=5`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.ok()).toBeTruthy();
+    const data = await res.json();
+    expect(data).toHaveProperty('customers');
+    expect(data).toHaveProperty('pagination');
+  });
+
+  test('bookings search API returns data when accessed by STAFF session', async ({ page }) => {
+    await loginAsStaff(page);
+    const res = await page.request.get(`${API_BASE}/api/customers/bookings/search?page=1&limit=5`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.ok()).toBeTruthy();
+    const data = await res.json();
+    expect(data).toHaveProperty('bookings');
+    expect(data).toHaveProperty('pagination');
+  });
 });

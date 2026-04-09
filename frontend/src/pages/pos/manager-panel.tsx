@@ -177,7 +177,8 @@ function PinPad({ onSubmit, error, loading }: { onSubmit: (pin: string) => void;
 }
 
 // ── Status badge helpers ──
-function statusBadge(status: string) {
+function statusBadge(status: string | null | undefined) {
+  if (!status) return <Badge variant="outline" className="text-slate-400">—</Badge>;
   const cls: Record<string, string> = {
     BOOKED: 'bg-blue-900/50 text-blue-300 border-blue-700',
     COMPLETED: 'bg-green-900/50 text-green-300 border-green-700',
@@ -187,7 +188,8 @@ function statusBadge(status: string) {
   return <Badge variant="outline" className={cls[status] || 'text-slate-400'}>{status}</Badge>;
 }
 
-function paymentBadge(status: string) {
+function paymentBadge(status: string | null | undefined) {
+  if (!status) return <Badge variant="outline" className="text-slate-400">—</Badge>;
   const cls: Record<string, string> = {
     PAID: 'bg-green-900/50 text-green-300 border-green-700',
     UNPAID: 'bg-amber-900/50 text-amber-300 border-amber-700',
@@ -196,7 +198,8 @@ function paymentBadge(status: string) {
   return <Badge variant="outline" className={cls[status] || 'text-slate-400'}>{status}</Badge>;
 }
 
-function sourceBadge(source: string) {
+function sourceBadge(source: string | null | undefined) {
+  if (!source) return <Badge variant="outline" className="text-slate-400">—</Badge>;
   const cls: Record<string, string> = {
     ONLINE: 'bg-purple-900/50 text-purple-300 border-purple-700',
     WALK_IN: 'bg-cyan-900/50 text-cyan-300 border-cyan-700',
@@ -207,13 +210,16 @@ function sourceBadge(source: string) {
 }
 
 // ── Format helpers ──
-function fmtDate(iso: string) {
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-CA', { timeZone: VENUE_TIMEZONE });
 }
-function fmtTime(iso: string) {
+function fmtTime(iso: string | null | undefined) {
+  if (!iso) return '—';
   return new Date(iso).toLocaleTimeString('en-CA', { timeZone: VENUE_TIMEZONE, hour: '2-digit', minute: '2-digit' });
 }
-function fmtPhone(phone: string) {
+function fmtPhone(phone: string | null | undefined) {
+  if (!phone) return '—';
   const d = phone.replace(/\D/g, '');
   if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
   if (d.length === 11) return `+${d[0]} (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
@@ -305,10 +311,11 @@ export default function ManagerPanel() {
       const res = await fetch(`${getApiBase()}/api/customers/${id}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setSelectedCustomer(data);
-        setEditName(data.name);
-        setEditPhone(data.phone);
-        setEditDob(data.dateOfBirth?.slice(0, 10) || '');
+        const customer = data.customer || data;
+        setSelectedCustomer(customer);
+        setEditName(customer.name || '');
+        setEditPhone(customer.phone || '');
+        setEditDob(customer.dateOfBirth?.slice(0, 10) || '');
       }
     } finally {
       setCustomerDetailLoading(false);
@@ -480,8 +487,8 @@ export default function ManagerPanel() {
                         <TableCell className="font-medium">{c.name}</TableCell>
                         <TableCell className="text-slate-300 text-sm">{fmtPhone(c.phone)}</TableCell>
                         <TableCell className="text-slate-400 text-sm hidden md:table-cell">{c.email || '—'}</TableCell>
-                        <TableCell className="text-right">{c.bookingCount}</TableCell>
-                        <TableCell className="text-right">${c.totalSpent.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{c.bookingCount ?? 0}</TableCell>
+                        <TableCell className="text-right">${(c.totalSpent ?? 0).toFixed(2)}</TableCell>
                         <TableCell className="text-slate-400 text-sm hidden lg:table-cell">
                           {c.lastBooking ? fmtDate(c.lastBooking) : '—'}
                         </TableCell>
@@ -610,7 +617,7 @@ export default function ManagerPanel() {
                         <TableCell className="text-sm hidden md:table-cell">{b.roomName}</TableCell>
                         <TableCell className="hidden lg:table-cell">{sourceBadge(b.bookingSource)}</TableCell>
                         <TableCell>{statusBadge(b.bookingStatus)}</TableCell>
-                        <TableCell className="text-right">${Number(b.price).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${Number(b.price ?? 0).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -687,11 +694,11 @@ export default function ManagerPanel() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700 text-center">
-                    <p className="text-xl font-bold">{selectedCustomer.bookingCount}</p>
+                    <p className="text-xl font-bold">{selectedCustomer.bookingCount ?? 0}</p>
                     <p className="text-xs text-slate-400">Bookings</p>
                   </div>
                   <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700 text-center">
-                    <p className="text-xl font-bold">${selectedCustomer.totalSpent.toFixed(2)}</p>
+                    <p className="text-xl font-bold">${(selectedCustomer.totalSpent ?? 0).toFixed(2)}</p>
                     <p className="text-xs text-slate-400">Total Spent</p>
                   </div>
                   <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700 text-center">
@@ -726,7 +733,7 @@ export default function ManagerPanel() {
                               <TableCell className="text-sm">{bk.roomName}</TableCell>
                               <TableCell>{sourceBadge(bk.bookingSource)}</TableCell>
                               <TableCell>{statusBadge(bk.bookingStatus)}</TableCell>
-                              <TableCell className="text-right text-sm">${Number(bk.price).toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-sm">${Number(bk.price ?? 0).toFixed(2)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
