@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { AdminHeader } from '@/components/AdminHeader'
 import { toast } from "@/hooks/use-toast"
 import { Ticket } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import POSDashboard from "./pos/dashboard"
 
 const getStatusBadge = (status: 'BOOKED'|'COMPLETED'|'CANCELLED') => {
@@ -56,6 +57,7 @@ const CustomerDashboard = () => {
   const [loading, setLoading] = React.useState(true)
   const [busyIds, setBusyIds] = React.useState<Record<string, boolean>>({})
   const [myCoupons, setMyCoupons] = React.useState<ApiCoupon[]>([])
+  const [cancelBookingId, setCancelBookingId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const load = async () => {
@@ -270,7 +272,7 @@ const CustomerDashboard = () => {
                         size="sm"
                         className="mt-2 border-red-400/50 text-red-400 hover:bg-red-500/10 bg-transparent"
             disabled={busyIds[booking.id]}
-            onClick={() => cancelBookingById(booking.id)}
+            onClick={() => setCancelBookingId(booking.id)}
                       >
                         Cancel
                       </Button>
@@ -282,6 +284,28 @@ const CustomerDashboard = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* Cancel Booking Confirmation */}
+      <ConfirmDialog
+        open={cancelBookingId !== null}
+        onOpenChange={(open) => { if (!open) setCancelBookingId(null); }}
+        title="Cancel Booking"
+        description={(() => {
+          const b = bookings.find(bk => bk.id === cancelBookingId);
+          const room = b ? roomsById[b.roomId] : null;
+          return b
+            ? `Are you sure you want to cancel your booking${room ? ` at ${room.name}` : ''} on ${new Date(b.startTime).toLocaleDateString('en-CA', { timeZone: 'America/Halifax' })}? This action cannot be undone.`
+            : 'Are you sure you want to cancel this booking?';
+        })()}
+        confirmLabel="Cancel Booking"
+        loading={cancelBookingId ? busyIds[cancelBookingId] : false}
+        onConfirm={() => {
+          if (cancelBookingId) {
+            cancelBookingById(cancelBookingId);
+            setCancelBookingId(null);
+          }
+        }}
+      />
     </div>
   )
 }

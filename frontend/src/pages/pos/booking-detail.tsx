@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2, Camera } from 'lucide-react';
 import Receipt from '../../components/Receipt';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { VENUE_TIMEZONE } from '@/lib/timezone';
 import { useAuth } from '@/hooks/use-auth';
 import { 
@@ -157,6 +158,12 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   const [receiptMode, setReceiptMode] = useState<'full' | 'seat'>('full');
   const [receiptSeatIndex, setReceiptSeatIndex] = useState<number | undefined>(undefined);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
+
+  // Confirmation dialog state
+  const [cancelBookingOpen, setCancelBookingOpen] = useState(false);
+  const [cancelPaymentSeat, setCancelPaymentSeat] = useState<number | null>(null);
+  const [removeOrderId, setRemoveOrderId] = useState<string | null>(null);
+  const [removeOrderName, setRemoveOrderName] = useState<string>('');
 
   // Receipt photo capture state
   const [capturePaymentId, setCapturePaymentId] = useState<string | null>(null);
@@ -718,12 +725,9 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
   const unpayInvoice = async (seat: number) => {
     if (!booking) return;
-    
-    if (!confirm(`Cancel payment for Seat ${seat}? This will mark the invoice as unpaid.`)) {
-      return;
-    }
 
     setProcessingPayment(seat);
+    setCancelPaymentSeat(null);
 
     try {
       // Find the invoice for this seat
@@ -1499,7 +1503,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => removeOrderItem(item.id)}
+                                        onClick={() => { setRemoveOrderId(item.id); setRemoveOrderName(item.menuItem?.name || 'this item'); }}
                                         className="h-8 w-8 p-0 bg-red-500/20 border-red-500/50 hover:bg-red-500/30"
                                       >
                                       <Trash2 className="h-3 w-3 text-red-400" />
@@ -1534,7 +1538,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => removeOrderItem(item.id)}
+                                      onClick={() => { setRemoveOrderId(item.id); setRemoveOrderName(item.menuItem?.name || 'this discount'); }}
                                       className="h-6 w-6 p-0 bg-red-500/20 border-red-500/50 hover:bg-red-500/30"
                                     >
                                       <Trash2 className="h-3 w-3 text-red-400" />
@@ -1621,7 +1625,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                             </div>
                             {!isReadOnly && (
                             <Button
-                              onClick={() => unpayInvoice(seat)}
+                              onClick={() => setCancelPaymentSeat(seat)}
                               disabled={processingPayment === seat}
                               variant="outline"
                               className="w-full bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400 hover:text-red-300"
@@ -1723,7 +1727,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       Complete Booking
                     </Button>
                     <Button
-                      onClick={() => updateStatus('cancelled')}
+                      onClick={() => setCancelBookingOpen(true)}
                       variant="outline"
                       className="w-full border-red-500 text-red-400 hover:bg-red-500/10"
                     >
@@ -2998,6 +3002,47 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
           }}
         />
       )}
+
+      {/* Cancel Booking Confirmation */}
+      <ConfirmDialog
+        open={cancelBookingOpen}
+        onOpenChange={setCancelBookingOpen}
+        title="Cancel Booking"
+        description={`Are you sure you want to cancel${booking?.customerName ? ` the booking for ${booking.customerName}` : ' this booking'}? This action cannot be undone.`}
+        confirmLabel="Cancel Booking"
+        onConfirm={() => {
+          setCancelBookingOpen(false);
+          updateStatus('cancelled');
+        }}
+      />
+
+      {/* Cancel Payment Confirmation */}
+      <ConfirmDialog
+        open={cancelPaymentSeat !== null}
+        onOpenChange={(open) => { if (!open) setCancelPaymentSeat(null); }}
+        title="Cancel Payment"
+        description={`Cancel payment for Seat ${cancelPaymentSeat}? This will mark the invoice as unpaid and remove all payment records for this seat.`}
+        confirmLabel="Cancel Payment"
+        loading={processingPayment !== null}
+        onConfirm={() => {
+          if (cancelPaymentSeat !== null) unpayInvoice(cancelPaymentSeat);
+        }}
+      />
+
+      {/* Remove Order Item Confirmation */}
+      <ConfirmDialog
+        open={removeOrderId !== null}
+        onOpenChange={(open) => { if (!open) setRemoveOrderId(null); }}
+        title="Remove Item"
+        description={`Remove "${removeOrderName}" from this booking? The invoice total will be recalculated.`}
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (removeOrderId) {
+            removeOrderItem(removeOrderId);
+            setRemoveOrderId(null);
+          }
+        }}
+      />
     </div>
   );
 }

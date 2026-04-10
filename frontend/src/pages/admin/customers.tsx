@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import {
   Dialog,
   DialogContent,
@@ -266,6 +267,7 @@ export default function CustomerManagement() {
   const [selectedCoupon, setSelectedCoupon] = useState<CouponItem | null>(null);
   const [couponDetailOpen, setCouponDetailOpen] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [couponStatusConfirm, setCouponStatusConfirm] = useState<{ couponId: string; newStatus: 'ACTIVE' | 'REDEEMED' | 'EXPIRED' } | null>(null);
   const [typeManagementOpen, setTypeManagementOpen] = useState(false);
   const [allCouponTypes, setAllCouponTypes] = useState<CouponTypeItem[]>([]);
   const [typeFormOpen, setTypeFormOpen] = useState(false);
@@ -514,7 +516,7 @@ export default function CustomerManagement() {
 
   // Revoke coupon handler
   const handleChangeCouponStatus = async (couponId: string, newStatus: 'ACTIVE' | 'REDEEMED' | 'EXPIRED') => {
-    if (!confirm(`Change coupon status to ${newStatus}?`)) return;
+    setCouponStatusConfirm(null);
     setChangingStatus(true);
     try {
       const res = await fetch(`${getApiBase()}/api/coupons/${couponId}/status`, {
@@ -2899,7 +2901,7 @@ export default function CustomerManagement() {
                 <Label className="text-slate-400 text-sm whitespace-nowrap">Status:</Label>
                 <Select
                   value={selectedCoupon.status}
-                  onValueChange={(val) => handleChangeCouponStatus(selectedCoupon.id, val as 'ACTIVE' | 'REDEEMED' | 'EXPIRED')}
+                  onValueChange={(val) => setCouponStatusConfirm({ couponId: selectedCoupon.id, newStatus: val as 'ACTIVE' | 'REDEEMED' | 'EXPIRED' })}
                   disabled={changingStatus}
                 >
                   <SelectTrigger className="w-[140px] bg-slate-900 border-slate-600 text-white">
@@ -3045,6 +3047,24 @@ export default function CustomerManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Coupon Status Change Confirmation */}
+      <ConfirmDialog
+        open={couponStatusConfirm !== null}
+        onOpenChange={(open) => { if (!open) setCouponStatusConfirm(null); }}
+        title="Change Coupon Status"
+        description={couponStatusConfirm
+          ? `Change coupon "${selectedCoupon?.code || ''}" status to ${couponStatusConfirm.newStatus}?`
+          : ''}
+        confirmLabel="Change Status"
+        destructive={couponStatusConfirm?.newStatus === 'EXPIRED'}
+        loading={changingStatus}
+        onConfirm={() => {
+          if (couponStatusConfirm) {
+            handleChangeCouponStatus(couponStatusConfirm.couponId, couponStatusConfirm.newStatus);
+          }
+        }}
+      />
     </div>
   );
 }

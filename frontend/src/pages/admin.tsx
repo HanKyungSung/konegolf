@@ -10,6 +10,7 @@ import { todayDateString, VENUE_TIMEZONE } from "@/lib/timezone"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/hooks/use-auth"
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 interface AdminBooking {
   id: string
@@ -79,6 +80,7 @@ export default function AdminPage() {
   const [bookings, setBookings] = useState<AdminBooking[]>(mockBookings)
   const [rooms, setRooms] = useState<Room[]>(mockRooms)
   const [selectedDate, setSelectedDate] = useState<string>(todayDateString())
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
 
   useEffect(() => {
     // In a real app, check if user is admin
@@ -275,7 +277,7 @@ export default function AdminPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => updateBookingStatus(booking.id, "cancelled")}
+                                onClick={() => setCancelBookingId(booking.id)}
                                 className="border-red-400/50 text-red-400 hover:bg-red-500/10 bg-transparent"
                               >
                                 Cancel
@@ -401,6 +403,26 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Cancel Booking Confirmation */}
+      <ConfirmDialog
+        open={cancelBookingId !== null}
+        onOpenChange={(open) => { if (!open) setCancelBookingId(null); }}
+        title="Cancel Booking"
+        description={(() => {
+          const b = bookings.find(bk => bk.id === cancelBookingId);
+          return b
+            ? `Are you sure you want to cancel the booking for ${b.customerName} on ${b.date} at ${b.time}? This action cannot be undone.`
+            : 'Are you sure you want to cancel this booking?';
+        })()}
+        confirmLabel="Cancel Booking"
+        onConfirm={() => {
+          if (cancelBookingId) {
+            updateBookingStatus(cancelBookingId, 'cancelled');
+            setCancelBookingId(null);
+          }
+        }}
+      />
     </div>
   )
 }
