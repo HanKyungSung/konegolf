@@ -30,6 +30,20 @@ export interface BookingConfirmationParams {
   customerTimezone?: string; // Customer's timezone (e.g., 'America/Halifax')
 }
 
+export interface BookingCancellationParams {
+  to: string;
+  customerName: string;
+  bookingId: string;
+  roomName: string;
+  date: string; // YYYY-MM-DD
+  startTime: Date;
+  endTime: Date;
+  hours: number;
+  price: string;
+  cancelledBy: 'customer' | 'staff' | 'admin';
+  customerTimezone?: string;
+}
+
 export interface ContactEmailParams {
   firstName: string;
   lastName: string;
@@ -554,6 +568,233 @@ Hours: 10:00 AM - 12:00 AM Daily
       }
     ]
   });
+}
+
+/**
+ * Generate ICS calendar CANCEL event (removes booking from calendar apps)
+ */
+function generateCancelICS(params: BookingCancellationParams): string {
+  const { customerName, bookingId, roomName, startTime, endTime } = params;
+
+  const formatICSDate = (date: Date): string => {
+    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  };
+
+  const dtstamp = formatICSDate(new Date());
+  const dtstart = formatICSDate(startTime);
+  const dtend = formatICSDate(endTime);
+  // Same UID as confirmation so calendar apps match and remove
+  const uid = `booking-${bookingId}@konegolf.ca`;
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//K one Golf//Booking System//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:CANCEL',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${dtstamp}`,
+    `DTSTART:${dtstart}`,
+    `DTEND:${dtend}`,
+    `SUMMARY:CANCELLED - K one Golf - ${roomName}`,
+    `DESCRIPTION:This booking has been cancelled.\\n\\nRoom: ${roomName}\\nBooking ID: ${bookingId}`,
+    'LOCATION:K one Golf\\, 45 Keltic Dr\\, Unit 6\\, Sydney\\, NS',
+    `ORGANIZER;CN=K one Golf:mailto:${process.env.EMAIL_FROM || 'no-reply@konegolf.ca'}`,
+    `ATTENDEE;CN=${customerName};RSVP=TRUE:mailto:${params.to}`,
+    'STATUS:CANCELLED',
+    'SEQUENCE:1',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+}
+
+/**
+ * Generate HTML for booking cancellation email
+ */
+function generateBookingCancellationHTML(params: BookingCancellationParams): string {
+  const { customerName, roomName, date, startTime, endTime, hours, price, cancelledBy, customerTimezone } = params;
+
+  const tz = customerTimezone || 'America/Halifax';
+
+  const formatTime = (d: Date) => d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: tz
+  });
+
+  const formatDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-');
+    const parsed = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d), 12, 0, 0));
+    return parsed.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: tz
+    });
+  };
+
+  const cancelNote = cancelledBy === 'customer'
+    ? 'You cancelled this booking.'
+    : 'This booking was cancelled by our team.';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Cancelled - K one Golf</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 32px 24px; text-align: center; border-radius: 12px 12px 0 0;">
+      <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700;">K ONE GOLF</h1>
+      <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Premium Screen Golf</p>
+    </div>
+    
+    <!-- Cancellation Content -->
+    <div style="background: white; padding: 32px 24px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <!-- Cancelled Message -->
+      <div style="text-align: center; padding-bottom: 24px; border-bottom: 2px solid #f1f5f9;">
+        <table style="width: 64px; height: 64px; margin: 0 auto 16px; background: #fee2e2; border-radius: 50%;">
+          <tr>
+            <td style="text-align: center; vertical-align: middle;">
+              <span style="font-size: 32px; line-height: 1; color: #dc2626;">✕</span>
+            </td>
+          </tr>
+        </table>
+        <h2 style="margin: 0; color: #0f172a; font-size: 24px; font-weight: 700;">Booking Cancelled</h2>
+        <p style="margin: 8px 0 0 0; color: #64748b; font-size: 14px;">${cancelNote}</p>
+      </div>
+      
+      <!-- Booking Details -->
+      <div style="padding: 24px 0;">
+        <h3 style="margin: 0 0 16px 0; color: #0f172a; font-size: 18px; font-weight: 600;">Cancelled Booking Details</h3>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td colspan="2" style="padding: 12px 16px; background: #fef2f2; border-radius: 8px 8px 0 0;">
+              <p style="margin: 0; color: #991b1b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Room</p>
+              <p style="margin: 4px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 600; text-decoration: line-through; opacity: 0.7;">${roomName}</p>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding: 12px 16px; background: #fef2f2;">
+              <p style="margin: 0; color: #991b1b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Date</p>
+              <p style="margin: 4px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 600; text-decoration: line-through; opacity: 0.7;">${formatDate(date)}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; background: #fef2f2; border-radius: 0 0 0 8px;">
+              <p style="margin: 0; color: #991b1b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Time</p>
+              <p style="margin: 4px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 600; text-decoration: line-through; opacity: 0.7;">${formatTime(startTime)} - ${formatTime(endTime)}</p>
+            </td>
+            <td style="padding: 12px 16px; background: #fef2f2; border-radius: 0 0 8px 0;">
+              <p style="margin: 0; color: #991b1b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Duration</p>
+              <p style="margin: 4px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 600; text-decoration: line-through; opacity: 0.7;">${hours} hour${hours > 1 ? 's' : ''}</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+      
+      <!-- Rebook CTA -->
+      <div style="margin-top: 8px; text-align: center;">
+        <p style="margin: 0 0 16px 0; color: #475569; font-size: 14px;">Want to book again? We'd love to see you!</p>
+        <a href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}" style="display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #f59e0b 0%, #eab308 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Book Again</a>
+      </div>
+      
+      <!-- Contact -->
+      <div style="padding: 20px 0; border-top: 1px solid #f1f5f9; margin-top: 24px;">
+        <p style="margin: 0; color: #475569; font-size: 14px; text-align: center;">
+          Questions about this cancellation? Contact us at <strong>(902) 270-2259</strong>
+        </p>
+      </div>
+      
+      <!-- Footer -->
+      <div style="margin-top: 16px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: center;">
+        <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+          K one Golf · 45 Keltic Dr, Unit 6 · Sydney, NS B1S 1P4
+        </p>
+        <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 11px;">
+          Hours: 10:00 AM - 12:00 AM Daily
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Send booking cancellation email with ICS calendar CANCEL attachment
+ */
+export async function sendBookingCancellationEmail(params: BookingCancellationParams) {
+  const subject = `Booking Cancelled - K one Golf`;
+  const html = generateBookingCancellationHTML(params);
+  const icsContent = generateCancelICS(params);
+
+  const tz = params.customerTimezone || 'America/Halifax';
+
+  const formatTime = (d: Date) => d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: tz
+  });
+
+  const cancelNote = params.cancelledBy === 'customer'
+    ? 'You cancelled this booking.'
+    : 'This booking was cancelled by our team.';
+
+  const text = `
+K one Golf - Booking Cancelled
+
+Hi ${params.customerName},
+
+${cancelNote}
+
+Cancelled Booking Details:
+- Room: ${params.roomName}
+- Date: ${params.date}
+- Time: ${formatTime(params.startTime)} - ${formatTime(params.endTime)}
+- Duration: ${params.hours} hour${params.hours > 1 ? 's' : ''}
+
+Want to book again? Visit ${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}
+
+Questions? Contact us at (902) 270-2259.
+
+---
+K one Golf - Premium Screen Golf
+45 Keltic Dr, Unit 6, Sydney, NS B1S 1P4
+Hours: 10:00 AM - 12:00 AM Daily
+  `.trim();
+
+  const transport = getTransport();
+  if (!transport) {
+    log.info({ to: params.to, bookingId: params.bookingId }, 'Dev-log: booking cancellation email (no transport)');
+    return;
+  }
+
+  await transport.sendMail({
+    from: process.env.EMAIL_FROM || 'K one Golf <no-reply@konegolf.ca>',
+    to: params.to,
+    subject,
+    text,
+    html,
+    attachments: [
+      {
+        filename: 'cancel-booking.ics',
+        content: icsContent,
+        contentType: 'text/calendar; charset=utf-8; method=CANCEL'
+      }
+    ]
+  });
+  log.info({ to: params.to, bookingId: params.bookingId }, 'Booking cancellation email sent');
 }
 
 /**

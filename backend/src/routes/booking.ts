@@ -9,7 +9,7 @@ import { requireAuth } from '../middleware/requireAuth';
 import { requireStaffOrAdmin } from '../middleware/requireRole';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { sendBookingConfirmation } from '../services/emailService';
+import { sendBookingConfirmation, sendBookingCancellationEmail } from '../services/emailService';
 import { buildAtlanticDate, getAtlanticHourMinute } from '../utils/timezone';
 
 const router = Router();
@@ -288,6 +288,30 @@ router.patch('/:id/status', requireAuth, requireStaffOrAdmin, async (req, res) =
 
     req.log.info({ bookingId: id, from: booking.bookingStatus, to: status }, 'Booking status changed');
 
+    // Send cancellation email when status changed to CANCELLED (fire-and-forget)
+    if (status === 'CANCELLED') {
+      const email = booking.customerEmail || (booking as any).user?.email;
+      if (email) {
+        const room = await prisma.room.findUnique({ where: { id: booking.roomId } });
+        const hours = Math.round((booking.endTime.getTime() - booking.startTime.getTime()) / 3600000);
+        const dateStr = booking.startTime.toLocaleDateString('en-CA', { timeZone: 'America/Halifax' });
+        const role = (req as any).user?.role;
+        sendBookingCancellationEmail({
+          to: email,
+          customerName: booking.customerName || 'Guest',
+          bookingId: id,
+          roomName: room?.name || 'Room',
+          date: dateStr,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          hours,
+          price: Number(booking.price ?? 0).toFixed(2),
+          cancelledBy: role === 'ADMIN' ? 'admin' : 'staff',
+          customerTimezone: 'America/Halifax',
+        }).catch(err => req.log.error({ err, bookingId: id }, 'Failed to send cancellation email'));
+      }
+    }
+
     return res.json({ 
       booking: presentBooking(updated),
       message: `Booking ${status.toLowerCase()} successfully` 
@@ -452,6 +476,28 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
 
     const updated = await cancelBooking(id);
     req.log.info({ bookingId: id, userId: req.user!.id }, 'Booking cancelled by customer');
+
+    // Send cancellation email (fire-and-forget)
+    const email = booking.customerEmail || (booking as any).user?.email;
+    if (email) {
+      const room = await prisma.room.findUnique({ where: { id: booking.roomId } });
+      const hours = Math.round((booking.endTime.getTime() - booking.startTime.getTime()) / 3600000);
+      const dateStr = booking.startTime.toLocaleDateString('en-CA', { timeZone: 'America/Halifax' });
+      sendBookingCancellationEmail({
+        to: email,
+        customerName: booking.customerName || 'Guest',
+        bookingId: id,
+        roomName: room?.name || 'Room',
+        date: dateStr,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        hours,
+        price: Number(booking.price ?? 0).toFixed(2),
+        cancelledBy: 'customer',
+        customerTimezone: 'America/Halifax',
+      }).catch(err => req.log.error({ err, bookingId: id }, 'Failed to send cancellation email'));
+    }
+
     return res.json({ booking: presentBooking(updated) });
   } catch (e) {
     req.log.error({ err: e, bookingId: id }, 'Cancel booking failed');
