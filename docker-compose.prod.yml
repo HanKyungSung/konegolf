@@ -3,7 +3,7 @@ version: '3.9'
 services:
   db:
     image: postgres:16
-    container_name: kgolf-postgres
+    container_name: konegolf-postgres
     restart: unless-stopped
     logging:
       driver: json-file
@@ -17,7 +17,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     networks:
-      - kgolf_net
+      - konegolf_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kgolf -d kgolf_app"]
       interval: 10s
@@ -36,12 +36,13 @@ services:
     command: ["npx", "prisma", "migrate", "deploy"]
     restart: "no"
     networks:
-      - kgolf_net
+      - konegolf_net
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: konegolf-backend
     logging:
       driver: json-file
       options:
@@ -69,7 +70,7 @@ services:
     expose:
       - "8080"
     networks:
-      - kgolf_net
+      - konegolf_net
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 30s
@@ -87,7 +88,7 @@ services:
     ports:
       - "8081:80" # Use alternate host port first; switch to 80/443 via reverse proxy later
     networks:
-      - kgolf_net
+      - konegolf_net
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost/health"]
       interval: 30s
@@ -95,7 +96,7 @@ services:
       retries: 3
 
 networks:
-  kgolf_net:
+  konegolf_net:
     driver: bridge
 
 volumes:

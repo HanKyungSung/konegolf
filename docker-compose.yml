@@ -3,7 +3,7 @@ version: '3.9'
 services:
   db:
     image: postgres:16
-    container_name: kgolf-postgres
+    container_name: konegolf-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: kgolf
@@ -19,21 +19,21 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - kgolf_net
+      - konegolf_net
 
   ocr:
     build:
       context: ./ocr-service
       dockerfile: Dockerfile
-    container_name: kgolf-ocr
+    container_name: konegolf-ocr
     ports:
       - '5050:5000'
     networks:
-      - kgolf_net
+      - konegolf_net
     restart: unless-stopped
 
 networks:
-  kgolf_net:
+  konegolf_net:
     driver: bridge
 
 volumes:

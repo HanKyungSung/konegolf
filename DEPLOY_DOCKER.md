@@ -330,7 +330,7 @@ OCR_TIMEOUT=120000
 
 **Performance monitoring:**
 - Check swap usage: `free -h` and `vmstat 1`
-- Check OCR container memory: `docker stats kgolf-ocr`
+- Check OCR container memory: `docker stats konegolf-ocr`
 - If swap thrashing hurts main app performance, consider upgrading DO droplet to 4GB ($24/mo)
 
 ## Notes / adjustments you might consider

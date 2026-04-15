@@ -155,7 +155,7 @@ Upload → Backend → Download from GDrive → POST /ocr → [OCR sidecar]
 | Setting | Value |
 |---------|-------|
 | **OCR Engine** | EasyOCR 1.7.2 (Python Flask sidecar container) |
-| **Docker Service** | `ocr` on `kgolf_net` internal network |
+| **Docker Service** | `ocr` on `konegolf_net` internal network |
 | **Port** | 5000 (internal only, not exposed to host in production) |
 | **Trigger** | Auto on upload + manual re-analyze |
 | **Match Status** | `PENDING` → `ANALYZING` → `MATCHED` / `MISMATCH` / `UNREADABLE` |

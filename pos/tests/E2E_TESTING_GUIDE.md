@@ -466,7 +466,7 @@ E2E Test → Electron App → Backend API → Test PostgreSQL Database
 **Solution:**
 1. Check if PostgreSQL is running:
    ```bash
-   docker ps | grep kgolf-postgres
+   docker ps | grep konegolf-postgres
    ```
 2. Start if needed:
    ```bash

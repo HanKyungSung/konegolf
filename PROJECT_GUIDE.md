@@ -66,7 +66,7 @@ ssh-add ~/.ssh/id_rsa        # or ~/.ssh/id_ed25519
 
 ### Production Database
 
-- **Container:** `kgolf-postgres`
+- **Container:** `konegolf-postgres`
 - **Database:** `kgolf_app`
 - **User:** `kgolf`
 - **Timezone:** America/Halifax (Atlantic Time)
@@ -75,10 +75,10 @@ ssh-add ~/.ssh/id_rsa        # or ~/.ssh/id_ed25519
 
 ```bash
 # Access prod psql
-ssh root@147.182.215.135 "docker exec -it kgolf-postgres psql -U kgolf -d kgolf_app"
+ssh root@147.182.215.135 "docker exec -it konegolf-postgres psql -U kgolf -d kgolf_app"
 
 # Run single query from local
-ssh root@147.182.215.135 "docker exec kgolf-postgres psql -U kgolf -d kgolf_app -c '<QUERY>'"
+ssh root@147.182.215.135 "docker exec konegolf-postgres psql -U kgolf -d kgolf_app -c '<QUERY>'"
 ```
 
 ### Docker Architecture (Production)
@@ -87,10 +87,10 @@ Production uses `docker-compose.release.yml` with pre-built images from CI:
 
 | Service | Container | Image | Notes |
 |---|---|---|---|
-| `db` | `kgolf-postgres` | `postgres:16` | Persistent volume `pg_data` |
+| `db` | `konegolf-postgres` | `postgres:16` | Persistent volume `pg_data` |
 | `migrate` | (one-shot) | `ghcr.io/hankyungsung/kgolf-backend:latest` | Runs `prisma migrate deploy`, then exits |
 | `seed` | (one-shot) | `ghcr.io/hankyungsung/kgolf-backend:latest` | Runs seed script, then exits |
-| `backend` | (auto-named) | `ghcr.io/hankyungsung/kgolf-backend:latest` | Serves API + frontend static files on port 8082→8080 |
+| `backend` | `konegolf-backend` | `ghcr.io/hankyungsung/kgolf-backend:latest` | Serves API + frontend static files on port 8082→8080 |
 
 > **Note:** `docker-compose.yml` is for local development. `docker-compose.prod.yml` is legacy. Production uses `docker-compose.release.yml`.
 
