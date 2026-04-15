@@ -15,6 +15,15 @@ function useGoogleDrive(): boolean {
   return !!(GDRIVE_KEY_FILE && GDRIVE_FOLDER_ID);
 }
 
+/**
+ * Returns a prefix for storage paths based on environment.
+ * Production: '' (no prefix)
+ * Non-production: 'dev/' — creates a separate folder tree in Google Drive.
+ */
+function getStoragePrefix(): string {
+  return process.env.NODE_ENV === 'production' ? '' : 'dev/';
+}
+
 function getDrive(): drive_v3.Drive {
   if (!driveClient) {
     const auth = new google.auth.GoogleAuth({
@@ -63,7 +72,8 @@ export async function uploadFile(
 ): Promise<string> {
   if (useGoogleDrive()) {
     const drive = getDrive();
-    const parts = objectPath.split('/');
+    const prefixedPath = getStoragePrefix() + objectPath;
+    const parts = prefixedPath.split('/');
     const fileName = parts.pop()!;
 
     // Navigate/create subfolders (e.g. receipts/2026-04-07)
@@ -87,7 +97,8 @@ export async function uploadFile(
 
     logger.info({ objectPath, folderId: GDRIVE_FOLDER_ID }, 'Uploaded to Google Drive');
   } else {
-    const fullPath = path.join(LOCAL_UPLOADS_DIR, objectPath);
+    const prefixedPath = getStoragePrefix() + objectPath;
+    const fullPath = path.join(LOCAL_UPLOADS_DIR, prefixedPath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     fs.writeFileSync(fullPath, buffer);
     logger.info({ objectPath, fullPath }, 'Uploaded to local filesystem');
@@ -101,7 +112,8 @@ export async function uploadFile(
  */
 async function findFileByPath(objectPath: string): Promise<string | null> {
   const drive = getDrive();
-  const parts = objectPath.split('/');
+  const prefixedPath = getStoragePrefix() + objectPath;
+  const parts = prefixedPath.split('/');
   const fileName = parts.pop()!;
 
   let parentId = GDRIVE_FOLDER_ID;
@@ -129,7 +141,7 @@ export async function getFileUrl(objectPath: string): Promise<string> {
     if (!fileId) throw new Error(`File not found in Google Drive: ${objectPath}`);
     return fileId;
   } else {
-    return path.join(LOCAL_UPLOADS_DIR, objectPath);
+    return path.join(LOCAL_UPLOADS_DIR, getStoragePrefix() + objectPath);
   }
 }
 
@@ -155,7 +167,7 @@ export async function downloadFile(objectPath: string): Promise<Buffer> {
     logger.info({ objectPath, fileId, size: buffer.length }, 'Downloaded from Google Drive');
     return buffer;
   } else {
-    const fullPath = path.join(LOCAL_UPLOADS_DIR, objectPath);
+    const fullPath = path.join(LOCAL_UPLOADS_DIR, getStoragePrefix() + objectPath);
     logger.info({ objectPath, fullPath }, 'Reading from local filesystem');
     return fs.readFileSync(fullPath);
   }
@@ -180,7 +192,7 @@ export async function deleteFile(objectPath: string): Promise<void> {
       logger.info({ objectPath, fileId }, 'Deleted from Google Drive');
     }
   } else {
-    const fullPath = path.join(LOCAL_UPLOADS_DIR, objectPath);
+    const fullPath = path.join(LOCAL_UPLOADS_DIR, getStoragePrefix() + objectPath);
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
       logger.info({ objectPath, fullPath }, 'Deleted from local filesystem');
@@ -196,6 +208,6 @@ export async function fileExists(objectPath: string): Promise<boolean> {
     const fileId = await findFileByPath(objectPath);
     return !!fileId;
   } else {
-    return fs.existsSync(path.join(LOCAL_UPLOADS_DIR, objectPath));
+    return fs.existsSync(path.join(LOCAL_UPLOADS_DIR, getStoragePrefix() + objectPath));
   }
 }

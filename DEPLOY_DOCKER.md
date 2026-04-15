@@ -257,6 +257,14 @@ SEED_ADMIN_PASSWORD=secure-password
 POS_ADMIN_KEY=pos-secret-key
 ```
 
+If receipt/image analysis will be delegated to a private Ollama worker on a Raspberry Pi, add:
+```bash
+OLLAMA_BASE_URL=http://<pi-tailnet-ip>:11434
+OLLAMA_MODEL=gemma4:e2b
+```
+
+Use the Pi's tailnet IP from Docker unless you've already verified that MagicDNS resolves correctly inside the backend container.
+
 The `docker-compose.release.yml` file already references this via:
 ```yaml
 services:
@@ -269,6 +277,54 @@ services:
 The GitHub Actions workflow currently injects SMTP variables via command line. This works but is less maintainable. Consider migrating to the env file approach by:
 1. Creating `.env.production` on server with all variables
 2. Removing SMTP_* from the deploy command in `.github/workflows/docker-deploy.yml`
+
+## Private Ollama worker (Raspberry Pi via Tailscale)
+
+For receipt/image analysis, keep Ollama off the public internet and route requests privately over Tailscale.
+
+**Recommended layout:**
+- Tailscale runs on the **DigitalOcean host** and on the **Raspberry Pi**
+- Ollama stays bound to `127.0.0.1:11434` on the Pi
+- The Pi exposes Ollama to the tailnet with `tailscale serve`
+- The K-Golf backend calls the Pi using `OLLAMA_BASE_URL`
+
+**Why host-level Tailscale instead of a Compose sidecar here:**
+- No extra `tailscale` service or auth-key secret in `docker-compose.release.yml`
+- The current stack already assumes host-managed networking (`Nginx -> 127.0.0.1:8082`)
+- App deploys stay independent from the private network client
+
+**Pi-side setup:**
+```bash
+# Ollama remains local-only
+sudo systemctl edit ollama
+# [Service]
+# Environment="OLLAMA_HOST=127.0.0.1:11434"
+
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+curl http://localhost:11434/api/tags
+
+# Expose Ollama only inside the tailnet
+sudo tailscale serve --bg --tcp 11434 11434
+tailscale serve status
+```
+
+**Verification from the DO host:**
+```bash
+tailscale ping pi-ollama
+curl http://<pi-tailnet-ip>:11434/api/tags
+```
+
+**Verification from the K-Golf backend container:**
+```bash
+docker compose -f docker-compose.release.yml exec backend \
+  wget -qO- http://<pi-tailnet-ip>:11434/api/tags
+```
+
+**Security notes:**
+- Do **not** expose port `11434` through Nginx, UFW, or router port-forwarding
+- Do **not** use `tailscale funnel` for Ollama
+- Prefer the Pi's raw tailnet IP inside Docker unless hostname resolution is known-good
 
 ## Notes / adjustments you might consider
 - If production Postgres is managed (e.g., DO Managed DB), remove the `db` service and point `DATABASE_URL` at the managed instance

@@ -76,6 +76,25 @@ model Payment {
   amount      Decimal  // $0 allowed for COUPON method
   receiptPath String?  // null = no receipt uploaded
   createdAt   DateTime
+  analysis    ReceiptAnalysis?  // 1:1 Ollama extraction result
+}
+
+model ReceiptAnalysis {
+  id              String   @id @default(uuid())
+  payment         Payment  @relation(...)
+  paymentId       String   @unique
+  extractedAmount Decimal?
+  cardLast4       String?
+  cardType        String?
+  transactionDate String?
+  transactionTime String?
+  terminalId      String?
+  approvalCode    String?
+  rawResponse     String?  @db.Text
+  matchStatus     String   // PENDING | MATCHED | MISMATCH | UNREADABLE
+  mismatchReason  String?
+  analyzedAt      DateTime
+  modelUsed       String?
 }
 ```
 
@@ -105,7 +124,31 @@ GDRIVE_IMPERSONATE=general@konegolf.ca
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/payments/:paymentId/receipt` | Upload receipt photo |
+| `POST` | `/api/payments/:paymentId/receipt` | Upload receipt photo (auto-triggers Ollama analysis) |
 | `GET` | `/api/payments/:paymentId/receipt` | Get receipt URL/file |
 | `DELETE` | `/api/payments/:paymentId/receipt` | Delete receipt (admin) |
 | `GET` | `/api/payments/pending-receipts?date=YYYY-MM-DD` | List card payments missing receipts |
+| `GET` | `/api/receipt-analysis?date=YYYY-MM-DD` | List receipt analyses for a date (admin) |
+| `GET` | `/api/receipt-analysis/summary?startDate=&endDate=` | Aggregate match/mismatch counts (admin) |
+| `POST` | `/api/receipt-analysis/:paymentId/reanalyze` | Re-trigger Ollama analysis (admin) |
+
+## Receipt Analysis (Ollama)
+
+Receipt photos are automatically analyzed via the Raspberry Pi Ollama worker after upload.
+
+| Setting | Value |
+|---------|-------|
+| **Worker** | Raspberry Pi via Tailscale |
+| **Tailnet IP** | `100.83.253.110:11434` |
+| **Model** | `gemma4:e2b` |
+| **Trigger** | Auto on upload + manual re-analyze |
+| **Match Status** | `PENDING` → `MATCHED` / `MISMATCH` / `UNREADABLE` |
+| **Tolerance** | ±$0.02 for amount matching |
+
+### Environment Variables (Analysis)
+
+```env
+OLLAMA_HOST=http://100.83.253.110:11434
+OLLAMA_MODEL=gemma4:e2b
+OLLAMA_TIMEOUT=60000
+```

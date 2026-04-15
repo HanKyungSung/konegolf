@@ -20,6 +20,7 @@ import reportsRouter from './routes/reports';
 import employeesRouter from './routes/employees';
 import timeEntriesRouter from './routes/timeEntries';
 import paymentReceiptsRouter from './routes/receipts';
+import receiptAnalysisRouter from './routes/receiptAnalysis';
 import cookieParser from 'cookie-parser';
 import { WebSocketManager } from './services/websocket-manager';
 import { startCouponScheduler } from './jobs/couponScheduler';
@@ -67,6 +68,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/employees', employeesRouter);
 app.use('/api/time-entries', timeEntriesRouter);
 app.use('/api/payments', paymentReceiptsRouter);
+app.use('/api/receipt-analysis', receiptAnalysisRouter);
 
 // Serve frontend static files (after API routes to avoid conflicts)
 // With rootDir='.', structure is: dist/src/server.js and dist/public/
