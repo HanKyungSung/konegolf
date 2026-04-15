@@ -278,53 +278,60 @@ The GitHub Actions workflow currently injects SMTP variables via command line. T
 1. Creating `.env.production` on server with all variables
 2. Removing SMTP_* from the deploy command in `.github/workflows/docker-deploy.yml`
 
-## Private Ollama worker (Raspberry Pi via Tailscale)
+## Receipt OCR Service (EasyOCR Sidecar)
 
-For receipt/image analysis, keep Ollama off the public internet and route requests privately over Tailscale.
+Receipt analysis uses an EasyOCR Docker sidecar container running alongside the main backend.
 
-**Recommended layout:**
-- Tailscale runs on the **DigitalOcean host** and on the **Raspberry Pi**
-- Ollama stays bound to `127.0.0.1:11434` on the Pi
-- The Pi exposes Ollama to the tailnet with `tailscale serve`
-- The K-Golf backend calls the Pi using `OLLAMA_BASE_URL`
+**Architecture:**
+- `ocr` service in `docker-compose.release.yml` — Python Flask + EasyOCR
+- Internal Docker network only — not exposed to the internet
+- Backend calls `http://ocr:5000/ocr` for receipt text extraction
+- Single gunicorn worker (processes one receipt at a time)
 
-**Why host-level Tailscale instead of a Compose sidecar here:**
-- No extra `tailscale` service or auth-key secret in `docker-compose.release.yml`
-- The current stack already assumes host-managed networking (`Nginx -> 127.0.0.1:8082`)
-- App deploys stay independent from the private network client
+**Memory requirements:**
+- EasyOCR peak: ~3.7GB RAM
+- **Required:** Add 4GB swap file to DO droplet (1GB RAM droplet)
+- Processing uses swap during OCR inference (~30-60s per receipt)
+- Main app stays in real RAM
 
-**Pi-side setup:**
+**Swap setup on DO server:**
 ```bash
-# Ollama remains local-only
-sudo systemctl edit ollama
-# [Service]
-# Environment="OLLAMA_HOST=127.0.0.1:11434"
-
-sudo systemctl daemon-reload
-sudo systemctl restart ollama
-curl http://localhost:11434/api/tags
-
-# Expose Ollama only inside the tailnet
-sudo tailscale serve --bg --tcp 11434 11434
-tailscale serve status
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo sysctl vm.swappiness=10
+echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
 ```
 
-**Verification from the DO host:**
+**Building the OCR image:**
 ```bash
-tailscale ping pi-ollama
-curl http://<pi-tailnet-ip>:11434/api/tags
+# On DO server (first time only — image built locally, not from GHCR)
+cd ~/k-golf
+docker compose -f docker-compose.release.yml build ocr
 ```
 
-**Verification from the K-Golf backend container:**
+**Verify OCR service:**
 ```bash
-docker compose -f docker-compose.release.yml exec backend \
-  wget -qO- http://<pi-tailnet-ip>:11434/api/tags
+# Health check
+docker compose -f docker-compose.release.yml exec backend wget -qO- http://ocr:5000/health
+
+# Warm up model
+docker compose -f docker-compose.release.yml exec backend wget -qO- --post-data='' http://ocr:5000/warmup
 ```
 
-**Security notes:**
-- Do **not** expose port `11434` through Nginx, UFW, or router port-forwarding
-- Do **not** use `tailscale funnel` for Ollama
-- Prefer the Pi's raw tailnet IP inside Docker unless hostname resolution is known-good
+**Environment:**
+```env
+# .env.production
+OCR_SERVICE_URL=http://ocr:5000
+OCR_TIMEOUT=120000
+```
+
+**Performance monitoring:**
+- Check swap usage: `free -h` and `vmstat 1`
+- Check OCR container memory: `docker stats kgolf-ocr`
+- If swap thrashing hurts main app performance, consider upgrading DO droplet to 4GB ($24/mo)
 
 ## Notes / adjustments you might consider
 - If production Postgres is managed (e.g., DO Managed DB), remove the `db` service and point `DATABASE_URL` at the managed instance

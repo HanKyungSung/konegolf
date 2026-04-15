@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireRole';
 import { analyzeReceiptAsync } from '../services/receiptAnalyzer';
+import { checkOcrHealth } from '../services/ocrService';
 import logger from '../lib/logger';
 
 const prisma = new PrismaClient();
@@ -186,6 +187,25 @@ router.get('/summary', requireAuth, requireAdmin, async (req: Request, res: Resp
   } catch (err) {
     req.log.error({ err }, 'Failed to fetch receipt analysis summary');
     return res.status(500).json({ error: 'Failed to fetch receipt analysis summary' });
+  }
+});
+
+/**
+ * GET /api/receipt-analysis/health
+ * Check OCR service health status. Admin only.
+ */
+router.get('/health', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const health = await checkOcrHealth();
+    return res.json({
+      reachable: true,
+      ...health,
+    });
+  } catch (err) {
+    return res.json({
+      reachable: false,
+      error: (err as Error).message,
+    });
   }
 });
 

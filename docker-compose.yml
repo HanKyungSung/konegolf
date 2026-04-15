@@ -21,6 +21,17 @@ services:
     networks:
       - kgolf_net
 
+  ocr:
+    build:
+      context: ./ocr-service
+      dockerfile: Dockerfile
+    container_name: kgolf-ocr
+    ports:
+      - '5050:5000'
+    networks:
+      - kgolf_net
+    restart: unless-stopped
+
 networks:
   kgolf_net:
     driver: bridge

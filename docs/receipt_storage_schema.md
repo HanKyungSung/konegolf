@@ -124,31 +124,59 @@ GDRIVE_IMPERSONATE=general@konegolf.ca
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/payments/:paymentId/receipt` | Upload receipt photo (auto-triggers Ollama analysis) |
+| `POST` | `/api/payments/:paymentId/receipt` | Upload receipt photo (auto-triggers OCR analysis) |
 | `GET` | `/api/payments/:paymentId/receipt` | Get receipt URL/file |
 | `DELETE` | `/api/payments/:paymentId/receipt` | Delete receipt (admin) |
 | `GET` | `/api/payments/pending-receipts?date=YYYY-MM-DD` | List card payments missing receipts |
 | `GET` | `/api/receipt-analysis?date=YYYY-MM-DD` | List receipt analyses for a date (admin) |
 | `GET` | `/api/receipt-analysis/summary?startDate=&endDate=` | Aggregate match/mismatch counts (admin) |
-| `POST` | `/api/receipt-analysis/:paymentId/reanalyze` | Re-trigger Ollama analysis (admin) |
+| `GET` | `/api/receipt-analysis/health` | Check OCR service health (admin) |
+| `POST` | `/api/receipt-analysis/:paymentId/reanalyze` | Re-trigger OCR analysis (admin) |
 
-## Receipt Analysis (Ollama)
+## Receipt Analysis (EasyOCR)
 
-Receipt photos are automatically analyzed via the Raspberry Pi Ollama worker after upload.
+Receipt photos are automatically analyzed via a sidecar EasyOCR Docker container after upload.
+
+### Architecture
+
+```
+Upload → Backend → Download from GDrive → POST /ocr → [OCR sidecar]
+                                                         EasyOCR
+                                                           ↓
+                                                    OCR text lines
+                                                           ↓
+                                              receiptParser.ts (regex)
+                                                           ↓
+                                              Compare with Payment record
+                                                           ↓
+                                              Save ReceiptAnalysis
+```
 
 | Setting | Value |
 |---------|-------|
-| **Worker** | Raspberry Pi via Tailscale |
-| **Tailnet IP** | `100.83.253.110:11434` |
-| **Model** | `gemma4:e2b` |
+| **OCR Engine** | EasyOCR 1.7.2 (Python Flask sidecar container) |
+| **Docker Service** | `ocr` on `kgolf_net` internal network |
+| **Port** | 5000 (internal only, not exposed to host in production) |
 | **Trigger** | Auto on upload + manual re-analyze |
-| **Match Status** | `PENDING` → `MATCHED` / `MISMATCH` / `UNREADABLE` |
+| **Match Status** | `PENDING` → `ANALYZING` → `MATCHED` / `MISMATCH` / `UNREADABLE` |
 | **Tolerance** | ±$0.02 for amount matching |
+| **Processing Time** | ~25-60s per receipt (depends on swap usage) |
 
 ### Environment Variables (Analysis)
 
 ```env
-OLLAMA_HOST=http://100.83.253.110:11434
-OLLAMA_MODEL=gemma4:e2b
-OLLAMA_TIMEOUT=60000
+# Docker internal network (production)
+OCR_SERVICE_URL=http://ocr:5000
+OCR_TIMEOUT=120000
+
+# Local development
+OCR_SERVICE_URL=http://localhost:5050
 ```
+
+### OCR Investigation
+
+Full benchmark results available in `docs/OCR_INVESTIGATION.md`. Summary:
+- **EasyOCR**: $121.98 ✅ exact, 6/6 fields correct, 25s, 3.7GB RAM
+- **Tesseract**: $121.99 ⚠️ ($0.01 off), card# unreliable, 1.2s, 108MB
+- **Ollama gemma4**: $12.98 ❌ vision encoder too weak
+- **PaddleOCR**: segfaults on ARM64

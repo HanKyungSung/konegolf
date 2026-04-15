@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { analyzeReceipt } from './ollamaService';
+import { sendImageForOcr } from './ocrService';
+import { parseReceiptText } from './receiptParser';
 import { downloadFile } from './storageService';
 import logger from '../lib/logger';
 
@@ -9,6 +10,7 @@ const AMOUNT_TOLERANCE = 0.02; // ±$0.02 for rounding/float differences
 
 /**
  * Analyze a receipt image for a payment and cross-check the amount.
+ * Pipeline: download image → OCR (EasyOCR sidecar) → regex parse → compare → save.
  * Designed to be called fire-and-forget (errors are caught internally).
  */
 export async function analyzeReceiptAsync(paymentId: string): Promise<void> {
@@ -57,41 +59,57 @@ export async function analyzeReceiptAsync(paymentId: string): Promise<void> {
       return;
     }
 
-    // Send to Ollama for analysis
-    const extraction = await analyzeReceipt(imageBuffer);
-
-    if (!extraction.success) {
-      logger.warn({ paymentId, rawResponse: extraction.rawResponse.slice(0, 200) }, 'Ollama extraction failed');
+    // Send to EasyOCR sidecar service
+    let ocrLines;
+    try {
+      ocrLines = await sendImageForOcr(imageBuffer);
+    } catch (err) {
+      logger.error({ err, paymentId }, 'OCR service call failed');
       await upsertAnalysis(paymentId, {
         matchStatus: 'UNREADABLE',
-        mismatchReason: 'Could not extract data from receipt image',
-        rawResponse: extraction.rawResponse,
-        modelUsed: process.env.OLLAMA_MODEL || 'gemma4:e2b',
+        mismatchReason: `OCR service error: ${(err as Error).message}`,
+        rawResponse: (err as Error).message,
+        modelUsed: 'easyocr',
       });
       return;
     }
 
+    if (!ocrLines || ocrLines.length === 0) {
+      logger.warn({ paymentId }, 'OCR returned no text');
+      await upsertAnalysis(paymentId, {
+        matchStatus: 'UNREADABLE',
+        mismatchReason: 'OCR could not detect any text in receipt image',
+        rawResponse: JSON.stringify(ocrLines),
+        modelUsed: 'easyocr',
+      });
+      return;
+    }
+
+    // Parse structured fields from raw OCR text
+    const rawText = ocrLines.map((l) => `[${l.confidence}] ${l.text}`).join('\n');
+    const parsed = parseReceiptText(ocrLines);
+
     // Cross-check amount
     const systemAmount = Number(payment.amount);
-    const { matchStatus, mismatchReason } = compareAmounts(systemAmount, extraction.extractedAmount);
+    const { matchStatus, mismatchReason } = compareAmounts(systemAmount, parsed.amount);
 
     // Upsert the analysis record
     await upsertAnalysis(paymentId, {
-      extractedAmount: extraction.extractedAmount,
-      cardLast4: extraction.cardLast4,
-      cardType: extraction.cardType,
-      transactionDate: extraction.transactionDate,
-      transactionTime: extraction.transactionTime,
-      terminalId: extraction.terminalId,
-      approvalCode: extraction.approvalCode,
-      rawResponse: extraction.rawResponse,
+      extractedAmount: parsed.amount,
+      cardLast4: parsed.cardLast4,
+      cardType: parsed.cardType,
+      transactionDate: parsed.transactionDate,
+      transactionTime: parsed.transactionTime,
+      terminalId: parsed.terminalId,
+      approvalCode: parsed.approvalCode,
+      rawResponse: rawText,
       matchStatus,
       mismatchReason,
-      modelUsed: process.env.OLLAMA_MODEL || 'gemma4:e2b',
+      modelUsed: 'easyocr',
     });
 
     logger.info(
-      { paymentId, matchStatus, systemAmount, extractedAmount: extraction.extractedAmount },
+      { paymentId, matchStatus, systemAmount, extractedAmount: parsed.amount },
       'Receipt analysis complete'
     );
   } catch (err) {
