@@ -16,6 +16,7 @@ import {
   ImageOff,
   Wifi,
   WifiOff,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/use-auth';
 
@@ -370,6 +371,7 @@ export default function ReceiptAnalysisPage() {
                   <th className="px-4 py-3">Time</th>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Room</th>
+                  <th className="px-4 py-3">Booking</th>
                   <th className="px-4 py-3 text-right">System $</th>
                   <th className="px-4 py-3 text-right">Receipt $</th>
                   <th className="px-4 py-3">Card</th>
@@ -392,6 +394,17 @@ export default function ReceiptAnalysisPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-400">
                         {item.booking.roomName} · S{item.seatIndex}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <button
+                          className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/pos/booking/${item.booking.id}`);
+                          }}
+                        >
+                          View <ExternalLink className="w-3 h-3" />
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-mono">
                         ${item.amount.toFixed(2)}
@@ -443,7 +456,7 @@ export default function ReceiptAnalysisPage() {
                     {/* Expanded Details */}
                     {expandedId === item.paymentId && item.analysis && (
                       <tr className="bg-slate-800/30">
-                        <td colSpan={8} className="px-6 py-4">
+                        <td colSpan={9} className="px-6 py-4">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="text-slate-500 block">Card Type</span>
