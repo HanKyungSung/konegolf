@@ -284,6 +284,7 @@ Receipt analysis uses an EasyOCR service running natively on the Raspberry Pi 5,
 
 **Architecture:**
 - EasyOCR runs on Pi5 (8GB RAM) — Python Flask + gunicorn (native, no Docker)
+- Gunicorn: 1 worker, 2 threads (`--workers 1 --threads 2`) — threads allow `/health` to respond while `/ocr` is processing
 - Local dev: `http://han-pi5.local:5050` (mDNS)
 - Production: `http://100.83.253.110:5050` (Tailscale)
 - If Pi is unreachable, receipts stay PENDING and auto-retry every 5 min
