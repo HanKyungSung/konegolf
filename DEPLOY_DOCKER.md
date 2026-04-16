@@ -280,42 +280,57 @@ The GitHub Actions workflow currently injects SMTP variables via command line. T
 
 ## Receipt OCR Service (EasyOCR on Pi5)
 
-Receipt analysis uses an EasyOCR service running on the Raspberry Pi 5, accessed via Tailscale.
+Receipt analysis uses an EasyOCR service running natively on the Raspberry Pi 5, managed via systemd.
 
 **Architecture:**
-- EasyOCR runs on Pi5 (8GB RAM) — Python Flask + gunicorn
-- Backend reaches Pi via Tailscale: `http://100.83.253.110:5050`
-- If Pi is unreachable, receipts are marked UNREADABLE (no retry/queue)
+- EasyOCR runs on Pi5 (8GB RAM) — Python Flask + gunicorn (native, no Docker)
+- Local dev: `http://han-pi5.local:5050` (mDNS)
+- Production: `http://100.83.253.110:5050` (Tailscale)
+- If Pi is unreachable, receipts stay PENDING and auto-retry every 5 min
 - Admin dashboard shows Pi health status (green/red indicator)
 
-**Pi setup:**
+**Pi setup (already done):**
 ```bash
-# On Pi5 — build and run EasyOCR service
-cd ~/ocr-service
-docker build -t konegolf-ocr .
-docker run -d --name konegolf-ocr -p 5050:5000 --restart unless-stopped konegolf-ocr
+# Files live at ~/ocr-service/ on Pi
+# systemd service: konegolf-ocr.service (enabled, auto-starts on boot)
+# To update code:
+scp ocr-service/app.py tjdgksrud@han-pi5.local:~/ocr-service/
+ssh tjdgksrud@han-pi5.local "sudo systemctl restart konegolf-ocr"
 ```
 
-**Verify from DO server:**
+**Managing the service:**
 ```bash
-# Health check via Tailscale
-curl http://100.83.253.110:5050/health
+ssh tjdgksrud@han-pi5.local
+sudo systemctl status konegolf-ocr     # Check status
+sudo systemctl restart konegolf-ocr    # Restart
+journalctl -u konegolf-ocr -f          # Live logs
+```
 
-# Warm up model
-curl -X POST http://100.83.253.110:5050/warmup
+**Verify from local Mac / DO server:**
+```bash
+# Local
+curl http://han-pi5.local:5050/health
+curl -X POST http://han-pi5.local:5050/warmup
+
+# From DO server (Tailscale)
+curl http://100.83.253.110:5050/health
 ```
 
 **Environment:**
 ```env
-# .env.production
+# backend/.env (local dev)
+OCR_SERVICE_URL=http://han-pi5.local:5050
+
+# .env.production (DO server)
 OCR_SERVICE_URL=http://100.83.253.110:5050
 OCR_TIMEOUT=120000
 ```
 
 **Monitoring:**
 - Dashboard: Admin → Receipt Analysis → Pi OCR status bar at top
-- Direct: `curl http://100.83.253.110:5050/health`
-- Pi memory: `ssh pi5 'docker stats konegolf-ocr --no-stream'`
+- Direct: `curl http://han-pi5.local:5050/health`
+- Pi memory: `ssh tjdgksrud@han-pi5.local 'free -h'`
+- Logs: `ssh tjdgksrud@han-pi5.local 'journalctl -u konegolf-ocr --since "1 hour ago"'`
 
 ## Notes / adjustments you might consider
 - If production Postgres is managed (e.g., DO Managed DB), remove the `db` service and point `DATABASE_URL` at the managed instance
