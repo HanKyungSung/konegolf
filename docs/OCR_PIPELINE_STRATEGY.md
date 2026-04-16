@@ -100,10 +100,30 @@ async function analyzeReceipt(paymentId: string) {
 
 > At typical K GOLF volumes (<200 receipts/month), the entire pipeline is free.
 
+## Receipt Analysis Statuses
+
+| Status | Meaning | Auto-retry? |
+|--------|---------|-------------|
+| *(none)* | No receipt uploaded — no analysis record exists | No |
+| `PENDING` | Has receipt, not yet analyzed | **Yes** (every 5 min when Pi online) |
+| `ANALYZING` | OCR in progress on Pi | No |
+| `MATCHED` | Extracted amount matches payment (±$0.02) | No |
+| `MISMATCH` | Extracted amount differs from payment | No |
+| `UNREADABLE` | OCR failed — Pi offline, download error, no text, or amount not extractable | No (manual re-analyze only) |
+
+### Auto-Retry Queue
+
+- **File:** `backend/src/services/receiptQueue.ts`
+- **Interval:** Every 5 minutes via `setInterval` (started on server boot)
+- **Logic:** Check Pi health → if online, process up to 10 PENDING receipts sequentially
+- **Retries only PENDING** — UNREADABLE receipts require manual re-analyze from dashboard
+- **Sequential processing** — one at a time to avoid overloading Pi
+
 ## Implementation Status
 
 - [x] Layer 1: EasyOCR on Pi5 — implemented, Pi health pre-check + dashboard indicator
 - [x] Layer 3: Manual review (UNREADABLE status) — implemented in admin dashboard
+- [x] Auto-retry queue — processes PENDING receipts every 5 min when Pi online
 - [ ] Layer 1: Deploy EasyOCR Docker container on Pi5 — pending
 - [ ] Layer 2: Azure Vision OCR — future work
 - [ ] Escalation logic between layers — future work

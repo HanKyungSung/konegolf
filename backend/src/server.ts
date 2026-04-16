@@ -28,6 +28,7 @@ import { startBookingReportScheduler } from './jobs/bookingReportScheduler';
 import { startShiftReportScheduler } from './jobs/shiftReportScheduler';
 import { startStaleShiftCleanup } from './jobs/staleShiftCleanup';
 import { startWeeklyHoursReportScheduler } from './jobs/weeklyHoursReport';
+import { startReceiptQueue } from './services/receiptQueue';
 
 const app = express();
 
@@ -122,6 +123,9 @@ server.listen(port, () => {
   startShiftReportScheduler();
   startStaleShiftCleanup();
   startWeeklyHoursReportScheduler();
+
+  // Receipt OCR auto-retry queue (checks Pi health, processes PENDING receipts)
+  startReceiptQueue();
 });
 
 // Graceful shutdown
