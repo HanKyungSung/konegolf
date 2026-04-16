@@ -438,7 +438,7 @@ export default function ReceiptAnalysisPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            disabled={reanalyzing === item.paymentId}
+                            disabled={reanalyzing === item.paymentId || item.analysis?.matchStatus === 'ANALYZING'}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleReanalyze(item.paymentId);
