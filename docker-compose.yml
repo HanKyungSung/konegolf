@@ -21,17 +21,6 @@ services:
     networks:
       - konegolf_net
 
-  ocr:
-    build:
-      context: ./ocr-service
-      dockerfile: Dockerfile
-    container_name: konegolf-ocr
-    ports:
-      - '5050:5000'
-    networks:
-      - konegolf_net
-    restart: unless-stopped
-
 networks:
   konegolf_net:
     driver: bridge
