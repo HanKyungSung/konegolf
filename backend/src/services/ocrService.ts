@@ -1,11 +1,11 @@
 /**
- * OCR Service Client — sends images to the EasyOCR sidecar container for text extraction.
+ * OCR Service Client — sends images to the EasyOCR service on Pi for text extraction.
  */
 
 import { OcrTextLine } from './receiptParser';
 
 const OCR_SERVICE_URL =
-  process.env.OCR_SERVICE_URL || 'http://ocr:5000';
+  process.env.OCR_SERVICE_URL || 'http://localhost:5050';
 const OCR_TIMEOUT = parseInt(process.env.OCR_TIMEOUT || '120000', 10);
 
 interface OcrResponse {

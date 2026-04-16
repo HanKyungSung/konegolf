@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Clock,
   ImageOff,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/use-auth';
 
@@ -59,6 +61,17 @@ interface Summary {
   noReceipt: number;
   totalAmount: string;
   matchedAmount: string;
+}
+
+interface PiHealth {
+  reachable: boolean;
+  responseTimeMs?: number;
+  ocrServiceUrl?: string;
+  status?: string;
+  modelLoaded?: boolean;
+  memoryMB?: number;
+  uptimeSeconds?: number;
+  error?: string;
 }
 
 function formatTime(dateStr: string): string {
@@ -124,9 +137,23 @@ export default function ReceiptAnalysisPage() {
   });
   const [items, setItems] = useState<ReceiptAnalysisItem[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [piHealth, setPiHealth] = useState<PiHealth | null>(null);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reanalyzing, setReanalyzing] = useState<string | null>(null);
+
+  const fetchPiHealth = useCallback(async () => {
+    try {
+      const res = await fetch(`${getApiBase()}/api/receipt-analysis/health`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setPiHealth(await res.json());
+      }
+    } catch {
+      setPiHealth({ reachable: false, error: 'Failed to reach backend' });
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -154,8 +181,11 @@ export default function ReceiptAnalysisPage() {
   }, [date]);
 
   useEffect(() => {
-    if (user?.role === 'ADMIN') fetchData();
-  }, [fetchData, user]);
+    if (user?.role === 'ADMIN') {
+      fetchData();
+      fetchPiHealth();
+    }
+  }, [fetchData, fetchPiHealth, user]);
 
   const handleReanalyze = async (paymentId: string) => {
     setReanalyzing(paymentId);
@@ -218,6 +248,47 @@ export default function ReceiptAnalysisPage() {
             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+        </div>
+
+        {/* Pi OCR Health Status */}
+        <div className="mb-4">
+          {piHealth === null ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Loader2 className="w-3 h-3 animate-spin" /> Checking Pi OCR status...
+            </div>
+          ) : piHealth.reachable ? (
+            <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2">
+              <Wifi className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm text-emerald-400 font-medium">Pi OCR Online</span>
+              <span className="text-xs text-slate-400">
+                {piHealth.modelLoaded ? 'Model loaded' : 'Model not loaded'}
+                {piHealth.memoryMB != null && ` · ${piHealth.memoryMB}MB RAM`}
+                {piHealth.responseTimeMs != null && ` · ${piHealth.responseTimeMs}ms`}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 px-2 text-xs"
+                onClick={fetchPiHealth}
+              >
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+              <WifiOff className="w-4 h-4 text-red-400" />
+              <span className="text-sm text-red-400 font-medium">Pi OCR Offline</span>
+              <span className="text-xs text-slate-500">{piHealth.error || 'Unreachable'}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 px-2 text-xs"
+                onClick={fetchPiHealth}
+              >
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Summary Cards */}

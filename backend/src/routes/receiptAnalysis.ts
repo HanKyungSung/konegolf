@@ -192,18 +192,24 @@ router.get('/summary', requireAuth, requireAdmin, async (req: Request, res: Resp
 
 /**
  * GET /api/receipt-analysis/health
- * Check OCR service health status. Admin only.
+ * Check Pi OCR service health status. Admin only.
  */
 router.get('/health', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const ocrUrl = process.env.OCR_SERVICE_URL || 'http://localhost:5050';
+  const startMs = Date.now();
   try {
     const health = await checkOcrHealth();
     return res.json({
       reachable: true,
+      responseTimeMs: Date.now() - startMs,
+      ocrServiceUrl: ocrUrl,
       ...health,
     });
   } catch (err) {
     return res.json({
       reachable: false,
+      responseTimeMs: Date.now() - startMs,
+      ocrServiceUrl: ocrUrl,
       error: (err as Error).message,
     });
   }

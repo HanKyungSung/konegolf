@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { sendImageForOcr } from './ocrService';
+import { sendImageForOcr, checkOcrHealth } from './ocrService';
 import { parseReceiptText } from './receiptParser';
 import { downloadFile } from './storageService';
 import logger from '../lib/logger';
@@ -10,7 +10,8 @@ const AMOUNT_TOLERANCE = 0.02; // ±$0.02 for rounding/float differences
 
 /**
  * Analyze a receipt image for a payment and cross-check the amount.
- * Pipeline: download image → OCR (EasyOCR sidecar) → regex parse → compare → save.
+ * Pipeline: check Pi health → download image → OCR (EasyOCR on Pi) → regex parse → compare → save.
+ * If Pi is unavailable, marks receipt as UNREADABLE immediately.
  * Designed to be called fire-and-forget (errors are caught internally).
  */
 export async function analyzeReceiptAsync(paymentId: string): Promise<void> {
@@ -59,7 +60,20 @@ export async function analyzeReceiptAsync(paymentId: string): Promise<void> {
       return;
     }
 
-    // Send to EasyOCR sidecar service
+    // Check if Pi OCR service is available before proceeding
+    try {
+      await checkOcrHealth();
+    } catch (err) {
+      logger.warn({ err, paymentId }, 'Pi OCR service unavailable — skipping analysis');
+      await upsertAnalysis(paymentId, {
+        matchStatus: 'UNREADABLE',
+        mismatchReason: 'Pi OCR service unavailable',
+        rawResponse: (err as Error).message,
+      });
+      return;
+    }
+
+    // Send to EasyOCR service on Pi
     let ocrLines;
     try {
       ocrLines = await sendImageForOcr(imageBuffer);

@@ -278,60 +278,44 @@ The GitHub Actions workflow currently injects SMTP variables via command line. T
 1. Creating `.env.production` on server with all variables
 2. Removing SMTP_* from the deploy command in `.github/workflows/docker-deploy.yml`
 
-## Receipt OCR Service (EasyOCR Sidecar)
+## Receipt OCR Service (EasyOCR on Pi5)
 
-Receipt analysis uses an EasyOCR Docker sidecar container running alongside the main backend.
+Receipt analysis uses an EasyOCR service running on the Raspberry Pi 5, accessed via Tailscale.
 
 **Architecture:**
-- `ocr` service in `docker-compose.release.yml` — Python Flask + EasyOCR
-- Internal Docker network only — not exposed to the internet
-- Backend calls `http://ocr:5000/ocr` for receipt text extraction
-- Single gunicorn worker (processes one receipt at a time)
+- EasyOCR runs on Pi5 (8GB RAM) — Python Flask + gunicorn
+- Backend reaches Pi via Tailscale: `http://100.83.253.110:5050`
+- If Pi is unreachable, receipts are marked UNREADABLE (no retry/queue)
+- Admin dashboard shows Pi health status (green/red indicator)
 
-**Memory requirements:**
-- EasyOCR peak: ~3.7GB RAM
-- **Required:** Add 4GB swap file to DO droplet (1GB RAM droplet)
-- Processing uses swap during OCR inference (~30-60s per receipt)
-- Main app stays in real RAM
-
-**Swap setup on DO server:**
+**Pi setup:**
 ```bash
-sudo fallocate -l 4G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-sudo sysctl vm.swappiness=10
-echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+# On Pi5 — build and run EasyOCR service
+cd ~/ocr-service
+docker build -t konegolf-ocr .
+docker run -d --name konegolf-ocr -p 5050:5000 --restart unless-stopped konegolf-ocr
 ```
 
-**Building the OCR image:**
+**Verify from DO server:**
 ```bash
-# On DO server (first time only — image built locally, not from GHCR)
-cd ~/k-golf
-docker compose -f docker-compose.release.yml build ocr
-```
-
-**Verify OCR service:**
-```bash
-# Health check
-docker compose -f docker-compose.release.yml exec backend wget -qO- http://ocr:5000/health
+# Health check via Tailscale
+curl http://100.83.253.110:5050/health
 
 # Warm up model
-docker compose -f docker-compose.release.yml exec backend wget -qO- --post-data='' http://ocr:5000/warmup
+curl -X POST http://100.83.253.110:5050/warmup
 ```
 
 **Environment:**
 ```env
 # .env.production
-OCR_SERVICE_URL=http://ocr:5000
+OCR_SERVICE_URL=http://100.83.253.110:5050
 OCR_TIMEOUT=120000
 ```
 
-**Performance monitoring:**
-- Check swap usage: `free -h` and `vmstat 1`
-- Check OCR container memory: `docker stats konegolf-ocr`
-- If swap thrashing hurts main app performance, consider upgrading DO droplet to 4GB ($24/mo)
+**Monitoring:**
+- Dashboard: Admin → Receipt Analysis → Pi OCR status bar at top
+- Direct: `curl http://100.83.253.110:5050/health`
+- Pi memory: `ssh pi5 'docker stats konegolf-ocr --no-stream'`
 
 ## Notes / adjustments you might consider
 - If production Postgres is managed (e.g., DO Managed DB), remove the `db` service and point `DATABASE_URL` at the managed instance

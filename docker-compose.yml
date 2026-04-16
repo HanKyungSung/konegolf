@@ -38,4 +38,5 @@ networks:
 
 volumes:
   pg_data:
-    driver: local
+    external: true
+    name: k-golf_pg_data

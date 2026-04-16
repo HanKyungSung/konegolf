@@ -11,9 +11,9 @@ Receipt Image
      │
      ▼
 ┌─────────────────────────┐
-│  Layer 1: Self-Hosted   │  EasyOCR sidecar (DO server) or Pi
+│  Layer 1: Pi5 EasyOCR   │  EasyOCR on Raspberry Pi 5 via Tailscale
 │  Cost: $0               │  Speed: ~15-25s
-│  RAM: ~3.7GB            │  Accuracy: Good (exact on clean receipts)
+│  RAM: 8GB (Pi5)         │  Accuracy: Good (exact on clean receipts)
 └───────────┬─────────────┘
             │ Failed / Low confidence
             ▼
@@ -33,14 +33,15 @@ Receipt Image
 
 ## Layer Details
 
-### Layer 1 — Self-Hosted OCR (Current)
+### Layer 1 — Pi5 EasyOCR (Current)
 
-- **Engine:** EasyOCR 1.7.2 in Docker sidecar container
-- **Location:** DO server (or Pi in future)
-- **Endpoint:** `POST http://ocr:5000/ocr` (internal Docker network)
-- **Pros:** Zero cost, full control, no external dependency
-- **Cons:** 3.7GB RAM (needs swap on 1GB droplet), slower
+- **Engine:** EasyOCR 1.7.2 in Docker container on Pi5
+- **Location:** Raspberry Pi 5 (8GB RAM) via Tailscale
+- **Endpoint:** `POST http://100.83.253.110:5050/ocr`
+- **Pros:** Zero cost, 8GB RAM (no swap needed), full control
+- **Cons:** Depends on Pi being online and Tailscale connectivity
 - **Pass criteria:** Amount extracted with confidence, key fields present
+- **If Pi offline:** Receipt marked UNREADABLE immediately (no retry)
 
 ### Layer 2 — Azure Vision OCR (Future)
 
@@ -101,8 +102,9 @@ async function analyzeReceipt(paymentId: string) {
 
 ## Implementation Status
 
-- [x] Layer 1: EasyOCR sidecar — implemented, tested
+- [x] Layer 1: EasyOCR on Pi5 — implemented, Pi health pre-check + dashboard indicator
 - [x] Layer 3: Manual review (UNREADABLE status) — implemented in admin dashboard
+- [ ] Layer 1: Deploy EasyOCR Docker container on Pi5 — pending
 - [ ] Layer 2: Azure Vision OCR — future work
 - [ ] Escalation logic between layers — future work
 - [ ] Confidence scoring to trigger escalation — future work
