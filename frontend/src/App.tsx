@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import HomePage from './pages/home'
 import AdminPage from './pages/admin'
 import CustomerManagementPage from './pages/admin/customers'
+import ReceiptAnalysisPage from './pages/admin/receipt-analysis'
 import BookingPage from './pages/booking'
 import BookingConfirmationPage from './pages/booking-confirmation'
 import DashboardPage from './pages/dashboard'
@@ -32,6 +33,7 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/customers" element={<CustomerManagementPage />} />
+        <Route path="/admin/receipt-analysis" element={<ReceiptAnalysisPage />} />
         <Route path="/booking" element={<BookingPage />} />
         <Route path="/booking/confirmation/:id" element={<BookingConfirmationPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />

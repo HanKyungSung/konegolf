@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin, requireStaffOrAdmin } from '../middleware/requireRole';
 import { uploadFile, downloadFile, deleteFile } from '../services/storageService';
+import { analyzeReceiptAsync } from '../services/receiptAnalyzer';
 import logger from '../lib/logger';
 
 const prisma = new PrismaClient();
@@ -69,6 +70,12 @@ router.post(
       });
 
       logger.info({ paymentId, bookingId, objectPath, fileSize: req.file.size }, 'Receipt uploaded successfully');
+
+      // Fire-and-forget: analyze the receipt via Ollama (non-blocking)
+      analyzeReceiptAsync(paymentId).catch((err) => {
+        logger.error({ err, paymentId }, 'Background receipt analysis failed');
+      });
+
       return res.json({ receiptPath: objectPath });
     } catch (err) {
       logger.error({ err }, 'Failed to upload receipt');

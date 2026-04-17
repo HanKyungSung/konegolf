@@ -185,7 +185,7 @@ Nginx Reverse Proxy (host)
 
 # 3. SSH to server and check containers
 ssh your-user@147.182.215.135
-docker ps  # Should see: kgolf-postgres, k-golf-backend-1
+docker ps  # Should see: konegolf-postgres, k-golf-backend-1
 docker logs k-golf-backend-1 --tail=50
 
 # 4. Test endpoints

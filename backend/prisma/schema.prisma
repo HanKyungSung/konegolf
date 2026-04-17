@@ -140,7 +140,36 @@ model Payment {
   receiptPath String?  // GCS object path: "receipts/2026-04-02/{paymentId}.jpg"
   createdAt   DateTime @default(now()) @db.Timestamptz
 
+  analysis    ReceiptAnalysis? // 1:1 — Ollama-extracted data from receipt photo
+
   @@index([invoiceId])
+}
+
+// Ollama-extracted data from terminal receipt photos, linked 1:1 with Payment
+model ReceiptAnalysis {
+  id              String   @id @default(uuid())
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  paymentId       String   @unique // 1:1 with Payment
+
+  // Extracted fields (all nullable — may be unreadable)
+  extractedAmount Decimal?  @db.Decimal(10, 2)
+  cardLast4       String?   // e.g. "4532"
+  cardType        String?   // e.g. "Visa", "Mastercard"
+  transactionDate String?   // Date string as read from receipt
+  transactionTime String?   // Time string as read from receipt
+  terminalId      String?   // Terminal/merchant ID
+  approvalCode    String?   // Auth/approval code
+  rawResponse     String?   @db.Text // Full Ollama response for debugging
+
+  // Match result
+  matchStatus     String    @default("PENDING") // PENDING | MATCHED | MISMATCH | UNREADABLE
+  mismatchReason  String?   // e.g. "Amount: system $45.00 vs receipt $35.00"
+
+  analyzedAt      DateTime  @default(now()) @db.Timestamptz
+  modelUsed       String?   // e.g. "gemma4:e2b"
+
+  @@index([matchStatus])
+  @@index([analyzedAt])
 }
 
 // Order model - tracks individual menu items ordered per seat

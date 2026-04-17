@@ -188,7 +188,7 @@ Key tables and columns (Prisma naming → PostgreSQL uses exact casing with doub
 **Summary by payment method (copy-paste ready):**
 
 ```sh
-ssh root@147.182.215.135 'docker exec kgolf-postgres psql -U kgolf -d kgolf_app -c "
+ssh root@147.182.215.135 'docker exec konegolf-postgres psql -U kgolf -d kgolf_app -c "
 SELECT i.\"paymentMethod\", COUNT(*) as count,
        SUM(i.\"totalAmount\") as total,
        SUM(i.subtotal) as subtotal,
@@ -207,7 +207,7 @@ ORDER BY i.\"paymentMethod\";
 **Detailed breakdown with names (copy-paste ready):**
 
 ```sh
-ssh root@147.182.215.135 'docker exec kgolf-postgres psql -U kgolf -d kgolf_app -c "
+ssh root@147.182.215.135 'docker exec konegolf-postgres psql -U kgolf -d kgolf_app -c "
 SELECT u.name, i.\"totalAmount\", i.subtotal, i.tax, i.tip,
        i.\"paymentMethod\", b.\"startTime\" AT TIME ZONE '\''America/Halifax'\'' as start_local
 FROM \"Invoice\" i

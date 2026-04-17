@@ -39,10 +39,10 @@ db:
 - **Think of it as**: Your data storage container
 
 ```yaml
-  container_name: kgolf-postgres
+  container_name: konegolf-postgres
 ```
-- **What it does**: Names the container `kgolf-postgres` (easier to reference)
-- **Why**: Instead of random names like `k-golf_db_1`, you get `kgolf-postgres`
+- **What it does**: Names the container `konegolf-postgres` (easier to reference)
+- **Why**: Instead of random names like `k-golf_db_1`, you get `konegolf-postgres`
 
 ```yaml
   restart: unless-stopped
@@ -74,9 +74,9 @@ db:
 
 ```yaml
   networks:
-    - kgolf_net
+    - konegolf_net
 ```
-- **What it does**: Connects to `kgolf_net` network
+- **What it does**: Connects to `konegolf_net` network
 - **Why**: Allows other containers (backend) to talk to database
 
 ```yaml
@@ -134,7 +134,7 @@ migrate:
 
 ```yaml
   networks:
-    - kgolf_net
+    - konegolf_net
 ```
 - **What it does**: Connects to same network as database
 
@@ -218,10 +218,10 @@ backend:
 
 ```yaml
 networks:
-  kgolf_net:
+  konegolf_net:
     driver: bridge
 ```
-- **What it does**: Creates a private network called `kgolf_net`
+- **What it does**: Creates a private network called `konegolf_net`
 - **Bridge driver**: Default, allows containers to talk to each other
 - **Think of it as**: A local WiFi network for your containers
 - **Result**: Containers can reach each other by name (e.g., `db:5432`)
@@ -255,7 +255,7 @@ volumes:
 ### Visual Diagram:
 ```
 ┌─────────────────────────────────────┐
-│  kgolf_net (Network)                │
+│  konegolf_net (Network)                │
 │                                     │
 │  ┌──────────┐    ┌──────────┐     │
 │  │ Database │◄───│ Backend  │     │
@@ -317,9 +317,9 @@ docker compose -f docker-compose.release.yml run --rm seed
 | Term | Meaning | Example |
 |------|---------|---------|
 | **Image** | Blueprint for a container (like a recipe) | `postgres:16` |
-| **Container** | Running instance of an image (like a dish made from recipe) | `kgolf-postgres` |
+| **Container** | Running instance of an image (like a dish made from recipe) | `konegolf-postgres` |
 | **Volume** | Permanent storage that survives container restarts | `pg_data` |
-| **Network** | Private connection between containers | `kgolf_net` |
+| **Network** | Private connection between containers | `konegolf_net` |
 | **Port mapping** | Expose container port to outside world | `8082:8080` |
 | **depends_on** | Start order and wait conditions | Migrate waits for db |
 | **healthcheck** | Test if container is working properly | `/health` endpoint |
@@ -390,7 +390,7 @@ docker ps -a --filter name=k-golf
 ### Database connection errors
 ```bash
 # Verify database is running
-docker exec kgolf-postgres psql -U kgolf -d kgolf_app -c "SELECT version();"
+docker exec konegolf-postgres psql -U kgolf -d kgolf_app -c "SELECT version();"
 
 # Check DATABASE_URL in .env.production
 cat /root/k-golf/.env.production | grep DATABASE_URL
@@ -411,7 +411,7 @@ docker compose -f docker-compose.release.yml logs migrate
 docker compose -f docker-compose.release.yml run --rm seed
 
 # Check if data was created
-docker exec kgolf-postgres psql -U kgolf -d kgolf_app -c "SELECT COUNT(*) FROM \"Room\";"
+docker exec konegolf-postgres psql -U kgolf -d kgolf_app -c "SELECT COUNT(*) FROM \"Room\";"
 ```
 
 ### Port already in use
@@ -430,7 +430,7 @@ lsof -i :8082
 2. **Regular backups** - Backup the `pg_data` volume regularly
 3. **Monitor logs** - Check logs periodically for errors
 4. **Health checks** - Let Docker's health checks detect and restart failed services
-5. **Network isolation** - Services on `kgolf_net` are isolated from other Docker networks
+5. **Network isolation** - Services on `konegolf_net` are isolated from other Docker networks
 6. **Version pinning** - Use specific image tags (`IMAGE_TAG=v1.2.3`) for production deployments
 7. **Rolling updates** - Use `docker compose up -d` to update without downtime
 

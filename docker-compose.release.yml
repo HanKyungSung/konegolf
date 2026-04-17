@@ -2,7 +2,7 @@
 services:
   db:
     image: postgres:16
-    container_name: kgolf-postgres
+    container_name: konegolf-postgres
     restart: unless-stopped
     logging:
       driver: json-file
@@ -16,7 +16,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     networks:
-      - kgolf_net
+      - konegolf_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kgolf -d kgolf_app"]
       interval: 10s
@@ -34,7 +34,7 @@ services:
     command: ["npx", "prisma", "migrate", "deploy"]
     restart: "no"
     networks:
-      - kgolf_net
+      - konegolf_net
 
   seed:
     image: ghcr.io/hankyungsung/kgolf-backend:${IMAGE_TAG:-latest}
@@ -50,10 +50,11 @@ services:
     command: ["node", "dist/prisma/seed.js"]
     restart: "no"
     networks:
-      - kgolf_net
+      - konegolf_net
 
   backend:
     image: ghcr.io/hankyungsung/kgolf-backend:${IMAGE_TAG:-latest}
+    container_name: konegolf-backend
     logging:
       driver: json-file
       options:
@@ -76,7 +77,7 @@ services:
       - /var/log/kgolf:/app/logs
       - ./gdrive-key.json:/app/gdrive-key.json:ro
     networks:
-      - kgolf_net
+      - konegolf_net
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 30s
@@ -84,8 +85,9 @@ services:
       retries: 3
     restart: unless-stopped
 
+
 networks:
-  kgolf_net:
+  konegolf_net:
     driver: bridge
 
 volumes:

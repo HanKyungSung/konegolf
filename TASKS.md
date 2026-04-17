@@ -3784,6 +3784,29 @@ Use device fingerprinting for enforcement, QR code for easy onboarding.
 
 ---
 
+### Receipt OCR Analyzer (EasyOCR)
+
+**Status:** `[~]` In Progress  
+**Branch:** `feat/receipt-analyzer-easyocr`
+
+Auto-analyze receipt photos uploaded by staff to verify they match payment records.
+
+- [x] ReceiptAnalysis schema + migration
+- [x] Admin receipt analysis dashboard (`/admin/receipt-analysis`)
+- [x] API routes (list, summary, health, reanalyze)
+- [x] OCR investigation (Ollama, Tesseract, EasyOCR benchmarks) → `docs/OCR_INVESTIGATION.md`
+- [x] EasyOCR Flask sidecar container (`ocr-service/`)
+- [x] Receipt text parser with regex (`receiptParser.ts`)
+- [x] OCR HTTP client (`ocrService.ts`)
+- [x] Updated receiptAnalyzer for EasyOCR pipeline
+- [x] Unit tests (38 passing)
+- [ ] Build & test OCR Docker image
+- [ ] Deploy OCR sidecar to DO server
+- [ ] Add 4GB swap to DO droplet for EasyOCR memory
+- [ ] End-to-end test with real receipt
+
+---
+
 ## ✅ Completed Tasks Archive
 
 <details>

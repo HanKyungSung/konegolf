@@ -3,7 +3,7 @@ version: '3.9'
 services:
   db:
     image: postgres:16
-    container_name: kgolf-postgres
+    container_name: konegolf-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: kgolf
@@ -19,12 +19,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - kgolf_net
+      - konegolf_net
 
 networks:
-  kgolf_net:
+  konegolf_net:
     driver: bridge
 
 volumes:
   pg_data:
-    driver: local
+    external: true
+    name: k-golf_pg_data

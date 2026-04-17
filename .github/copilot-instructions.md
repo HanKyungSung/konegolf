@@ -42,7 +42,7 @@
 
 - **SSH:** `ssh root@147.182.215.135`
 - **Domain:** konegolf.ca / pos.konegolf.ca
-- **DB:** `kgolf-postgres` → `kgolf_app` (user: `kgolf`, tz: America/Halifax)
-- **Prod psql:** `ssh root@147.182.215.135 "docker exec -it kgolf-postgres psql -U kgolf -d kgolf_app"`
+- **DB:** `konegolf-postgres` → `kgolf_app` (user: `kgolf`, tz: America/Halifax)
+- **Prod psql:** `ssh root@147.182.215.135 "docker exec -it konegolf-postgres psql -U kgolf -d kgolf_app"`
 
 For full details, see `PROJECT_GUIDE.md`.

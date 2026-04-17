@@ -75,6 +75,24 @@ PostgreSQL uses **exact casing** with double quotes for camelCase columns. Lower
 | receiptPath | `"receiptPath"` | String? | Google Drive path (e.g. `receipts/2026-04-07/{bookingId}/{paymentId}.jpg`) |
 | createdAt | `"createdAt"` | Timestamptz | |
 
+### ReceiptAnalysis (Ollama-extracted receipt data)
+| Column | PG Quoting | Type | Notes |
+|--------|-----------|------|-------|
+| id | `id` | UUID | PK |
+| paymentId | `"paymentId"` | UUID | FK → Payment (unique, 1:1) |
+| extractedAmount | `"extractedAmount"` | Decimal?(10,2) | Amount read from receipt image |
+| cardLast4 | `"cardLast4"` | String? | Last 4 digits of card |
+| cardType | `"cardType"` | String? | Visa, Mastercard, etc. |
+| transactionDate | `"transactionDate"` | String? | Date as read from receipt |
+| transactionTime | `"transactionTime"` | String? | Time as read from receipt |
+| terminalId | `"terminalId"` | String? | Terminal/merchant ID |
+| approvalCode | `"approvalCode"` | String? | Auth code |
+| rawResponse | `"rawResponse"` | Text? | Full Ollama response for debugging |
+| matchStatus | `"matchStatus"` | String | PENDING, MATCHED, MISMATCH, UNREADABLE |
+| mismatchReason | `"mismatchReason"` | String? | e.g. "Amount: system $45.00 vs receipt $35.00" |
+| analyzedAt | `"analyzedAt"` | Timestamptz | When analysis was performed |
+| modelUsed | `"modelUsed"` | String? | e.g. "gemma4:e2b" |
+
 ### Order
 | Column | PG Quoting | Type | Notes |
 |--------|-----------|------|-------|
@@ -716,6 +734,7 @@ const adminRevenue = await prisma.booking.groupBy({
 - ✅ `Booking` — `startTime` for bank reconciliation, `bookingStatus` for state
 - ✅ `Invoice` — Per-seat billing, lowercase `subtotal`/`tax`/`tip`, camelCase `totalAmount`/`paymentMethod`/`paidAt`
 - ✅ `Payment` — Split payment records per Invoice (method + amount)
+- ✅ `ReceiptAnalysis` — Ollama-extracted data from receipt photos, 1:1 with Payment
 - ✅ `Order` — Menu items and discounts per seat per booking
 - ✅ `Room` — Bay mapping with `bayNumber`, status enum
 - ✅ `MenuItem` — Menu with categories and sorting
