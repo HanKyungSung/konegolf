@@ -4,7 +4,7 @@
 
 .mc-root {
   background: var(--mc-bg);
-  color: var(--mc-white);
+  color: var(--mc-text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'tnum';
   -webkit-font-smoothing: antialiased;
@@ -26,7 +26,7 @@
   font-size: clamp(3.75rem, 7vw, 6.25rem);
   line-height: 1;
   letter-spacing: -0.035em;
-  color: var(--mc-white);
+  color: var(--mc-text-hero);
   font-variant-numeric: tabular-nums;
 }
 
@@ -34,12 +34,12 @@
   display: inline-block;
   width: 32px;
   height: 3px;
-  background: var(--mc-magenta);
+  background: var(--mc-text-accent-pink);
   margin-top: 8px;
 }
 
 .mc-hero-number-muted {
-  color: var(--mc-gray);
+  color: var(--mc-text-meta);
 }
 
 /* Bordered panel — the core layout primitive in the reference */
@@ -62,38 +62,43 @@
   border-color: var(--mc-cyan);
 }
 
+/* Panel/card title, e.g. the label above a hero number like "Forked Projects" */
 .mc-panel-label {
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--mc-white);
+  font-weight: 500;
+  color: var(--mc-text-label);
   letter-spacing: 0;
   margin-bottom: 0.75rem;
 }
 
+/* Hero caption beside a big number, same role as panel-label */
 .mc-hero-label {
   font-size: 0.9375rem;
   font-weight: 500;
-  color: var(--mc-white);
+  color: var(--mc-text-label);
   letter-spacing: 0.01em;
 }
 
+/* Section header inside a panel (e.g. "Data Stream", "Weekly Timeline")
+   Regular case — the reference wallboard uses sentence case, not uppercase. */
 .mc-section-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--mc-gray);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--mc-text-label);
+  letter-spacing: 0;
 }
 
+/* Secondary / caption text */
 .mc-meta {
-  color: var(--mc-gray);
+  color: var(--mc-text-meta);
   font-size: 0.8125rem;
   line-height: 1.5;
   letter-spacing: 0;
 }
 
+/* Tertiary / dim text — timestamps, SHA fragments, axis labels */
 .mc-meta-dim {
-  color: var(--mc-gray-dim);
+  color: var(--mc-text-meta-dim);
   font-size: 0.75rem;
   line-height: 1.5;
 }

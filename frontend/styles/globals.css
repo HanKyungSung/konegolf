@@ -82,11 +82,21 @@
   --mc-purple: #b855e7;
   --mc-magenta: #f47aa5;
   --mc-white: #e0e5ed;
-  --mc-gray: #8a95a6;
-  --mc-gray-dim: #5a6475;
+  --mc-gray: #6a7485;
+  --mc-gray-dim: #424a57;
   --mc-divider: #1e2735;
   --mc-divider-soft: #141a24;
   --mc-green: #5fd692;
+
+  /* Text color roles — mapped from reference wallboard image.
+     Use these tokens (not raw grays) so text categories stay consistent. */
+  --mc-text-hero: #edf0f5;         /* big hero numbers, e.g. "1,278", "375" */
+  --mc-text-label: #c8d0da;        /* section / panel labels, e.g. "Forked Projects", "Data Stream" */
+  --mc-text-primary: #d8dde5;      /* primary content, e.g. developer names, booking titles */
+  --mc-text-meta: #6a7485;         /* secondary captions, e.g. "Last 10 min", "react-select" */
+  --mc-text-meta-dim: #424a57;     /* tertiary, e.g. axis labels (1-5), SHA fragments */
+  --mc-text-accent-teal: #1de0c5;  /* primary data emphasis, e.g. "CreateEvent", "Added" */
+  --mc-text-accent-pink: #f47aa5;  /* secondary data emphasis, e.g. "to/from", "Deleted" */
 }
 
 @theme inline {
