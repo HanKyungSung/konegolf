@@ -1,0 +1,254 @@
+/* Mission Control Dashboard — GitHub HQ wallboard aesthetic */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+.mc-root {
+  background: var(--mc-bg);
+  color: var(--mc-white);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.mc-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-ligatures: none;
+}
+
+.mc-hero-number {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 300;
+  font-size: clamp(3.5rem, 7vw, 6rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--mc-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-hero-label {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--mc-cyan);
+  letter-spacing: 0.02em;
+}
+
+.mc-section-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--mc-gray);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mc-meta {
+  color: var(--mc-gray);
+  font-size: 0.75rem;
+  letter-spacing: 0.01em;
+}
+
+.mc-meta-dim {
+  color: var(--mc-gray-dim);
+  font-size: 0.6875rem;
+}
+
+.mc-divider {
+  border-color: var(--mc-divider);
+  background-color: var(--mc-divider);
+}
+
+.mc-divider-soft {
+  border-color: var(--mc-divider-soft);
+  background-color: var(--mc-divider-soft);
+}
+
+/* Dots for legends & stream bullets */
+.mc-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mc-dot-cyan { background: var(--mc-cyan); box-shadow: 0 0 12px rgba(59, 158, 255, 0.55); }
+.mc-dot-purple { background: var(--mc-purple); box-shadow: 0 0 12px rgba(184, 85, 231, 0.55); }
+.mc-dot-magenta { background: var(--mc-magenta); box-shadow: 0 0 12px rgba(217, 70, 239, 0.55); }
+.mc-dot-gray { background: var(--mc-gray); }
+.mc-dot-dim { background: var(--mc-divider); }
+
+/* Pulsing ring for active room nodes */
+.mc-pulse {
+  animation: mcPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes mcPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+.mc-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: mcPulseRing 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes mcPulseRing {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Data stream entry entrance */
+.mc-stream-entry {
+  animation: mcStreamIn 320ms ease-out both;
+}
+
+@keyframes mcStreamIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hero number tick */
+.mc-tick {
+  animation: mcTick 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes mcTick {
+  0% { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Minimal button styling */
+.mc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--mc-white);
+  background: transparent;
+  border: 1px solid var(--mc-divider);
+  border-radius: 4px;
+  transition: all 160ms ease;
+  cursor: pointer;
+}
+
+.mc-btn:hover {
+  border-color: var(--mc-cyan);
+  color: var(--mc-cyan);
+  background: rgba(59, 158, 255, 0.06);
+}
+
+.mc-btn-primary {
+  border-color: var(--mc-cyan);
+  color: var(--mc-cyan);
+}
+
+.mc-btn-primary:hover {
+  background: rgba(59, 158, 255, 0.12);
+}
+
+/* Tab underline style */
+.mc-tab {
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--mc-gray);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.mc-tab:hover { color: var(--mc-white); }
+
+.mc-tab[data-state='active'],
+.mc-tab.mc-tab-active {
+  color: var(--mc-cyan);
+  border-bottom-color: var(--mc-cyan);
+}
+
+/* Venue node */
+.mc-node {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px solid var(--mc-divider);
+  background: radial-gradient(circle at 50% 50%, rgba(59, 158, 255, 0.05), transparent 70%);
+  transition: all 200ms ease;
+}
+
+.mc-node-occupied {
+  border-color: var(--mc-cyan);
+  background: radial-gradient(circle at 50% 50%, rgba(59, 158, 255, 0.22), transparent 70%);
+  box-shadow: 0 0 24px rgba(59, 158, 255, 0.35), inset 0 0 24px rgba(59, 158, 255, 0.1);
+}
+
+.mc-node-completed {
+  border-color: var(--mc-purple);
+  background: radial-gradient(circle at 50% 50%, rgba(184, 85, 231, 0.18), transparent 70%);
+  box-shadow: 0 0 18px rgba(184, 85, 231, 0.25);
+}
+
+.mc-node-maintenance {
+  border-color: var(--mc-gray);
+  background: repeating-linear-gradient(
+    45deg,
+    transparent 0 4px,
+    rgba(139, 148, 158, 0.08) 4px 8px
+  );
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .mc-hero-number {
+    font-size: clamp(2.5rem, 10vw, 3.5rem);
+  }
+  .mc-node {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mc-pulse,
+  .mc-pulse-ring,
+  .mc-stream-entry,
+  .mc-tick {
+    animation: none !important;
+  }
+  .mc-node,
+  .mc-btn,
+  .mc-tab {
+    transition: none !important;
+  }
+}

@@ -72,6 +72,18 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Mission Control palette — GitHub HQ wallboard aesthetic */
+  --mc-bg: #000000;
+  --mc-surface: #0a0a0a;
+  --mc-cyan: #3B9EFF;
+  --mc-purple: #B855E7;
+  --mc-magenta: #D946EF;
+  --mc-white: #FFFFFF;
+  --mc-gray: #8B949E;
+  --mc-gray-dim: #6e7681;
+  --mc-divider: #30363D;
+  --mc-divider-soft: #1a1f26;
 }
 
 @theme inline {
