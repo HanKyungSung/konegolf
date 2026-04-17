@@ -224,18 +224,17 @@
 /* Inline action dock — primary create actions placed within a panel */
 .mc-action-dock {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
 .mc-action-btn {
-  flex: 1 1 0;
-  min-width: 0;
+  width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  padding: 0.65rem 0.9rem;
+  padding: 0.75rem 0.9rem;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.01em;
