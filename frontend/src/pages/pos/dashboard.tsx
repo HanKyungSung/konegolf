@@ -824,12 +824,12 @@ function TimelineView({
                   return (
                     <div key={room.id} className="flex items-start gap-3">
                       <div className="min-w-[90px] pt-2">
-                        <span className="text-[11px] text-[color:var(--mc-gray)]">
+                        <span className="text-[13px] font-semibold text-[color:var(--mc-white)]">
                           {room.name}
                         </span>
                       </div>
 
-                      <div className="flex-1 relative h-10 bg-[color:var(--mc-divider-soft)]/40 overflow-hidden">
+                      <div className="flex-1 relative h-11 bg-[color:var(--mc-divider-soft)]/40 overflow-hidden">
                         {/* Grid lines */}
                         <div className="absolute inset-0 flex pointer-events-none">
                           {Array.from({ length: 14 }, (_, i) => (
@@ -884,10 +884,10 @@ function TimelineView({
                               }}
                             >
                               <div className="h-full flex flex-col justify-center px-2">
-                                <div className="text-white text-[10px] font-medium truncate">
+                                <div className="text-white text-[12px] font-semibold truncate">
                                   {b.customerName}
                                 </div>
-                                <div className="mc-mono text-[9px] text-[color:var(--mc-gray)] truncate">
+                                <div className="mc-mono text-[11px] font-medium text-[color:var(--mc-gray)] truncate">
                                   {b.time} · {b.players}p · {b.duration}h
                                 </div>
                               </div>

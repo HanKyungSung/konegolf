@@ -85,17 +85,17 @@ export function MCDataStream({ events, maxEntries = 30 }: MCDataStreamProps) {
             {capped.map((ev) => (
               <li
                 key={ev.id}
-                className="mc-stream-entry mc-mono text-[11px] leading-tight"
+                className="mc-stream-entry mc-mono text-[13px] leading-snug"
               >
                 <div className="flex items-center gap-2">
                   <span
-                    className="font-medium"
+                    className="font-semibold"
                     style={{ color: typeColor[ev.type] }}
                   >
                     {ev.type}
                   </span>
                   {ev.secondary && (
-                    <span className="text-[color:var(--mc-white)]">
+                    <span className="text-[color:var(--mc-white)] font-medium">
                       {ev.secondary}
                     </span>
                   )}

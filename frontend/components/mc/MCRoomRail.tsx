@@ -56,11 +56,11 @@ export function MCRoomRail({ rooms, bookings, onSelectRoom }: MCRoomRailProps) {
                 >
                   <div className="flex items-center gap-2">
                     <MCStatDot variant={variant} pulse={!!current} />
-                    <span className="text-xs font-medium text-white group-hover:text-[color:var(--mc-cyan)] transition-colors">
+                    <span className="text-sm font-semibold text-white group-hover:text-[color:var(--mc-cyan)] transition-colors">
                       {room.name}
                     </span>
                     {current && (
-                      <span className="ml-auto mc-mono text-[10px] text-[color:var(--mc-cyan)]">
+                      <span className="ml-auto mc-mono text-[12px] font-semibold text-[color:var(--mc-cyan)]">
                         {timeRemaining(current.endTime, now)}
                       </span>
                     )}

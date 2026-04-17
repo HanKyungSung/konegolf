@@ -63,10 +63,10 @@ export function MCTelemetryRail({
         <ul className="flex flex-col gap-3">
           {rows.map((row, i) => (
             <li key={i} className="flex items-center justify-between gap-2">
-              <span className="mc-mono text-[10px] text-[color:var(--mc-gray-dim)] tracking-wider">
+              <span className="mc-mono text-[11px] font-medium text-[color:var(--mc-gray-dim)] tracking-wider">
                 {row.label}
               </span>
-              <span className="flex items-center gap-2 mc-mono text-[10px] text-[color:var(--mc-white)]">
+              <span className="flex items-center gap-2 mc-mono text-[12px] font-medium text-[color:var(--mc-white)]">
                 {row.dot && <MCStatDot variant={row.dot} pulse={row.dot === 'cyan'} />}
                 <span className="truncate max-w-[120px]">{row.value}</span>
               </span>

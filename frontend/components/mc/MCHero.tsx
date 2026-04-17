@@ -33,14 +33,14 @@ export function MCHero({ number, label, sublabel, legend, accent = false, muted 
         </div>
         {accent && <span className="mc-hero-underline" aria-hidden="true" />}
         {sublabel && (
-          <div className="mt-2 text-[11px] text-[color:var(--mc-gray)]">{sublabel}</div>
+          <div className="mt-2 text-[13px] font-medium text-[color:var(--mc-gray)]">{sublabel}</div>
         )}
       </div>
 
       {legend && legend.length > 0 && (
         <ul className="flex flex-col gap-2 pt-3 border-t border-[color:var(--mc-divider-soft)]">
           {legend.map((item, i) => (
-            <li key={i} className="flex items-center gap-2 text-[11px] text-[color:var(--mc-gray)]">
+            <li key={i} className="flex items-center gap-2 text-[13px] font-medium text-[color:var(--mc-gray)]">
               <MCStatDot variant={item.variant} />
               <span>{item.label}</span>
             </li>

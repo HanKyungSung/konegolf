@@ -6,32 +6,36 @@
   background: var(--mc-bg);
   color: var(--mc-white);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'tnum';
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .mc-mono {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums;
 }
 
 .mc-hero-number {
   font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 300;
-  font-size: clamp(3.5rem, 7vw, 6rem);
+  font-weight: 400;
+  font-size: clamp(3.75rem, 7vw, 6.25rem);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
   color: var(--mc-cyan);
   font-variant-numeric: tabular-nums;
 }
 
 .mc-hero-underline {
   display: inline-block;
-  width: 28px;
+  width: 32px;
   height: 3px;
   background: var(--mc-magenta);
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .mc-hero-number-muted {
@@ -47,37 +51,39 @@
 }
 
 .mc-panel-label {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--mc-white);
   letter-spacing: 0;
   margin-bottom: 0.75rem;
 }
 
 .mc-hero-label {
-  font-size: 0.875rem;
-  font-weight: 400;
+  font-size: 0.9375rem;
+  font-weight: 500;
   color: var(--mc-cyan);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .mc-section-label {
-  font-size: 0.6875rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--mc-gray);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .mc-meta {
   color: var(--mc-gray);
-  font-size: 0.75rem;
-  letter-spacing: 0.01em;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  letter-spacing: 0;
 }
 
 .mc-meta-dim {
   color: var(--mc-gray-dim);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .mc-divider {
@@ -171,21 +177,22 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  padding: 0.55rem 1.05rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: var(--mc-white);
   background: transparent;
   border: 1px solid var(--mc-divider);
   border-radius: 4px;
   transition: all 160ms ease;
   cursor: pointer;
+  line-height: 1.2;
 }
 
 .mc-btn:hover {
   border-color: var(--mc-cyan);
   color: var(--mc-cyan);
-  background: rgba(59, 158, 255, 0.06);
+  background: rgba(102, 208, 255, 0.08);
 }
 
 .mc-btn-primary {
@@ -194,47 +201,48 @@
 }
 
 .mc-btn-primary:hover {
-  background: rgba(59, 158, 255, 0.12);
+  background: rgba(102, 208, 255, 0.14);
 }
 
 /* Compact utility chip — for top-of-page navigation/links */
 .mc-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mc-gray);
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--mc-white);
   background: transparent;
-  border: 1px solid var(--mc-divider-soft);
-  border-radius: 2px;
+  border: 1px solid var(--mc-divider);
+  border-radius: 3px;
+  line-height: 1.2;
   transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
   cursor: pointer;
 }
 
 .mc-chip:hover {
-  color: var(--mc-white);
-  border-color: var(--mc-divider);
+  color: var(--mc-cyan);
+  border-color: var(--mc-cyan);
+  background: rgba(102, 208, 255, 0.05);
 }
 
 .mc-chip-alert {
   color: var(--mc-magenta);
-  border-color: rgba(255, 95, 173, 0.35);
+  border-color: rgba(255, 122, 184, 0.45);
 }
 
 .mc-chip-alert:hover {
   color: var(--mc-magenta);
   border-color: var(--mc-magenta);
-  background: rgba(255, 95, 173, 0.06);
+  background: rgba(255, 122, 184, 0.08);
 }
 
 .mc-chip-badge {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--mc-magenta);
 }
@@ -260,14 +268,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.75rem 1.1rem;
-  font-size: 0.8125rem;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
   border: 1px solid var(--mc-divider);
   background: var(--mc-bg);
   color: var(--mc-white);
-  border-radius: 2px;
+  border-radius: 3px;
   cursor: pointer;
   box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.7);
   transition: all 160ms ease;
@@ -301,14 +309,14 @@
 
 /* Tab underline style */
 .mc-tab {
-  padding: 0.75rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  padding: 0.85rem 1.15rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: var(--mc-gray);
   background: transparent;
   border: none;
-  border-bottom: 1px solid transparent;
-  letter-spacing: 0.02em;
+  border-bottom: 2px solid transparent;
+  letter-spacing: 0.01em;
   cursor: pointer;
   transition: color 160ms ease, border-color 160ms ease;
 }
