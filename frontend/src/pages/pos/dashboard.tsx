@@ -314,6 +314,8 @@ export default function POSDashboard() {
     <div className="mc-root">
       <AdminHeader
         title="K one Golf"
+        subtitle="// POS · MISSION CONTROL"
+        variant="mc"
         navItems={[
           {
             label: 'Customers',

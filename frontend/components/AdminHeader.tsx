@@ -20,7 +20,7 @@ interface AdminHeaderProps {
   /** Navigation items shown before logout */
   navItems?: NavItem[];
   /** Visual variant */
-  variant?: 'pos' | 'admin';
+  variant?: 'pos' | 'admin' | 'mc';
   /** Whether header is sticky */
   sticky?: boolean;
 }
@@ -42,6 +42,111 @@ export function AdminHeader({
   };
 
   const visibleNavItems = navItems.filter(item => item.show !== false);
+
+  // Mission Control variant — minimal dark header that blends with the MC dashboard
+  if (variant === 'mc') {
+    return (
+      <header
+        className={`border-b border-[color:var(--mc-divider-soft)] bg-[color:var(--mc-bg)] ${sticky ? 'sticky top-0 z-50' : ''}`}
+      >
+        <div className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] max-w-[1800px] 2xl:max-w-none">
+          <div className="flex items-center justify-between h-14">
+            {/* Left: wordmark + live tick */}
+            <Link to="/" className="flex items-center gap-3 min-w-0 group">
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full mc-pulse"
+                style={{ background: 'var(--mc-cyan)' }}
+                aria-hidden
+              />
+              <h1 className="text-[15px] font-semibold tracking-wide text-[color:var(--mc-white)] group-hover:text-[color:var(--mc-cyan)] transition-colors truncate">
+                {title}
+              </h1>
+              {subtitle && (
+                <span className="mc-mono text-xs text-[color:var(--mc-gray)] hidden md:inline">
+                  {subtitle}
+                </span>
+              )}
+            </Link>
+
+            {/* Right: desktop nav */}
+            <div className="hidden sm:flex items-center gap-2">
+              {visibleNavItems.map((item, i) =>
+                item.to ? (
+                  <Link key={i} to={item.to}>
+                    <button className="mc-chip">{item.label}</button>
+                  </Link>
+                ) : (
+                  <button key={i} className="mc-chip" onClick={item.onClick}>
+                    {item.label}
+                  </button>
+                )
+              )}
+              <span className="mc-mono text-[12px] text-[color:var(--mc-gray)] truncate max-w-[200px] px-2">
+                {user?.email || user?.name}
+              </span>
+              <button
+                className="mc-chip"
+                style={{ color: 'var(--mc-magenta)', borderColor: 'rgba(244,122,165,0.35)' }}
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
+
+            {/* Right: mobile hamburger */}
+            <button
+              className="sm:hidden p-2 text-[color:var(--mc-gray)] hover:text-[color:var(--mc-white)]"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile dropdown */}
+        {mobileMenuOpen && (
+          <div className="sm:hidden border-t border-[color:var(--mc-divider-soft)] bg-[color:var(--mc-bg)]">
+            <div className="px-4 py-3 flex flex-col gap-2">
+              <div className="mc-mono text-xs text-[color:var(--mc-gray)] pb-2 border-b border-[color:var(--mc-divider-soft)]">
+                {user?.email || user?.name}
+              </div>
+              {visibleNavItems.map((item, i) =>
+                item.to ? (
+                  <Link
+                    key={i}
+                    to={item.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block"
+                  >
+                    <button className="mc-chip w-full justify-start">{item.label}</button>
+                  </Link>
+                ) : (
+                  <button
+                    key={i}
+                    className="mc-chip w-full justify-start"
+                    onClick={() => {
+                      item.onClick?.();
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                )
+              )}
+              <button
+                className="mc-chip w-full justify-start"
+                style={{ color: 'var(--mc-magenta)', borderColor: 'rgba(244,122,165,0.35)' }}
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
+      </header>
+    );
+  }
 
   const headerBg = variant === 'admin'
     ? 'bg-slate-900/80 backdrop-blur-sm'
