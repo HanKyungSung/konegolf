@@ -345,33 +345,56 @@ export default function POSDashboard() {
       />
 
       <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-10 max-w-[1800px] 2xl:max-w-none">
-        {/* Top zone: Hero | Venue | Data Stream */}
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_300px] gap-6 lg:gap-10">
-          {/* LEFT — Hero */}
-          <div>
-            <MCHero
-              number={activeCount}
-              label="Active Sessions"
-              sublabel={`${todayCount} bookings today`}
-              legend={[
-                { variant: 'cyan', label: 'Occupied' },
-                { variant: 'purple', label: 'Recently ended' },
-                { variant: 'gray', label: 'Available' },
-              ]}
+        {/* Top zone: Stats | Timeline | Data Stream — all in bordered panels */}
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-0 border border-[color:var(--mc-divider)]">
+          {/* LEFT — stacked stats */}
+          <div className="flex flex-col divide-y divide-[color:var(--mc-divider)] lg:border-r lg:border-[color:var(--mc-divider)]">
+            <div className="mc-panel border-0 py-6">
+              <MCHero
+                number={bookings.length}
+                label="Total Bookings"
+                sublabel="Loaded this session"
+                muted
+              />
+            </div>
+            <div className="mc-panel border-0 py-6">
+              <MCHero
+                number={activeCount}
+                label="Active Sessions"
+                sublabel={`${todayCount} bookings today`}
+                accent
+                legend={[
+                  { variant: 'cyan', label: 'Occupied' },
+                  { variant: 'purple', label: 'Recently ended' },
+                  { variant: 'gray', label: 'Available' },
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* CENTER — Timeline */}
+          <div className="mc-panel border-0 py-6 lg:border-r lg:border-[color:var(--mc-divider)] overflow-hidden">
+            <TimelineView
+              bookings={bookings}
+              rooms={rooms}
+              onBookingClick={openBookingDetail}
+              currentWeekStart={currentWeekStart}
+              setCurrentWeekStart={setCurrentWeekStart}
+              taxRate={taxRate}
+              activeTimezone={activeTimezone}
+              timelineTz={timelineTz}
+              setTimelineTz={setTimelineTz}
             />
           </div>
 
-          {/* CENTER — reserved for future centerpiece visual */}
-          <div className="min-h-[420px]" />
-
           {/* RIGHT — Data stream */}
-          <div className="lg:border-l lg:border-[color:var(--mc-divider-soft)] lg:pl-6 max-h-[520px] lg:max-h-none">
+          <div className="mc-panel border-0 py-6 max-h-[720px] overflow-hidden">
             <MCDataStream events={streamEvents} />
           </div>
         </div>
 
         {/* Action bar */}
-        <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-[color:var(--mc-divider-soft)]">
+        <div className="flex flex-wrap items-center gap-3">
           <button className="mc-btn" onClick={() => setShowClockModal(true)}>
             <Clock className="h-3.5 w-3.5" /> Clock In/Out
           </button>
@@ -412,11 +435,8 @@ export default function POSDashboard() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="timeline" className="space-y-6">
+        <Tabs defaultValue={!isReadOnly ? 'rooms' : 'menu'} className="space-y-6">
           <TabsList className="bg-transparent p-0 gap-1 justify-start h-auto border-b border-[color:var(--mc-divider-soft)] rounded-none w-full flex flex-wrap">
-            <TabsTrigger value="timeline" className="mc-tab">
-              Timeline
-            </TabsTrigger>
             {!isReadOnly && (
               <TabsTrigger value="rooms" className="mc-tab">
                 Rooms
@@ -438,20 +458,6 @@ export default function POSDashboard() {
               </TabsTrigger>
             )}
           </TabsList>
-
-          <TabsContent value="timeline">
-            <TimelineView
-              bookings={bookings}
-              rooms={rooms}
-              onBookingClick={openBookingDetail}
-              currentWeekStart={currentWeekStart}
-              setCurrentWeekStart={setCurrentWeekStart}
-              taxRate={taxRate}
-              activeTimezone={activeTimezone}
-              timelineTz={timelineTz}
-              setTimelineTz={setTimelineTz}
-            />
-          </TabsContent>
 
           <TabsContent value="menu">
             <MCSection label="Menu">

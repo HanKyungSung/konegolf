@@ -26,6 +26,34 @@
   font-variant-numeric: tabular-nums;
 }
 
+.mc-hero-underline {
+  display: inline-block;
+  width: 28px;
+  height: 3px;
+  background: var(--mc-magenta);
+  margin-top: 6px;
+}
+
+.mc-hero-number-muted {
+  color: var(--mc-gray);
+}
+
+/* Bordered panel — the core layout primitive in the reference */
+.mc-panel {
+  border: 1px solid var(--mc-divider);
+  background: transparent;
+  padding: 1.25rem 1.5rem;
+  position: relative;
+}
+
+.mc-panel-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--mc-white);
+  letter-spacing: 0;
+  margin-bottom: 0.75rem;
+}
+
 .mc-hero-label {
   font-size: 0.875rem;
   font-weight: 400;
@@ -71,9 +99,9 @@
   flex-shrink: 0;
 }
 
-.mc-dot-cyan { background: var(--mc-cyan); box-shadow: 0 0 12px rgba(59, 158, 255, 0.55); }
-.mc-dot-purple { background: var(--mc-purple); box-shadow: 0 0 12px rgba(184, 85, 231, 0.55); }
-.mc-dot-magenta { background: var(--mc-magenta); box-shadow: 0 0 12px rgba(217, 70, 239, 0.55); }
+.mc-dot-cyan { background: var(--mc-cyan); }
+.mc-dot-purple { background: var(--mc-purple); }
+.mc-dot-magenta { background: var(--mc-magenta); }
 .mc-dot-gray { background: var(--mc-gray); }
 .mc-dot-dim { background: var(--mc-divider); }
 

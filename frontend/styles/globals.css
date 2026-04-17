@@ -74,16 +74,18 @@
   --sidebar-ring: oklch(0.439 0 0);
 
   /* Mission Control palette — GitHub HQ wallboard aesthetic */
-  --mc-bg: #000000;
-  --mc-surface: #0a0a0a;
-  --mc-cyan: #3B9EFF;
+  --mc-bg: #0a1929;
+  --mc-surface: #0d1f33;
+  --mc-cyan: #4fc3f7;
+  --mc-cyan-dim: #2a7a9f;
   --mc-purple: #B855E7;
-  --mc-magenta: #D946EF;
-  --mc-white: #FFFFFF;
-  --mc-gray: #8B949E;
-  --mc-gray-dim: #6e7681;
-  --mc-divider: #30363D;
-  --mc-divider-soft: #1a1f26;
+  --mc-magenta: #ff5fad;
+  --mc-white: #e7eef5;
+  --mc-gray: #7890a8;
+  --mc-gray-dim: #4a617a;
+  --mc-divider: #1a3a5a;
+  --mc-divider-soft: #142a42;
+  --mc-green: #4fc885;
 }
 
 @theme inline {
