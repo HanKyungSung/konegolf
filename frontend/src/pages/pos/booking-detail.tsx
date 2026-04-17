@@ -183,6 +183,20 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
     loadData();
   }, [bookingId]);
 
+  // Auto-open gift card dialog if ?action=gift-card is in URL (from MC Action Dock)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'gift-card') {
+      setGiftCardAmount('');
+      setShowGiftCardDialog(true);
+      params.delete('action');
+      const next = params.toString();
+      const url = `${window.location.pathname}${next ? `?${next}` : ''}`;
+      window.history.replaceState({}, '', url);
+    }
+  }, [bookingId]);
+
   // Keep only UI preferences in localStorage (like expanded seats, custom tax rate)
   useEffect(() => {
     if (!bookingId) return;

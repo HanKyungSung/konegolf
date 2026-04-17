@@ -118,8 +118,9 @@ interface Pagination {
 }
 
 // ── PIN Pad ──
-function PinPad({ onSubmit, error, loading }: { onSubmit: (pin: string) => void; error: string; loading: boolean }) {
+function PinPad({ onSubmit, error, loading }: { onSubmit: (pin: string, remember: boolean) => void; error: string; loading: boolean }) {
   const [pin, setPin] = useState('');
+  const [remember, setRemember] = useState(false);
 
   const handleKey = (key: string) => {
     if (key === '⌫') setPin(p => p.slice(0, -1));
@@ -127,7 +128,7 @@ function PinPad({ onSubmit, error, loading }: { onSubmit: (pin: string) => void;
   };
 
   const handleSubmit = () => {
-    if (pin.length >= 4) onSubmit(pin);
+    if (pin.length >= 4) onSubmit(pin, remember);
   };
 
   return (
@@ -171,6 +172,15 @@ function PinPad({ onSubmit, error, loading }: { onSubmit: (pin: string) => void;
       >
         {loading ? 'Verifying...' : 'Unlock'}
       </Button>
+      <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={remember}
+          onChange={(e) => setRemember(e.target.checked)}
+          className="w-3.5 h-3.5 accent-amber-500"
+        />
+        Remember on this device for 24 hours
+      </label>
       {error && <p className="text-red-400 text-sm">{error}</p>}
     </div>
   );
@@ -226,10 +236,33 @@ function fmtPhone(phone: string | null | undefined) {
   return phone;
 }
 
+// Manager unlock persisted with 24h expiry
+const MANAGER_REMEMBER_KEY = 'manager_unlock_v1';
+const MANAGER_REMEMBER_MS = 24 * 60 * 60 * 1000;
+
+function readManagerRemember(): { unlocked: boolean; name: string } {
+  if (sessionStorage.getItem('manager_unlocked') === 'true') {
+    return { unlocked: true, name: sessionStorage.getItem('manager_name') || '' };
+  }
+  try {
+    const raw = localStorage.getItem(MANAGER_REMEMBER_KEY);
+    if (!raw) return { unlocked: false, name: '' };
+    const data = JSON.parse(raw) as { expiresAt: number; name: string };
+    if (typeof data.expiresAt === 'number' && data.expiresAt > Date.now()) {
+      return { unlocked: true, name: data.name || '' };
+    }
+    localStorage.removeItem(MANAGER_REMEMBER_KEY);
+  } catch {
+    localStorage.removeItem(MANAGER_REMEMBER_KEY);
+  }
+  return { unlocked: false, name: '' };
+}
+
 // ── Main Component ──
 export default function ManagerPanel() {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('manager_unlocked') === 'true');
-  const [managerName, setManagerName] = useState(() => sessionStorage.getItem('manager_name') || '');
+  const initialRemember = readManagerRemember();
+  const [unlocked, setUnlocked] = useState(initialRemember.unlocked);
+  const [managerName, setManagerName] = useState(initialRemember.name);
   const [pinError, setPinError] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
 
@@ -267,7 +300,7 @@ export default function ManagerPanel() {
   const [bookingDetailOpen, setBookingDetailOpen] = useState(false);
 
   // ── PIN Verification ──
-  const handlePinSubmit = async (pin: string) => {
+  const handlePinSubmit = async (pin: string, remember: boolean) => {
     setPinError('');
     setPinLoading(true);
     try {
@@ -277,6 +310,17 @@ export default function ManagerPanel() {
         setManagerName(result.employeeName || '');
         sessionStorage.setItem('manager_unlocked', 'true');
         sessionStorage.setItem('manager_name', result.employeeName || '');
+        if (remember) {
+          localStorage.setItem(
+            MANAGER_REMEMBER_KEY,
+            JSON.stringify({
+              expiresAt: Date.now() + MANAGER_REMEMBER_MS,
+              name: result.employeeName || '',
+            }),
+          );
+        } else {
+          localStorage.removeItem(MANAGER_REMEMBER_KEY);
+        }
       } else {
         setPinError(result.reason || 'Access denied');
       }
@@ -292,6 +336,7 @@ export default function ManagerPanel() {
     setManagerName('');
     sessionStorage.removeItem('manager_unlocked');
     sessionStorage.removeItem('manager_name');
+    localStorage.removeItem(MANAGER_REMEMBER_KEY);
   };
 
   // ── Customer API ──

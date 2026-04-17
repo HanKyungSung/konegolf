@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingBag, Clock, Users, Camera } from 'lucide-react';
+import { Clock, Users, Camera, FileSearch, Utensils, UsersRound } from 'lucide-react';
 import {
   listBookings,
   listRooms,
@@ -11,12 +11,14 @@ import {
   getGlobalTaxRate,
   updateGlobalTaxRate,
   createQuickSale,
+  getPendingReceipts,
   type Booking,
   type Room,
 } from '@/services/pos-api';
 import { BookingModal } from './booking-modal';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import ClockModal from './clock-modal';
 import ManagerPanel from './manager-panel';
 import {
@@ -26,7 +28,11 @@ import {
   MCStatDot,
   MCRoomRail,
   MCTelemetryRail,
+  MCToolsRail,
+  MCActionDock,
+  MCHealthDot,
   type MCStreamEvent,
+  type MCToolsRailItem,
 } from '@/components/mc';
 import {
   VENUE_TIMEZONE,
@@ -62,6 +68,11 @@ export default function POSDashboard() {
   const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
   const [showClockModal, setShowClockModal] = useState(false);
   const [lastSync, setLastSync] = useState<Date | undefined>(undefined);
+  const [pendingReceiptsCount, setPendingReceiptsCount] = useState(0);
+  const [pendingRoomStatus, setPendingRoomStatus] = useState<
+    { roomId: string; roomName: string; nextStatus: string } | null
+  >(null);
+  const [todayBookingFilter, setTodayBookingFilter] = useState<string>('all');
 
   const [timelineTz, setTimelineTz] = useState<'venue' | 'browser'>(() => {
     return (localStorage.getItem('pos-timeline-tz') as 'venue' | 'browser') || 'venue';
@@ -74,6 +85,25 @@ export default function POSDashboard() {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Poll pending-receipts count for rail badge (every 60s)
+  useEffect(() => {
+    let cancelled = false;
+    const loadCount = async () => {
+      try {
+        const pending = await getPendingReceipts();
+        if (!cancelled) setPendingReceiptsCount(pending.length);
+      } catch {
+        /* silent — dashboard shouldn't fail if receipts endpoint is unavailable */
+      }
+    };
+    loadCount();
+    const handle = setInterval(loadCount, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
   }, []);
 
   useEffect(() => {
@@ -310,19 +340,60 @@ export default function POSDashboard() {
     );
   }
 
+  const toolsRailItems: MCToolsRailItem[] = [
+    {
+      id: 'clock',
+      label: 'Clock',
+      icon: <Clock className="h-4 w-4" />,
+      onClick: () => setShowClockModal(true),
+    },
+    {
+      id: 'pending-receipts',
+      label: 'Pending Receipts',
+      icon: <Camera className="h-4 w-4" />,
+      to: '/pos/pending-receipts',
+      badge: pendingReceiptsCount,
+      alert: pendingReceiptsCount > 0,
+    },
+    {
+      id: 'menu',
+      label: 'Menu',
+      icon: <Utensils className="h-4 w-4" />,
+      to: '/pos/menu',
+      hidden: isReadOnly,
+    },
+    {
+      id: 'time-mgmt',
+      label: 'Time Mgmt',
+      icon: <Users className="h-4 w-4" />,
+      to: '/pos/time-management',
+      hidden: user?.role !== 'ADMIN',
+    },
+    {
+      id: 'receipt-analysis',
+      label: 'OCR Analysis',
+      icon: <FileSearch className="h-4 w-4" />,
+      to: '/admin/receipt-analysis',
+      hidden: user?.role !== 'ADMIN',
+    },
+    {
+      id: 'customers',
+      label: 'Customers',
+      icon: <UsersRound className="h-4 w-4" />,
+      to: '/admin/customers',
+      hidden: user?.role !== 'ADMIN' && user?.role !== 'SALES',
+    },
+  ];
+
   return (
     <div className="mc-root">
       <AdminHeader
         title="K one Golf"
         subtitle="// POS · MISSION CONTROL"
         variant="mc"
-        navItems={[
-          {
-            label: 'Customers',
-            to: '/admin/customers',
-            show: user?.role === 'ADMIN' || user?.role === 'SALES',
-          },
-        ]}
+        mcRightExtras={
+          <MCHealthDot enabled={user?.role === 'ADMIN'} />
+        }
       />
 
       {/* Fixed viewport-edge side rails (2xl+ only) */}
@@ -347,30 +418,8 @@ export default function POSDashboard() {
       />
 
       <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-8 max-w-[1800px] 2xl:max-w-none">
-        {/* Utility chip row — low-frequency nav & shift ops */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button className="mc-chip" onClick={() => setShowClockModal(true)}>
-            <Clock className="h-3 w-3" /> Clock
-          </button>
-          {user?.role === 'ADMIN' && (
-            <button className="mc-chip" onClick={() => navigate('/pos/time-management')}>
-              <Users className="h-3 w-3" /> Time Mgmt
-            </button>
-          )}
-          {!isReadOnly && (
-            <button className="mc-chip" onClick={() => navigate('/pos/menu')}>
-              Menu
-            </button>
-          )}
-          <button
-            className="mc-chip mc-chip-alert"
-            onClick={() => navigate('/pos/pending-receipts')}
-          >
-            <Camera className="h-3 w-3" />
-            Receipts
-            <span className="mc-chip-badge" aria-hidden />
-          </button>
-        </div>
+        {/* Tools rail — navigation to sibling pages + shift operations */}
+        <MCToolsRail items={toolsRailItems} />
 
         {/* Top zone: Stats | Timeline | Data Stream — each panel is a raised surface with gutters */}
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-2">
@@ -421,16 +470,14 @@ export default function POSDashboard() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue={!isReadOnly ? 'rooms' : 'tax'} className="space-y-6">
+        <Tabs defaultValue="today" className="space-y-6">
           <TabsList className="bg-transparent p-0 gap-1 justify-start h-auto border-b border-[color:var(--mc-divider-soft)] rounded-none w-full flex flex-wrap">
+            <TabsTrigger value="today" className="mc-tab">
+              Today's Bookings
+            </TabsTrigger>
             {!isReadOnly && (
-              <TabsTrigger value="rooms" className="mc-tab">
-                Rooms
-              </TabsTrigger>
-            )}
-            {!isReadOnly && (
-              <TabsTrigger value="tax" className="mc-tab">
-                Tax
+              <TabsTrigger value="settings" className="mc-tab">
+                Settings
               </TabsTrigger>
             )}
             {isStaff && (
@@ -440,128 +487,165 @@ export default function POSDashboard() {
             )}
           </TabsList>
 
-          <TabsContent value="rooms">
-            <MCSection label="Room Management">
-              <div className="divide-y divide-[color:var(--mc-divider-soft)]">
-                {rooms.map((room) => {
-                  const roomTodayBookings = todayBookings.filter((b) => b.roomId === room.id);
-                  return (
-                    <div
-                      key={room.id}
-                      className="grid grid-cols-1 md:grid-cols-[180px_1fr_auto] gap-4 py-5 items-start"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <MCStatDot
-                            variant={
-                              room.status === 'ACTIVE'
-                                ? 'cyan'
-                                : room.status === 'MAINTENANCE'
-                                ? 'gray'
-                                : 'dim'
-                            }
-                          />
-                          <span className="text-sm font-medium">{room.name}</span>
-                        </div>
-                        <div className="mc-meta mt-1">
-                          {room.capacity} players · ${room.hourlyRate}/hr
-                        </div>
-                      </div>
+          {/* Today's Bookings — live list with filter + quick actions */}
+          <TabsContent value="today">
+            <TodaysBookingsPanel
+              bookings={todayBookings}
+              rooms={rooms}
+              filter={todayBookingFilter}
+              setFilter={setTodayBookingFilter}
+              onOpen={openBookingDetail}
+            />
+          </TabsContent>
 
-                      <div>
-                        <div className="mc-section-label mb-2">
-                          Today · {roomTodayBookings.length}
-                        </div>
-                        {roomTodayBookings.length > 0 ? (
-                          <ul className="flex flex-col gap-1 mc-mono text-xs">
-                            {roomTodayBookings.slice(0, 4).map((b) => (
-                              <li
-                                key={b.id}
-                                onClick={() => openBookingDetail(b.id)}
-                                className="flex items-center gap-2 cursor-pointer hover:text-[color:var(--mc-cyan)] transition-colors"
+          {/* Settings — system config (Rooms + Tax) under sub-tabs */}
+          {!isReadOnly && (
+            <TabsContent value="settings">
+              <Tabs defaultValue="rooms" className="space-y-4">
+                <TabsList className="bg-transparent p-0 gap-1 justify-start h-auto rounded-none flex flex-wrap">
+                  <TabsTrigger value="rooms" className="mc-tab">
+                    Rooms
+                  </TabsTrigger>
+                  <TabsTrigger value="tax" className="mc-tab">
+                    Tax
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="rooms">
+                  <MCSection label="Room Management">
+                    <div className="divide-y divide-[color:var(--mc-divider-soft)]">
+                      {rooms.map((room) => {
+                        const roomTodayBookings = todayBookings.filter(
+                          (b) => b.roomId === room.id,
+                        );
+                        return (
+                          <div
+                            key={room.id}
+                            className="grid grid-cols-1 md:grid-cols-[180px_1fr_auto] gap-4 py-5 items-start"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <MCStatDot
+                                  variant={
+                                    room.status === 'ACTIVE'
+                                      ? 'cyan'
+                                      : room.status === 'MAINTENANCE'
+                                      ? 'gray'
+                                      : 'dim'
+                                  }
+                                />
+                                <span className="text-sm font-medium">{room.name}</span>
+                              </div>
+                              <div className="mc-meta mt-1">
+                                {room.capacity} players · ${room.hourlyRate}/hr
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="mc-section-label mb-2">
+                                Today · {roomTodayBookings.length}
+                              </div>
+                              {roomTodayBookings.length > 0 ? (
+                                <ul className="flex flex-col gap-1 mc-mono text-xs">
+                                  {roomTodayBookings.slice(0, 4).map((b) => (
+                                    <li
+                                      key={b.id}
+                                      onClick={() => openBookingDetail(b.id)}
+                                      className="flex items-center gap-2 cursor-pointer hover:text-[color:var(--mc-cyan)] transition-colors"
+                                    >
+                                      <span className="text-[color:var(--mc-text-meta)]">{b.time}</span>
+                                      <span>{b.customerName}</span>
+                                      <span className="text-[color:var(--mc-text-meta-dim)]">
+                                        · {b.players}p · {b.duration}h
+                                      </span>
+                                    </li>
+                                  ))}
+                                  {roomTodayBookings.length > 4 && (
+                                    <li className="mc-meta-dim">
+                                      + {roomTodayBookings.length - 4} more
+                                    </li>
+                                  )}
+                                </ul>
+                              ) : (
+                                <p className="mc-meta-dim">No bookings today</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <select
+                                value={room.status}
+                                onChange={(e) => {
+                                  if (e.target.value === room.status) return;
+                                  setPendingRoomStatus({
+                                    roomId: room.id,
+                                    roomName: room.name,
+                                    nextStatus: e.target.value,
+                                  });
+                                  e.target.value = room.status;
+                                }}
+                                className="bg-transparent border border-[color:var(--mc-divider)] text-sm px-3 py-1.5 rounded focus:outline-none focus:border-[color:var(--mc-cyan)] text-white"
                               >
-                                <span className="text-[color:var(--mc-gray)]">{b.time}</span>
-                                <span>{b.customerName}</span>
-                                <span className="text-[color:var(--mc-gray-dim)]">
-                                  · {b.players}p · {b.duration}h
-                                </span>
-                              </li>
-                            ))}
-                            {roomTodayBookings.length > 4 && (
-                              <li className="mc-meta-dim">
-                                + {roomTodayBookings.length - 4} more
-                              </li>
-                            )}
-                          </ul>
-                        ) : (
-                          <p className="mc-meta-dim">No bookings today</p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <select
-                          value={room.status}
-                          onChange={(e) => updateRoomStatus(room.id, e.target.value)}
-                          className="bg-transparent border border-[color:var(--mc-divider)] text-sm px-3 py-1.5 rounded focus:outline-none focus:border-[color:var(--mc-cyan)] text-white"
-                        >
-                          <option value="ACTIVE">Active</option>
-                          <option value="MAINTENANCE">Maintenance</option>
-                          <option value="CLOSED">Closed</option>
-                        </select>
-                      </div>
+                                <option value="ACTIVE">Active</option>
+                                <option value="MAINTENANCE">Maintenance</option>
+                                <option value="CLOSED">Closed</option>
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            </MCSection>
-          </TabsContent>
+                  </MCSection>
+                </TabsContent>
 
-          <TabsContent value="tax">
-            <MCSection label="Tax Configuration">
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="mc-meta">Global tax rate</span>
-                {editingTax ? (
-                  <>
-                    <input
-                      type="number"
-                      value={tempTaxRate}
-                      onChange={(e) => setTempTaxRate(e.target.value)}
-                      className="w-24 bg-transparent border border-[color:var(--mc-divider)] rounded px-3 py-1.5 text-white focus:outline-none focus:border-[color:var(--mc-cyan)]"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                    />
-                    <span className="mc-meta">%</span>
-                    <button className="mc-btn mc-btn-primary" onClick={saveTaxRate}>
-                      Save
-                    </button>
-                    <button
-                      className="mc-btn"
-                      onClick={() => {
-                        setEditingTax(false);
-                        setTempTaxRate(taxRate.toString());
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="mc-hero-number" style={{ fontSize: '2rem' }}>
-                      {taxRate}
-                      <span className="mc-meta ml-1">%</span>
-                    </span>
-                    <button className="mc-btn" onClick={() => setEditingTax(true)}>
-                      Edit
-                    </button>
-                  </>
-                )}
-              </div>
-              <p className="mc-meta mt-4">
-                Applied to all bookings and menu orders.
-              </p>
-            </MCSection>
-          </TabsContent>
+                <TabsContent value="tax">
+                  <MCSection label="Tax Configuration">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <span className="mc-meta">Global tax rate</span>
+                      {editingTax ? (
+                        <>
+                          <input
+                            type="number"
+                            value={tempTaxRate}
+                            onChange={(e) => setTempTaxRate(e.target.value)}
+                            className="w-24 bg-transparent border border-[color:var(--mc-divider)] rounded px-3 py-1.5 text-white focus:outline-none focus:border-[color:var(--mc-cyan)]"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                          />
+                          <span className="mc-meta">%</span>
+                          <button className="mc-btn mc-btn-primary" onClick={saveTaxRate}>
+                            Save
+                          </button>
+                          <button
+                            className="mc-btn"
+                            onClick={() => {
+                              setEditingTax(false);
+                              setTempTaxRate(taxRate.toString());
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="mc-hero-number" style={{ fontSize: '2rem' }}>
+                            {taxRate}
+                            <span className="mc-meta ml-1">%</span>
+                          </span>
+                          <button className="mc-btn" onClick={() => setEditingTax(true)}>
+                            Edit
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <p className="mc-meta mt-4">
+                      Applied to all bookings and menu orders.
+                    </p>
+                  </MCSection>
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          )}
 
           {isStaff && (
             <TabsContent value="manager">
@@ -582,30 +666,27 @@ export default function POSDashboard() {
         </details>
       </main>
 
-      {/* Floating primary action cluster — thumb-reachable POS actions */}
-      {!isReadOnly && (
-        <div className="mc-fab-cluster">
-          <button
-            className="mc-fab mc-fab-secondary"
-            onClick={async () => {
-              try {
-                const booking = await createQuickSale();
-                navigate(`/pos/booking/${booking.id}`);
-              } catch (err: any) {
-                alert(err.message || 'Failed to create quick sale');
-              }
-            }}
-          >
-            <ShoppingBag className="h-3.5 w-3.5" /> Quick Sale
-          </button>
-          <button
-            className="mc-fab mc-fab-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="h-3.5 w-3.5" /> Create Booking
-          </button>
-        </div>
-      )}
+      {/* Floating action dock — primary create actions, always reachable */}
+      <MCActionDock
+        hidden={isReadOnly}
+        onCreateBooking={() => setShowCreateModal(true)}
+        onQuickSale={async () => {
+          try {
+            const booking = await createQuickSale();
+            navigate(`/pos/booking/${booking.id}`);
+          } catch (err: any) {
+            alert(err.message || 'Failed to create quick sale');
+          }
+        }}
+        onGiftCard={async () => {
+          try {
+            const booking = await createQuickSale();
+            navigate(`/pos/booking/${booking.id}?action=gift-card`);
+          } catch (err: any) {
+            alert(err.message || 'Failed to create quick sale');
+          }
+        }}
+      />
 
       <BookingModal
         isOpen={showCreateModal}
@@ -625,6 +706,29 @@ export default function POSDashboard() {
         open={bookingModalOpen}
         onOpenChange={setBookingModalOpen}
         onClose={closeBookingDetail}
+      />
+
+      <ConfirmDialog
+        open={pendingRoomStatus !== null}
+        onOpenChange={(o) => !o && setPendingRoomStatus(null)}
+        title={`Change ${pendingRoomStatus?.roomName ?? ''} to ${
+          pendingRoomStatus?.nextStatus ?? ''
+        }?`}
+        description={
+          pendingRoomStatus?.nextStatus === 'CLOSED'
+            ? 'This room will no longer accept new bookings until reopened.'
+            : pendingRoomStatus?.nextStatus === 'MAINTENANCE'
+            ? 'This room will be marked as under maintenance and blocked from new bookings.'
+            : 'This room will become available for new bookings.'
+        }
+        confirmLabel="Change Status"
+        destructive={pendingRoomStatus?.nextStatus !== 'ACTIVE'}
+        onConfirm={() => {
+          if (pendingRoomStatus) {
+            updateRoomStatus(pendingRoomStatus.roomId, pendingRoomStatus.nextStatus);
+          }
+          setPendingRoomStatus(null);
+        }}
       />
 
       <ClockModal isOpen={showClockModal} onClose={() => setShowClockModal(false)} />
@@ -939,5 +1043,114 @@ function TimelineView({
             );
           })}
     </>
+  );
+}
+
+// ---------- Today's Bookings panel ----------
+
+interface TodaysBookingsPanelProps {
+  bookings: Array<Booking & { time: string; duration: number; roomName: string }>;
+  rooms: Room[];
+  filter: string;
+  setFilter: (v: string) => void;
+  onOpen: (id: string) => void;
+}
+
+function TodaysBookingsPanel({
+  bookings,
+  rooms,
+  filter,
+  setFilter,
+  onOpen,
+}: TodaysBookingsPanelProps) {
+  const filtered = useMemo(() => {
+    if (filter === 'all') return bookings;
+    if (filter.startsWith('room:')) {
+      const roomId = filter.slice(5);
+      return bookings.filter((b) => b.roomId === roomId);
+    }
+    const status = filter.toUpperCase();
+    return bookings.filter((b) => {
+      const s = ((b as any).bookingStatus || b.status || '').toUpperCase();
+      return s === status;
+    });
+  }, [bookings, filter]);
+
+  const sorted = useMemo(
+    () =>
+      [...filtered].sort((a, b) => {
+        return (a.time || '').localeCompare(b.time || '');
+      }),
+    [filtered],
+  );
+
+  return (
+    <MCSection
+      label={`Today's Bookings · ${bookings.length}`}
+      right={
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="bg-transparent border border-[color:var(--mc-divider)] text-[12px] px-2 py-1 rounded focus:outline-none focus:border-[color:var(--mc-cyan)] text-[color:var(--mc-text-primary)] mc-mono"
+        >
+          <option value="all">All</option>
+          <option value="booked">Booked</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <optgroup label="Room">
+            {rooms.map((r) => (
+              <option key={r.id} value={`room:${r.id}`}>
+                {r.name}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+      }
+    >
+      {sorted.length === 0 ? (
+        <p className="mc-meta-dim py-6">No bookings match this filter today.</p>
+      ) : (
+        <div className="divide-y divide-[color:var(--mc-divider-soft)]">
+          {sorted.map((b) => {
+            const status = (((b as any).bookingStatus || b.status) ?? '').toUpperCase();
+            const accent =
+              status === 'CANCELLED'
+                ? 'var(--mc-text-accent-pink)'
+                : status === 'COMPLETED'
+                ? 'var(--mc-text-meta)'
+                : 'var(--mc-text-accent-teal)';
+            return (
+              <div
+                key={b.id}
+                onClick={() => onOpen(b.id)}
+                className="flex items-center gap-4 py-3 cursor-pointer hover:bg-[color:var(--mc-surface-raised)] px-2 -mx-2 transition-colors"
+              >
+                <span
+                  className="mc-mono text-[13px] font-semibold tabular-nums"
+                  style={{ color: accent, minWidth: 56 }}
+                >
+                  {b.time}
+                </span>
+                <span className="text-[13px] font-semibold text-[color:var(--mc-text-primary)] truncate flex-1">
+                  {(b as any).customerName || 'Walk-in'}
+                </span>
+                <span className="mc-mono text-[12px] text-[color:var(--mc-text-meta)] truncate">
+                  {b.roomName}
+                </span>
+                <span className="mc-mono text-[12px] text-[color:var(--mc-text-meta-dim)] tabular-nums">
+                  {(b as any).players}p · {b.duration}h
+                </span>
+                <span
+                  className="mc-mono text-[11px] uppercase tracking-wider"
+                  style={{ color: accent }}
+                >
+                  {status || 'BOOKED'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </MCSection>
   );
 }

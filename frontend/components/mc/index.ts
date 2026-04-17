@@ -6,3 +6,7 @@ export type { MCStreamEvent, MCStreamEventType } from './MCDataStream';
 export { MCVenueView } from './MCVenueView';
 export { MCRoomRail } from './MCRoomRail';
 export { MCTelemetryRail } from './MCTelemetryRail';
+export { MCToolsRail, MCToolsRailIcons } from './MCToolsRail';
+export type { MCToolsRailItem } from './MCToolsRail';
+export { MCActionDock } from './MCActionDock';
+export { MCHealthDot } from './MCHealthDot';

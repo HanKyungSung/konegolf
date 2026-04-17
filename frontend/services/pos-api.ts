@@ -1116,3 +1116,20 @@ export async function getReceiptReconciliation(startDate: string, endDate: strin
   return json;
 }
 
+
+export interface OcrHealth {
+  reachable: boolean;
+  responseTimeMs?: number;
+  ocrServiceUrl?: string;
+  pendingRetries?: number;
+  error?: string;
+}
+
+export async function getOcrHealth(): Promise<OcrHealth> {
+  const res = await fetch(`${API_BASE}/api/receipt-analysis/health`, {
+    credentials: 'include',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to load OCR health');
+  return json;
+}

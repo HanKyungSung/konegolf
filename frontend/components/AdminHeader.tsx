@@ -23,6 +23,9 @@ interface AdminHeaderProps {
   variant?: 'pos' | 'admin' | 'mc';
   /** Whether header is sticky */
   sticky?: boolean;
+  /** [mc variant only] extra content rendered in the right cluster
+   *  before the user identity + logout (e.g. clock pill, health dot) */
+  mcRightExtras?: React.ReactNode;
 }
 
 export function AdminHeader({
@@ -31,6 +34,7 @@ export function AdminHeader({
   navItems = [],
   variant = 'pos',
   sticky = false,
+  mcRightExtras,
 }: AdminHeaderProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -70,6 +74,7 @@ export function AdminHeader({
 
             {/* Right: desktop nav */}
             <div className="hidden sm:flex items-center gap-2">
+              {mcRightExtras}
               {visibleNavItems.map((item, i) =>
                 item.to ? (
                   <Link key={i} to={item.to}>
@@ -81,7 +86,7 @@ export function AdminHeader({
                   </button>
                 )
               )}
-              <span className="mc-mono text-[12px] text-[color:var(--mc-gray)] truncate max-w-[200px] px-2">
+              <span className="mc-mono text-[12px] text-[color:var(--mc-text-meta)] truncate max-w-[200px] px-2">
                 {user?.email || user?.name}
               </span>
               <button
