@@ -399,8 +399,8 @@ export default function POSDashboard() {
             </div>
           </div>
 
-          {/* CENTER — Timeline */}
-          <div className="mc-panel py-6 overflow-hidden">
+          {/* CENTER — Timeline (stacked panels: header + one per day) */}
+          <div className="flex flex-col gap-2 min-w-0">
             <TimelineView
               bookings={bookings}
               rooms={rooms}
@@ -711,62 +711,60 @@ function TimelineView({
   }, [currentTime, activeTimezone]);
 
   return (
-    <MCSection
-      label="Weekly Timeline"
-      right={
-        <>
-          <button
-            className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-            onClick={() => navigateWeek('prev')}
-          >
-            ← Prev
-          </button>
-          <span className="mc-mono mc-meta text-xs min-w-[180px] text-center">
-            {weekDays[0].toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              timeZone: activeTimezone,
-            })}{' '}
-            –{' '}
-            {weekDays[6].toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              timeZone: activeTimezone,
-            })}
-          </span>
-          <button
-            className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-            onClick={() => navigateWeek('next')}
-          >
-            Next →
-          </button>
-          <button
-            className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-            onClick={() => {
-              const next = timelineTz === 'venue' ? 'browser' : 'venue';
-              localStorage.setItem('pos-timeline-tz', next);
-              setTimelineTz(next);
-            }}
-            title={`Currently: ${activeTimezone}`}
-          >
-            {timelineTz === 'venue'
-              ? 'AT'
-              : Intl.DateTimeFormat()
-                  .resolvedOptions()
-                  .timeZone.split('/')
-                  .pop()
-                  ?.replace('_', ' ')}
-          </button>
-        </>
-      }
-    >
-      <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-        <div className="min-w-[760px] space-y-10">
-          {weekDays.map((day) => {
+    <>
+      {/* Header panel */}
+      <div className="mc-panel px-5 py-3 flex items-center gap-3 flex-wrap">
+        <div className="mc-section-label flex-1 min-w-[160px]">Weekly Timeline</div>
+        <button
+          className="mc-btn"
+          style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+          onClick={() => navigateWeek('prev')}
+        >
+          ← Prev
+        </button>
+        <span className="mc-mono mc-meta text-xs min-w-[180px] text-center">
+          {weekDays[0].toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            timeZone: activeTimezone,
+          })}{' '}
+          –{' '}
+          {weekDays[6].toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            timeZone: activeTimezone,
+          })}
+        </span>
+        <button
+          className="mc-btn"
+          style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+          onClick={() => navigateWeek('next')}
+        >
+          Next →
+        </button>
+        <button
+          className="mc-btn"
+          style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+          onClick={() => {
+            const next = timelineTz === 'venue' ? 'browser' : 'venue';
+            localStorage.setItem('pos-timeline-tz', next);
+            setTimelineTz(next);
+          }}
+          title={`Currently: ${activeTimezone}`}
+        >
+          {timelineTz === 'venue'
+            ? 'AT'
+            : Intl.DateTimeFormat()
+                .resolvedOptions()
+                .timeZone.split('/')
+                .pop()
+                ?.replace('_', ' ')}
+        </button>
+      </div>
+
+      {/* Per-day panels */}
+      {weekDays.map((day) => {
             const dayStr = dateKey(day);
             const dayBookings = bookings.filter(
               (b) => b.date === dayStr && b.bookingSource !== 'QUICK_SALE'
@@ -775,7 +773,9 @@ function TimelineView({
             const totalHours = filtered.reduce((s, b) => s + (b.duration || 0), 0);
 
             return (
-              <div key={dayStr} className="space-y-3">
+              <div key={dayStr} className="mc-panel px-5 py-4">
+                <div className="overflow-x-auto -mx-5 px-5">
+                  <div className="min-w-[760px] space-y-3">
                 {/* Day header */}
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-medium min-w-[140px]">
@@ -901,10 +901,10 @@ function TimelineView({
                   );
                 })}
               </div>
+                  </div>
+                </div>
             );
           })}
-        </div>
-      </div>
-    </MCSection>
+    </>
   );
 }

@@ -24,9 +24,8 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 ---
 
 ## Personal note (Do not touch)
+- multiple layer of OCR
 - create a new / change the account phone number
-- quick sale
-  - total doesn't show
 - how to handle cash tip? → tipMethod field added (2026-03-23)
 - do we need 'unpiad/paid' status
 - fix paidAt to use starttime instead
