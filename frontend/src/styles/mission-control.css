@@ -50,6 +50,14 @@
   position: relative;
 }
 
+/* Raised panel — for sub-panels inside another panel (e.g. each day in timeline) */
+.mc-panel-raised {
+  border: 1px solid var(--mc-divider);
+  background: var(--mc-surface-raised);
+  padding: 1rem 1.25rem;
+  position: relative;
+}
+
 /* Raised inner row (e.g. Trending Developers rows, room list rows) */
 .mc-row {
   background: var(--mc-surface-raised);
