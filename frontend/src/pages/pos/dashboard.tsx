@@ -372,8 +372,8 @@ export default function POSDashboard() {
           </button>
         </div>
 
-        {/* Top zone: Stats | Timeline | Data Stream — each panel is a raised surface with gutters */}
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-2">
+        {/* Top zone: Stats | Data Stream — two panels, timeline moved below */}
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-2">
           {/* LEFT — stacked stats */}
           <div className="flex flex-col gap-2">
             <div className="mc-panel py-6">
@@ -399,25 +399,25 @@ export default function POSDashboard() {
             </div>
           </div>
 
-          {/* CENTER — Timeline */}
-          <div className="mc-panel py-6 overflow-hidden">
-            <TimelineView
-              bookings={bookings}
-              rooms={rooms}
-              onBookingClick={openBookingDetail}
-              currentWeekStart={currentWeekStart}
-              setCurrentWeekStart={setCurrentWeekStart}
-              taxRate={taxRate}
-              activeTimezone={activeTimezone}
-              timelineTz={timelineTz}
-              setTimelineTz={setTimelineTz}
-            />
-          </div>
-
-          {/* RIGHT — Data stream */}
-          <div className="mc-panel py-6 max-h-[720px] overflow-hidden">
+          {/* RIGHT — Data stream (now wider) */}
+          <div className="mc-panel py-6 max-h-[560px] overflow-hidden">
             <MCDataStream events={streamEvents} />
           </div>
+        </div>
+
+        {/* Timeline — own full-width panel with its own header + week nav buttons */}
+        <div className="overflow-hidden">
+          <TimelineView
+            bookings={bookings}
+            rooms={rooms}
+            onBookingClick={openBookingDetail}
+            currentWeekStart={currentWeekStart}
+            setCurrentWeekStart={setCurrentWeekStart}
+            taxRate={taxRate}
+            activeTimezone={activeTimezone}
+            timelineTz={timelineTz}
+            setTimelineTz={setTimelineTz}
+          />
         </div>
 
         {/* Tabs */}
@@ -717,12 +717,12 @@ function TimelineView({
         <>
           <button
             className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+            style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem' }}
             onClick={() => navigateWeek('prev')}
           >
             ← Prev
           </button>
-          <span className="mc-mono mc-meta text-xs min-w-[180px] text-center">
+          <span className="mc-mono text-[13px] font-medium text-[color:var(--mc-white)] min-w-[200px] text-center">
             {weekDays[0].toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -738,14 +738,14 @@ function TimelineView({
           </span>
           <button
             className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+            style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem' }}
             onClick={() => navigateWeek('next')}
           >
             Next →
           </button>
           <button
             className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+            style={{ padding: '0.4rem 0.85rem', fontSize: '0.8125rem' }}
             onClick={() => {
               const next = timelineTz === 'venue' ? 'browser' : 'venue';
               localStorage.setItem('pos-timeline-tz', next);
