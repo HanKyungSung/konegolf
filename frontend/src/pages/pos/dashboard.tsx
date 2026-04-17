@@ -765,7 +765,7 @@ function TimelineView({
       }
     >
       <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-        <div className="min-w-[760px] space-y-3">
+        <div className="min-w-[760px] space-y-10">
           {weekDays.map((day) => {
             const dayStr = dateKey(day);
             const dayBookings = bookings.filter(
@@ -775,10 +775,10 @@ function TimelineView({
             const totalHours = filtered.reduce((s, b) => s + (b.duration || 0), 0);
 
             return (
-              <div key={dayStr} className="mc-panel-raised space-y-4">
+              <div key={dayStr} className="space-y-3">
                 {/* Day header */}
                 <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-semibold text-[color:var(--mc-white)] min-w-[140px]">
+                  <h3 className="text-sm font-medium min-w-[140px]">
                     {day.toLocaleDateString('en-US', {
                       weekday: 'long',
                       timeZone: activeTimezone,
