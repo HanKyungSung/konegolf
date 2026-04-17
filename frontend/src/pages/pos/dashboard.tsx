@@ -773,7 +773,7 @@ function TimelineView({
             const totalHours = filtered.reduce((s, b) => s + (b.duration || 0), 0);
 
             return (
-              <div key={dayStr} className="space-y-3">
+              <div key={dayStr} className="space-y-4">
                 {/* Day header */}
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-medium min-w-[140px]">
