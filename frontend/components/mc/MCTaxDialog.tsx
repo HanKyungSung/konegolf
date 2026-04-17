@@ -55,6 +55,7 @@ export function MCTaxDialog({ open, onOpenChange, currentRate, onSave }: MCTaxDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="mc-crt-open sm:max-w-[360px] bg-[color:var(--mc-surface-raised,#0f1628)] border border-[color:var(--mc-divider)] text-white"
+        style={{ animation: 'mcCrtOpen 520ms cubic-bezier(0.16, 1, 0.3, 1) both' }}
       >
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
