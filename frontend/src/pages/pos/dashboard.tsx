@@ -22,7 +22,6 @@ import ManagerPanel from './manager-panel';
 import {
   MCHero,
   MCDataStream,
-  MCVenueView,
   MCSection,
   MCStatDot,
   MCRoomRail,
@@ -362,22 +361,8 @@ export default function POSDashboard() {
             />
           </div>
 
-          {/* CENTER — Venue view */}
-          <div className="min-h-[420px]">
-            <MCVenueView
-              rooms={rooms}
-              bookings={bookings}
-              onSelectRoom={(roomId) => {
-                const current = currentBookings.find((b) => b.roomId === roomId);
-                if (current) {
-                  openBookingDetail(current.id);
-                } else if (!isReadOnly) {
-                  setPreselectedRoomId(roomId);
-                  setShowCreateModal(true);
-                }
-              }}
-            />
-          </div>
+          {/* CENTER — reserved for future centerpiece visual */}
+          <div className="min-h-[420px]" />
 
           {/* RIGHT — Data stream */}
           <div className="lg:border-l lg:border-[color:var(--mc-divider-soft)] lg:pl-6 max-h-[520px] lg:max-h-none">
