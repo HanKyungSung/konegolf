@@ -221,6 +221,49 @@
   background: rgba(29, 224, 197, 0.14);
 }
 
+/* Inline action dock — primary create actions placed within a panel */
+.mc-action-dock {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mc-action-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--mc-text-primary, var(--mc-white));
+  background: var(--mc-surface-raised, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--mc-divider);
+  border-radius: 4px;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mc-action-btn:hover {
+  border-color: var(--mc-cyan);
+  color: var(--mc-cyan);
+}
+
+.mc-action-btn-primary {
+  border-color: var(--mc-cyan);
+  color: var(--mc-cyan);
+  background: rgba(29, 224, 197, 0.08);
+}
+
+.mc-action-btn-primary:hover {
+  background: rgba(29, 224, 197, 0.16);
+}
+
 /* Compact utility chip — for top-of-page navigation/links */
 .mc-chip {
   display: inline-flex;
