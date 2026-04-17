@@ -10,3 +10,4 @@ export { MCToolsRail, MCToolsRailIcons } from './MCToolsRail';
 export type { MCToolsRailItem } from './MCToolsRail';
 export { MCActionDock } from './MCActionDock';
 export { MCHealthDot } from './MCHealthDot';
+export { MCTaxDialog } from './MCTaxDialog';

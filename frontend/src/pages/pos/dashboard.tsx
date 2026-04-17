@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Users, Camera, FileSearch, Utensils, UsersRound } from 'lucide-react';
+import { Clock, Users, Camera, FileSearch, Utensils, UsersRound, Percent } from 'lucide-react';
 import {
   listBookings,
   listRooms,
@@ -31,6 +30,7 @@ import {
   MCToolsRail,
   MCActionDock,
   MCHealthDot,
+  MCTaxDialog,
   type MCStreamEvent,
   type MCToolsRailItem,
 } from '@/components/mc';
@@ -53,8 +53,6 @@ export default function POSDashboard() {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [taxRate, setTaxRate] = useState(8);
-  const [editingTax, setEditingTax] = useState(false);
-  const [tempTaxRate, setTempTaxRate] = useState('8');
 
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     const now = new Date();
@@ -72,6 +70,7 @@ export default function POSDashboard() {
   const [pendingRoomStatus, setPendingRoomStatus] = useState<
     { roomId: string; roomName: string; nextStatus: string } | null
   >(null);
+  const [showTaxDialog, setShowTaxDialog] = useState(false);
 
   const [timelineTz, setTimelineTz] = useState<'venue' | 'browser'>(() => {
     return (localStorage.getItem('pos-timeline-tz') as 'venue' | 'browser') || 'venue';
@@ -207,7 +206,6 @@ export default function POSDashboard() {
     try {
       const rate = await getGlobalTaxRate();
       setTaxRate(rate);
-      setTempTaxRate(rate.toString());
     } catch (err) {
       console.error('Failed to load tax rate:', err);
     }
@@ -219,18 +217,6 @@ export default function POSDashboard() {
       await loadData();
     } catch (err) {
       console.error('Failed to update room:', err);
-    }
-  }
-
-  async function saveTaxRate() {
-    const rate = parseFloat(tempTaxRate);
-    if (isNaN(rate) || rate < 0 || rate > 100) return;
-    try {
-      await updateGlobalTaxRate(rate);
-      setTaxRate(rate);
-      setEditingTax(false);
-    } catch (err) {
-      console.error('Failed to update tax rate:', err);
     }
   }
 
@@ -382,6 +368,13 @@ export default function POSDashboard() {
       to: '/admin/customers',
       hidden: user?.role !== 'ADMIN' && user?.role !== 'SALES',
     },
+    {
+      id: 'tax',
+      label: 'Tax',
+      icon: <Percent className="h-4 w-4" />,
+      onClick: () => setShowTaxDialog(true),
+      hidden: isReadOnly,
+    },
   ];
 
   return (
@@ -399,6 +392,16 @@ export default function POSDashboard() {
       <MCRoomRail
         rooms={rooms}
         bookings={bookings}
+        isReadOnly={isReadOnly}
+        onChangeStatus={(roomId, nextStatus) => {
+          const room = rooms.find((r) => r.id === roomId);
+          if (!room || room.status === nextStatus) return;
+          setPendingRoomStatus({
+            roomId: room.id,
+            roomName: room.name,
+            nextStatus,
+          });
+        }}
         onSelectRoom={(roomId) => {
           const current = currentBookings.find((b) => b.roomId === roomId);
           if (current) {
@@ -494,162 +497,8 @@ export default function POSDashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue={!isReadOnly ? 'rooms' : 'manager'} className="space-y-6">
-          <TabsList className="bg-transparent p-0 gap-1 justify-start h-auto border-b border-[color:var(--mc-divider-soft)] rounded-none w-full flex flex-wrap">
-            {!isReadOnly && (
-              <TabsTrigger value="rooms" className="mc-tab">
-                Rooms
-              </TabsTrigger>
-            )}
-            {isStaff && (
-              <TabsTrigger value="manager" className="mc-tab">
-                Manager
-              </TabsTrigger>
-            )}
-          </TabsList>
-
-          {!isReadOnly && (
-            <TabsContent value="rooms">
-              <MCSection
-                label="Room Management"
-                right={
-                  <div className="flex items-center gap-2">
-                    <span className="mc-meta">Tax</span>
-                    {editingTax ? (
-                      <>
-                        <input
-                          type="number"
-                          value={tempTaxRate}
-                          onChange={(e) => setTempTaxRate(e.target.value)}
-                          className="w-16 bg-transparent border border-[color:var(--mc-divider)] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[color:var(--mc-cyan)] mc-mono"
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                        <span className="mc-meta">%</span>
-                        <button className="mc-btn mc-btn-primary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.75rem' }} onClick={saveTaxRate}>
-                          Save
-                        </button>
-                        <button
-                          className="mc-btn"
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.75rem' }}
-                          onClick={() => {
-                            setEditingTax(false);
-                            setTempTaxRate(taxRate.toString());
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="mc-mono text-sm text-[color:var(--mc-text-primary)]">
-                          {taxRate}%
-                        </span>
-                        <button
-                          className="mc-btn"
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.75rem' }}
-                          onClick={() => setEditingTax(true)}
-                        >
-                          Edit
-                        </button>
-                      </>
-                    )}
-                  </div>
-                }
-              >
-                <div className="divide-y divide-[color:var(--mc-divider-soft)]">
-                  {rooms.map((room) => {
-                    const roomTodayBookings = todayBookings.filter(
-                      (b) => b.roomId === room.id,
-                    );
-                    return (
-                      <div
-                        key={room.id}
-                        className="grid grid-cols-1 md:grid-cols-[180px_1fr_auto] gap-4 py-5 items-start"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <MCStatDot
-                              variant={
-                                room.status === 'ACTIVE'
-                                  ? 'cyan'
-                                  : room.status === 'MAINTENANCE'
-                                  ? 'gray'
-                                  : 'dim'
-                              }
-                            />
-                            <span className="text-sm font-medium">{room.name}</span>
-                          </div>
-                          <div className="mc-meta mt-1">
-                            {room.capacity} players · ${room.hourlyRate}/hr
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="mc-section-label mb-2">
-                            Today · {roomTodayBookings.length}
-                          </div>
-                          {roomTodayBookings.length > 0 ? (
-                            <ul className="flex flex-col gap-1 mc-mono text-xs">
-                              {roomTodayBookings.slice(0, 4).map((b) => (
-                                <li
-                                  key={b.id}
-                                  onClick={() => openBookingDetail(b.id)}
-                                  className="flex items-center gap-2 cursor-pointer hover:text-[color:var(--mc-cyan)] transition-colors"
-                                >
-                                  <span className="text-[color:var(--mc-text-meta)]">{b.time}</span>
-                                  <span>{b.customerName}</span>
-                                  <span className="text-[color:var(--mc-text-meta-dim)]">
-                                    · {b.players}p · {b.duration}h
-                                  </span>
-                                </li>
-                              ))}
-                              {roomTodayBookings.length > 4 && (
-                                <li className="mc-meta-dim">
-                                  + {roomTodayBookings.length - 4} more
-                                </li>
-                              )}
-                            </ul>
-                          ) : (
-                            <p className="mc-meta-dim">No bookings today</p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <select
-                            value={room.status}
-                            onChange={(e) => {
-                              if (e.target.value === room.status) return;
-                              setPendingRoomStatus({
-                                roomId: room.id,
-                                roomName: room.name,
-                                nextStatus: e.target.value,
-                              });
-                              e.target.value = room.status;
-                            }}
-                            className="bg-transparent border border-[color:var(--mc-divider)] text-sm px-3 py-1.5 rounded focus:outline-none focus:border-[color:var(--mc-cyan)] text-white"
-                          >
-                            <option value="ACTIVE">Active</option>
-                            <option value="MAINTENANCE">Maintenance</option>
-                            <option value="CLOSED">Closed</option>
-                          </select>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </MCSection>
-            </TabsContent>
-          )}
-
-          {isStaff && (
-            <TabsContent value="manager">
-              <ManagerPanel />
-            </TabsContent>
-          )}
-        </Tabs>
+        {/* Manager panel — only tab left; render directly for staff */}
+        {isStaff && <ManagerPanel />}
 
         {/* Debug strip (kept minimal for devs) */}
         <details className="pt-6 border-t border-[color:var(--mc-divider-soft)]">
@@ -707,6 +556,16 @@ export default function POSDashboard() {
       />
 
       <ClockModal isOpen={showClockModal} onClose={() => setShowClockModal(false)} />
+
+      <MCTaxDialog
+        open={showTaxDialog}
+        onOpenChange={setShowTaxDialog}
+        currentRate={taxRate}
+        onSave={async (rate) => {
+          await updateGlobalTaxRate(rate);
+          setTaxRate(rate);
+        }}
+      />
     </div>
   );
 }
