@@ -45,9 +45,21 @@
 /* Bordered panel — the core layout primitive in the reference */
 .mc-panel {
   border: 1px solid var(--mc-divider);
-  background: transparent;
+  background: var(--mc-surface);
   padding: 1.25rem 1.5rem;
   position: relative;
+}
+
+/* Raised inner row (e.g. Trending Developers rows, room list rows) */
+.mc-row {
+  background: var(--mc-surface-raised);
+  border: 1px solid var(--mc-divider);
+  padding: 0.85rem 1rem;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.mc-row:hover {
+  border-color: var(--mc-cyan);
 }
 
 .mc-panel-label {

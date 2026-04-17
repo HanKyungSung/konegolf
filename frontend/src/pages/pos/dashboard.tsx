@@ -372,11 +372,11 @@ export default function POSDashboard() {
           </button>
         </div>
 
-        {/* Top zone: Stats | Timeline | Data Stream — all in bordered panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-0 border border-[color:var(--mc-divider)]">
+        {/* Top zone: Stats | Timeline | Data Stream — each panel is a raised surface with gutters */}
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-2">
           {/* LEFT — stacked stats */}
-          <div className="flex flex-col divide-y divide-[color:var(--mc-divider)] lg:border-r lg:border-[color:var(--mc-divider)]">
-            <div className="mc-panel border-0 py-6">
+          <div className="flex flex-col gap-2">
+            <div className="mc-panel py-6">
               <MCHero
                 number={bookings.length}
                 label="Total Bookings"
@@ -384,7 +384,7 @@ export default function POSDashboard() {
                 muted
               />
             </div>
-            <div className="mc-panel border-0 py-6">
+            <div className="mc-panel py-6">
               <MCHero
                 number={activeCount}
                 label="Active Sessions"
@@ -400,7 +400,7 @@ export default function POSDashboard() {
           </div>
 
           {/* CENTER — Timeline */}
-          <div className="mc-panel border-0 py-6 lg:border-r lg:border-[color:var(--mc-divider)] overflow-hidden">
+          <div className="mc-panel py-6 overflow-hidden">
             <TimelineView
               bookings={bookings}
               rooms={rooms}
@@ -415,7 +415,7 @@ export default function POSDashboard() {
           </div>
 
           {/* RIGHT — Data stream */}
-          <div className="mc-panel border-0 py-6 max-h-[720px] overflow-hidden">
+          <div className="mc-panel py-6 max-h-[720px] overflow-hidden">
             <MCDataStream events={streamEvents} />
           </div>
         </div>

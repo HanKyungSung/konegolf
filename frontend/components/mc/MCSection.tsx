@@ -6,11 +6,14 @@ interface MCSectionProps {
   children: React.ReactNode;
   className?: string;
   borderless?: boolean;
+  /** Render as a raised panel (filled surface) — default true */
+  panel?: boolean;
 }
 
-export function MCSection({ label, right, children, className = '', borderless = false }: MCSectionProps) {
+export function MCSection({ label, right, children, className = '', borderless = false, panel = true }: MCSectionProps) {
+  const panelCls = panel ? 'mc-panel' : '';
   return (
-    <section className={className}>
+    <section className={`${panelCls} ${className}`}>
       {(label || right) && (
         <div
           className={`flex items-center justify-between pb-3 mb-5 ${
