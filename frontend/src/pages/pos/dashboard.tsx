@@ -876,8 +876,8 @@ function TimelineView({
                                 left: `${leftPct}%`,
                                 width: `${widthPct}%`,
                                 background: past
-                                  ? 'rgba(184, 85, 231, 0.25)'
-                                  : 'rgba(59, 158, 255, 0.25)',
+                                  ? 'rgba(184, 85, 231, 0.22)'
+                                  : 'rgba(29, 224, 197, 0.22)',
                                 borderLeft: `2px solid ${
                                   past ? 'var(--mc-purple)' : 'var(--mc-cyan)'
                                 }`,

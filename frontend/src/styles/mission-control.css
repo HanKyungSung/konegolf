@@ -26,7 +26,7 @@
   font-size: clamp(3.75rem, 7vw, 6.25rem);
   line-height: 1;
   letter-spacing: -0.035em;
-  color: var(--mc-cyan);
+  color: var(--mc-white);
   font-variant-numeric: tabular-nums;
 }
 
@@ -61,7 +61,7 @@
 .mc-hero-label {
   font-size: 0.9375rem;
   font-weight: 500;
-  color: var(--mc-cyan);
+  color: var(--mc-white);
   letter-spacing: 0.01em;
 }
 
@@ -192,7 +192,7 @@
 .mc-btn:hover {
   border-color: var(--mc-cyan);
   color: var(--mc-cyan);
-  background: rgba(102, 208, 255, 0.08);
+  background: rgba(29, 224, 197, 0.08);
 }
 
 .mc-btn-primary {
@@ -201,7 +201,7 @@
 }
 
 .mc-btn-primary:hover {
-  background: rgba(102, 208, 255, 0.14);
+  background: rgba(29, 224, 197, 0.14);
 }
 
 /* Compact utility chip — for top-of-page navigation/links */
@@ -225,18 +225,18 @@
 .mc-chip:hover {
   color: var(--mc-cyan);
   border-color: var(--mc-cyan);
-  background: rgba(102, 208, 255, 0.05);
+  background: rgba(29, 224, 197, 0.05);
 }
 
 .mc-chip-alert {
   color: var(--mc-magenta);
-  border-color: rgba(255, 122, 184, 0.45);
+  border-color: rgba(244, 122, 165, 0.45);
 }
 
 .mc-chip-alert:hover {
   color: var(--mc-magenta);
   border-color: var(--mc-magenta);
-  background: rgba(255, 122, 184, 0.08);
+  background: rgba(244, 122, 165, 0.08);
 }
 
 .mc-chip-badge {
@@ -289,11 +289,11 @@
 .mc-fab-primary {
   border-color: var(--mc-cyan);
   color: var(--mc-cyan);
-  background: rgba(79, 195, 247, 0.08);
+  background: rgba(29, 224, 197, 0.08);
 }
 
 .mc-fab-primary:hover {
-  background: rgba(79, 195, 247, 0.16);
+  background: rgba(29, 224, 197, 0.16);
 }
 
 .mc-fab-secondary {
@@ -340,14 +340,14 @@
   justify-content: center;
   flex-direction: column;
   border: 1px solid var(--mc-divider);
-  background: radial-gradient(circle at 50% 50%, rgba(59, 158, 255, 0.05), transparent 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(29, 224, 197, 0.05), transparent 70%);
   transition: all 200ms ease;
 }
 
 .mc-node-occupied {
   border-color: var(--mc-cyan);
-  background: radial-gradient(circle at 50% 50%, rgba(59, 158, 255, 0.22), transparent 70%);
-  box-shadow: 0 0 24px rgba(59, 158, 255, 0.35), inset 0 0 24px rgba(59, 158, 255, 0.1);
+  background: radial-gradient(circle at 50% 50%, rgba(29, 224, 197, 0.22), transparent 70%);
+  box-shadow: 0 0 24px rgba(29, 224, 197, 0.35), inset 0 0 24px rgba(29, 224, 197, 0.1);
 }
 
 .mc-node-completed {
