@@ -823,13 +823,13 @@ function TimelineView({
 
                   return (
                     <div key={room.id} className="flex items-start gap-3">
-                      <div className="min-w-[90px] pt-2">
+                      <div className="min-w-[90px] pt-3">
                         <span className="text-[13px] font-semibold text-[color:var(--mc-white)]">
                           {room.name}
                         </span>
                       </div>
 
-                      <div className="flex-1 relative h-11 bg-[color:var(--mc-divider-soft)]/40 overflow-hidden">
+                      <div className="flex-1 relative h-16 bg-[color:var(--mc-divider-soft)]/40 overflow-hidden">
                         {/* Grid lines */}
                         <div className="absolute inset-0 flex pointer-events-none">
                           {Array.from({ length: 14 }, (_, i) => (
@@ -871,7 +871,7 @@ function TimelineView({
                             <div
                               key={b.id}
                               onClick={() => onBookingClick(b.id)}
-                              className="absolute top-1 bottom-1 rounded-sm cursor-pointer overflow-hidden group transition-all hover:brightness-125"
+                              className="absolute top-2 bottom-2 rounded-sm cursor-pointer overflow-hidden group transition-all hover:brightness-125"
                               style={{
                                 left: `${leftPct}%`,
                                 width: `${widthPct}%`,
