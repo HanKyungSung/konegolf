@@ -25,17 +25,53 @@ export interface MCToolsRailItem {
 
 interface MCToolsRailProps {
   items: MCToolsRailItem[];
+  variant?: 'horizontal' | 'vertical';
 }
 
 /**
- * Horizontal rail of navigation "tools" — replaces the previous chip row.
+ * Navigation rail of "tools" — horizontal by default, or vertical (stacked
+ * full-width rows) when embedded inside a panel.
  * Each item supports a count badge and role gating via `hidden`.
- * Renders inline in main content (not viewport-fixed) so it doesn't collide
- * with the existing 2xl viewport-edge side rails.
  */
-export function MCToolsRail({ items }: MCToolsRailProps) {
+export function MCToolsRail({ items, variant = 'horizontal' }: MCToolsRailProps) {
   const visible = items.filter((i) => !i.hidden);
   if (visible.length === 0) return null;
+
+  if (variant === 'vertical') {
+    return (
+      <nav className="flex flex-col" aria-label="Tools">
+        {visible.map((item, idx) => {
+          const content = <MCToolsRailButton item={item} variant="vertical" />;
+          const separator =
+            idx > 0 ? (
+              <span
+                aria-hidden
+                className="block mx-4"
+                style={{ height: 1, background: 'var(--mc-divider-soft)' }}
+              />
+            ) : null;
+          if (item.to) {
+            return (
+              <React.Fragment key={item.id}>
+                {separator}
+                <Link to={item.to} className="contents">
+                  {content}
+                </Link>
+              </React.Fragment>
+            );
+          }
+          return (
+            <React.Fragment key={item.id}>
+              {separator}
+              <button type="button" onClick={item.onClick} className="contents">
+                {content}
+              </button>
+            </React.Fragment>
+          );
+        })}
+      </nav>
+    );
+  }
 
   return (
     <nav
@@ -44,7 +80,7 @@ export function MCToolsRail({ items }: MCToolsRailProps) {
       aria-label="Tools"
     >
       {visible.map((item, idx) => {
-        const content = <MCToolsRailButton item={item} />;
+        const content = <MCToolsRailButton item={item} variant="horizontal" />;
         const separator =
           idx > 0 ? (
             <span
@@ -76,10 +112,19 @@ export function MCToolsRail({ items }: MCToolsRailProps) {
   );
 }
 
-function MCToolsRailButton({ item }: { item: MCToolsRailItem }) {
+function MCToolsRailButton({
+  item,
+  variant = 'horizontal',
+}: {
+  item: MCToolsRailItem;
+  variant?: 'horizontal' | 'vertical';
+}) {
+  const isVertical = variant === 'vertical';
   return (
     <span
-      className={`flex-1 min-w-[120px] flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
+      className={`${
+        isVertical ? 'w-full' : 'flex-1 min-w-[120px]'
+      } flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
         item.active ? 'bg-[color:var(--mc-surface-raised)]' : 'hover:bg-[color:var(--mc-surface-raised)]'
       }`}
     >
@@ -93,7 +138,7 @@ function MCToolsRailButton({ item }: { item: MCToolsRailItem }) {
       >
         {item.icon}
       </span>
-      <span className="flex flex-col min-w-0">
+      <span className="flex-1 flex items-center justify-between gap-2 min-w-0">
         <span
           className="text-[13px] font-semibold truncate"
           style={{
@@ -104,12 +149,15 @@ function MCToolsRailButton({ item }: { item: MCToolsRailItem }) {
         </span>
         {typeof item.badge === 'number' && item.badge > 0 && (
           <span
-            className="mc-mono text-[11px] truncate"
+            className="mc-mono text-[11px] tabular-nums px-1.5 py-0.5 rounded flex-shrink-0"
             style={{
               color: item.alert ? 'var(--mc-text-accent-pink)' : 'var(--mc-text-accent-teal)',
+              background: item.alert
+                ? 'rgba(255, 92, 170, 0.12)'
+                : 'rgba(29, 224, 197, 0.12)',
             }}
           >
-            {item.badge} pending
+            {item.badge}
           </span>
         )}
       </span>

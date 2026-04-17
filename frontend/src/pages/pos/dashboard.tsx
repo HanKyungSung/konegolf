@@ -417,12 +417,9 @@ export default function POSDashboard() {
       />
 
       <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-8 max-w-[1800px] 2xl:max-w-none">
-        {/* Tools rail — navigation to sibling pages + shift operations */}
-        <MCToolsRail items={toolsRailItems} />
-
         {/* Top zone: Stats | Timeline | Data Stream — each panel is a raised surface with gutters */}
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-2">
-          {/* LEFT — stacked stats */}
+          {/* LEFT — stacked stats + controls panel */}
           <div className="flex flex-col gap-2">
             <div className="mc-panel py-6">
               <MCHero
@@ -444,21 +441,35 @@ export default function POSDashboard() {
                   { variant: 'gray', label: 'Available' },
                 ]}
               />
+            </div>
+
+            {/* Controls panel — actions + tools, stacked vertically */}
+            <div className="mc-panel py-4">
               {!isReadOnly && (
-                <div className="mt-5 pt-5 border-t border-[color:var(--mc-divider-soft)] px-5">
-                  <MCActionDock
-                    onCreateBooking={() => setShowCreateModal(true)}
-                    onQuickSale={async () => {
-                      try {
-                        const booking = await createQuickSale();
-                        navigate(`/pos/booking/${booking.id}`);
-                      } catch (err: any) {
-                        alert(err.message || 'Failed to create quick sale');
-                      }
-                    }}
+                <>
+                  <div className="mc-section-label px-5 pb-2">Actions</div>
+                  <div className="px-5 pb-4">
+                    <MCActionDock
+                      onCreateBooking={() => setShowCreateModal(true)}
+                      onQuickSale={async () => {
+                        try {
+                          const booking = await createQuickSale();
+                          navigate(`/pos/booking/${booking.id}`);
+                        } catch (err: any) {
+                          alert(err.message || 'Failed to create quick sale');
+                        }
+                      }}
+                    />
+                  </div>
+                  <div
+                    aria-hidden
+                    className="mx-5"
+                    style={{ height: 1, background: 'var(--mc-divider-soft)' }}
                   />
-                </div>
+                </>
               )}
+              <div className="mc-section-label px-5 pt-3 pb-2">Tools</div>
+              <MCToolsRail items={toolsRailItems} variant="vertical" />
             </div>
           </div>
 
