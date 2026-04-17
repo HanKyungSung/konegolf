@@ -633,6 +633,36 @@ export default function POSDashboard() {
 }
 
 // ---------- Timeline ----------
+// Per-room color palette — one color per room (wraps if >4 rooms).
+// Uses Mission Control semantic accent tokens so changes to the palette
+// propagate through the whole app.
+const ROOM_COLORS = [
+  {
+    solid: 'var(--mc-cyan)',
+    bg: 'rgba(29, 224, 197, 0.22)',
+    pastBg: 'rgba(29, 224, 197, 0.10)',
+    pastBorder: 'rgba(29, 224, 197, 0.45)',
+  },
+  {
+    solid: 'var(--mc-magenta)',
+    bg: 'rgba(244, 122, 165, 0.22)',
+    pastBg: 'rgba(244, 122, 165, 0.10)',
+    pastBorder: 'rgba(244, 122, 165, 0.45)',
+  },
+  {
+    solid: 'var(--mc-purple)',
+    bg: 'rgba(184, 85, 231, 0.22)',
+    pastBg: 'rgba(184, 85, 231, 0.10)',
+    pastBorder: 'rgba(184, 85, 231, 0.45)',
+  },
+  {
+    solid: 'var(--mc-green)',
+    bg: 'rgba(95, 214, 146, 0.22)',
+    pastBg: 'rgba(95, 214, 146, 0.10)',
+    pastBorder: 'rgba(95, 214, 146, 0.45)',
+  },
+];
+
 interface TimelineViewProps {
   bookings: Booking[];
   rooms: Room[];
@@ -817,16 +847,22 @@ function TimelineView({
                 </div>
 
                 {/* Rows */}
-                {rooms.map((room) => {
+                {rooms.map((room, roomIdx) => {
                   const roomBookings = filterBookingsByStatus(
                     dayBookings.filter((b) => b.roomId === room.id)
                   );
                   const currentTimePos = getCurrentTimePosition(day);
+                  const roomColor = ROOM_COLORS[roomIdx % ROOM_COLORS.length];
 
                   return (
                     <div key={room.id} className="flex items-start gap-3">
-                      <div className="min-w-[90px] pt-3">
-                        <span className="text-[13px] font-semibold text-[color:var(--mc-white)]">
+                      <div className="min-w-[90px] pt-3 flex items-center gap-2">
+                        <span
+                          className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ background: roomColor.solid }}
+                          aria-hidden="true"
+                        />
+                        <span className="text-[13px] font-semibold text-[color:var(--mc-text-primary)]">
                           {room.name}
                         </span>
                       </div>
@@ -877,19 +913,16 @@ function TimelineView({
                               style={{
                                 left: `${leftPct}%`,
                                 width: `${widthPct}%`,
-                                background: past
-                                  ? 'rgba(184, 85, 231, 0.22)'
-                                  : 'rgba(29, 224, 197, 0.22)',
-                                borderLeft: `2px solid ${
-                                  past ? 'var(--mc-purple)' : 'var(--mc-cyan)'
-                                }`,
+                                background: past ? roomColor.pastBg : roomColor.bg,
+                                borderLeft: `2px solid ${past ? roomColor.pastBorder : roomColor.solid}`,
+                                opacity: past ? 0.55 : 1,
                               }}
                             >
                               <div className="h-full flex flex-col justify-center px-2">
-                                <div className="text-white text-[12px] font-semibold truncate">
+                                <div className="text-[color:var(--mc-text-primary)] text-[12px] font-semibold truncate">
                                   {b.customerName}
                                 </div>
-                                <div className="mc-mono text-[11px] font-medium text-[color:var(--mc-gray)] truncate">
+                                <div className="mc-mono text-[11px] font-medium text-[color:var(--mc-text-meta)] truncate">
                                   {b.time} · {b.players}p · {b.duration}h
                                 </div>
                               </div>
