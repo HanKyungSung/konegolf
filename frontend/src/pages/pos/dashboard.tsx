@@ -25,6 +25,8 @@ import {
   MCVenueView,
   MCSection,
   MCStatDot,
+  MCRoomRail,
+  MCTelemetryRail,
   type MCStreamEvent,
 } from '@/components/mc';
 import {
@@ -60,6 +62,7 @@ export default function POSDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
   const [showClockModal, setShowClockModal] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | undefined>(undefined);
 
   const [timelineTz, setTimelineTz] = useState<'venue' | 'browser'>(() => {
     return (localStorage.getItem('pos-timeline-tz') as 'venue' | 'browser') || 'venue';
@@ -117,6 +120,7 @@ export default function POSDashboard() {
 
         setBookings(mergedBookings);
         setRooms(roomsData);
+        setLastSync(new Date());
       } catch (err) {
         console.debug('[Dashboard] Poll update skipped:', err);
       }
@@ -160,6 +164,7 @@ export default function POSDashboard() {
 
       setBookings(transformedBookings);
       setRooms(roomsData);
+      setLastSync(new Date());
     } catch (err) {
       console.error('[POS Dashboard] Failed to load data:', err);
       if (showLoading) {
@@ -319,7 +324,28 @@ export default function POSDashboard() {
         ]}
       />
 
-      <main className="max-w-[1800px] mx-auto px-4 sm:px-8 py-6 sm:py-10 space-y-10">
+      {/* Fixed viewport-edge side rails (2xl+ only) */}
+      <MCRoomRail
+        rooms={rooms}
+        bookings={bookings}
+        onSelectRoom={(roomId) => {
+          const current = currentBookings.find((b) => b.roomId === roomId);
+          if (current) {
+            openBookingDetail(current.id);
+          } else if (!isReadOnly) {
+            setPreselectedRoomId(roomId);
+            setShowCreateModal(true);
+          }
+        }}
+      />
+      <MCTelemetryRail
+        bookingsCount={bookings.length}
+        roomsCount={rooms.length}
+        activeCount={activeCount}
+        lastSync={lastSync}
+      />
+
+      <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-10 max-w-[1800px] 2xl:max-w-none">
         {/* Top zone: Hero | Venue | Data Stream */}
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_300px] gap-6 lg:gap-10">
           {/* LEFT — Hero */}
