@@ -197,6 +197,108 @@
   background: rgba(59, 158, 255, 0.12);
 }
 
+/* Compact utility chip — for top-of-page navigation/links */
+.mc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mc-gray);
+  background: transparent;
+  border: 1px solid var(--mc-divider-soft);
+  border-radius: 2px;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+  cursor: pointer;
+}
+
+.mc-chip:hover {
+  color: var(--mc-white);
+  border-color: var(--mc-divider);
+}
+
+.mc-chip-alert {
+  color: var(--mc-magenta);
+  border-color: rgba(255, 95, 173, 0.35);
+}
+
+.mc-chip-alert:hover {
+  color: var(--mc-magenta);
+  border-color: var(--mc-magenta);
+  background: rgba(255, 95, 173, 0.06);
+}
+
+.mc-chip-badge {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mc-magenta);
+}
+
+/* Floating action cluster — primary POS actions, always reachable */
+.mc-fab-cluster {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 40;
+}
+
+@media (min-width: 1536px) {
+  .mc-fab-cluster {
+    right: 244px;
+  }
+}
+
+.mc-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--mc-divider);
+  background: var(--mc-bg);
+  color: var(--mc-white);
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.7);
+  transition: all 160ms ease;
+}
+
+.mc-fab:hover {
+  border-color: var(--mc-cyan);
+  color: var(--mc-cyan);
+}
+
+.mc-fab-primary {
+  border-color: var(--mc-cyan);
+  color: var(--mc-cyan);
+  background: rgba(79, 195, 247, 0.08);
+}
+
+.mc-fab-primary:hover {
+  background: rgba(79, 195, 247, 0.16);
+}
+
+.mc-fab-secondary {
+  color: var(--mc-purple, #b855e7);
+  border-color: rgba(184, 85, 231, 0.4);
+}
+
+.mc-fab-secondary:hover {
+  color: var(--mc-purple, #b855e7);
+  border-color: var(--mc-purple, #b855e7);
+  background: rgba(184, 85, 231, 0.06);
+}
+
 /* Tab underline style */
 .mc-tab {
   padding: 0.75rem 1rem;

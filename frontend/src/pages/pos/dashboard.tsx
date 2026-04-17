@@ -344,7 +344,32 @@ export default function POSDashboard() {
         lastSync={lastSync}
       />
 
-      <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-10 max-w-[1800px] 2xl:max-w-none">
+      <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-8 max-w-[1800px] 2xl:max-w-none">
+        {/* Utility chip row — low-frequency nav & shift ops */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="mc-chip" onClick={() => setShowClockModal(true)}>
+            <Clock className="h-3 w-3" /> Clock
+          </button>
+          {user?.role === 'ADMIN' && (
+            <button className="mc-chip" onClick={() => navigate('/pos/time-management')}>
+              <Users className="h-3 w-3" /> Time Mgmt
+            </button>
+          )}
+          {!isReadOnly && (
+            <button className="mc-chip" onClick={() => navigate('/pos/menu')}>
+              Menu
+            </button>
+          )}
+          <button
+            className="mc-chip mc-chip-alert"
+            onClick={() => navigate('/pos/pending-receipts')}
+          >
+            <Camera className="h-3 w-3" />
+            Receipts
+            <span className="mc-chip-badge" aria-hidden />
+          </button>
+        </div>
+
         {/* Top zone: Stats | Timeline | Data Stream — all in bordered panels */}
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-0 border border-[color:var(--mc-divider)]">
           {/* LEFT — stacked stats */}
@@ -393,58 +418,12 @@ export default function POSDashboard() {
           </div>
         </div>
 
-        {/* Action bar */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button className="mc-btn" onClick={() => setShowClockModal(true)}>
-            <Clock className="h-3.5 w-3.5" /> Clock In/Out
-          </button>
-          {user?.role === 'ADMIN' && (
-            <button className="mc-btn" onClick={() => navigate('/pos/time-management')}>
-              <Users className="h-3.5 w-3.5" /> Time Mgmt
-            </button>
-          )}
-          <button
-            className="mc-btn"
-            style={{ color: 'var(--mc-magenta)', borderColor: 'rgba(217,70,239,0.4)' }}
-            onClick={() => navigate('/pos/pending-receipts')}
-          >
-            <Camera className="h-3.5 w-3.5" /> Receipts
-          </button>
-          <div className="flex-1" />
-          {!isReadOnly && (
-            <button
-              className="mc-btn"
-              style={{ color: 'var(--mc-purple)', borderColor: 'rgba(184,85,231,0.4)' }}
-              onClick={async () => {
-                try {
-                  const booking = await createQuickSale();
-                  navigate(`/pos/booking/${booking.id}`);
-                } catch (err: any) {
-                  alert(err.message || 'Failed to create quick sale');
-                }
-              }}
-            >
-              <ShoppingBag className="h-3.5 w-3.5" /> Quick Sale
-            </button>
-          )}
-          {!isReadOnly && (
-            <button className="mc-btn mc-btn-primary" onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-3.5 w-3.5" /> Create Booking
-            </button>
-          )}
-        </div>
-
         {/* Tabs */}
-        <Tabs defaultValue={!isReadOnly ? 'rooms' : 'menu'} className="space-y-6">
+        <Tabs defaultValue={!isReadOnly ? 'rooms' : 'tax'} className="space-y-6">
           <TabsList className="bg-transparent p-0 gap-1 justify-start h-auto border-b border-[color:var(--mc-divider-soft)] rounded-none w-full flex flex-wrap">
             {!isReadOnly && (
               <TabsTrigger value="rooms" className="mc-tab">
                 Rooms
-              </TabsTrigger>
-            )}
-            {!isReadOnly && (
-              <TabsTrigger value="menu" className="mc-tab">
-                Menu
               </TabsTrigger>
             )}
             {!isReadOnly && (
@@ -458,19 +437,6 @@ export default function POSDashboard() {
               </TabsTrigger>
             )}
           </TabsList>
-
-          <TabsContent value="menu">
-            <MCSection label="Menu">
-              <div className="flex items-center gap-3">
-                <p className="mc-meta flex-1">
-                  Add, edit, and manage food & drink items.
-                </p>
-                <button className="mc-btn mc-btn-primary" onClick={() => navigate('/pos/menu')}>
-                  Open Menu
-                </button>
-              </div>
-            </MCSection>
-          </TabsContent>
 
           <TabsContent value="rooms">
             <MCSection label="Room Management">
@@ -613,6 +579,31 @@ export default function POSDashboard() {
           </pre>
         </details>
       </main>
+
+      {/* Floating primary action cluster — thumb-reachable POS actions */}
+      {!isReadOnly && (
+        <div className="mc-fab-cluster">
+          <button
+            className="mc-fab mc-fab-secondary"
+            onClick={async () => {
+              try {
+                const booking = await createQuickSale();
+                navigate(`/pos/booking/${booking.id}`);
+              } catch (err: any) {
+                alert(err.message || 'Failed to create quick sale');
+              }
+            }}
+          >
+            <ShoppingBag className="h-3.5 w-3.5" /> Quick Sale
+          </button>
+          <button
+            className="mc-fab mc-fab-primary"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="h-3.5 w-3.5" /> Create Booking
+          </button>
+        </div>
+      )}
 
       <BookingModal
         isOpen={showCreateModal}
