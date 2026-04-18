@@ -40,14 +40,12 @@ const WebSocketContext = createContext<WebSocketContextValue | undefined>(undefi
 // ---------------------------------------------------------------------------
 
 function resolveWsUrl(): string {
-  // Prefer explicit override
-  const override = (process.env as any).REACT_APP_WS_URL
-  if (override) return override
-
-  // Derive from API base (http(s):// -> ws(s)://)
+  // Derive from API base (http(s):// -> ws(s)://). The REACT_APP_API_BASE literal
+  // is the only `process.env.*` reference webpack's DefinePlugin replaces — any
+  // other reference would ReferenceError in the browser.
   const apiBase =
-    (process.env as any).REACT_APP_API_BASE !== undefined
-      ? (process.env as any).REACT_APP_API_BASE
+    process.env.REACT_APP_API_BASE !== undefined
+      ? process.env.REACT_APP_API_BASE
       : 'http://localhost:8080'
 
   try {
@@ -58,6 +56,10 @@ function resolveWsUrl(): string {
     return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
   }
 }
+
+// Roles that are eligible for the staff realtime channel. Customers do not
+// open a WS connection (the backend would reject them with 403).
+const WS_ELIGIBLE_ROLES = new Set(['ADMIN', 'STAFF', 'SALES'])
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -89,8 +91,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
   // Connect/disconnect driven by auth state
   useEffect(() => {
-    // Only connect when authenticated (staff/admin)
-    if (!user) {
+    // Only connect when authenticated staff/admin/sales. Customers are rejected
+    // at the server anyway — don't even attempt (avoids reconnect loops).
+    const role = (user?.role ?? '').toString().toUpperCase()
+    if (!user || !WS_ELIGIBLE_ROLES.has(role)) {
       shouldReconnectRef.current = false
       if (wsRef.current) {
         try { wsRef.current.close() } catch { /* ignore */ }
@@ -181,7 +185,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       }
       setStatus('closed')
     }
-  }, [user?.id])
+  }, [user?.id, user?.role])
 
   const value = useMemo<WebSocketContextValue>(() => ({ status, subscribe }), [status, subscribe])
 

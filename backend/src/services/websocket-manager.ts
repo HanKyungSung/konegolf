@@ -26,7 +26,9 @@ export interface JobStatusMessage {
   error?: string;
 }
 
-type ClientRole = 'STAFF' | 'ADMIN' | 'PRINT';
+type ClientRole = 'STAFF' | 'ADMIN' | 'SALES' | 'PRINT';
+
+const WS_ALLOWED_USER_ROLES = new Set(['ADMIN', 'STAFF', 'SALES']);
 
 interface ClientMeta {
   role: ClientRole;
@@ -95,7 +97,15 @@ export class WebSocketManager {
           socket.destroy();
           return;
         }
-        const role = (session.user.role as ClientRole) === 'ADMIN' ? 'ADMIN' : 'STAFF';
+        const userRole = String(session.user.role ?? '').toUpperCase();
+        if (!WS_ALLOWED_USER_ROLES.has(userRole)) {
+          // Customers are not permitted on the staff realtime channel.
+          logger.warn({ userId: session.user.id, role: userRole }, 'WS upgrade rejected: role not allowed');
+          socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+        const role = userRole as ClientRole;
         const meta: ClientMeta = {
           role,
           userId: session.user.id,

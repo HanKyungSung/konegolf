@@ -42,10 +42,10 @@ class TypedEventBus {
 
   emit<T = unknown>(evt: Omit<WsEvent<T>, 'version' | 'timestamp'> & { version?: 1; timestamp?: string }): void {
     const envelope: WsEvent<T> = {
+      ...evt,
       version: 1,
       timestamp: evt.timestamp ?? new Date().toISOString(),
       audience: evt.audience ?? 'staff',
-      ...evt,
     } as WsEvent<T>;
 
     logger.debug({ type: envelope.type, audience: envelope.audience }, 'event emitted');
