@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin, requireStaffOrAdmin } from '../middleware/requireRole';
 import { uploadFile, downloadFile, deleteFile } from '../services/storageService';
 import { analyzeReceiptAsync } from '../services/receiptAnalyzer';
+import { emitReceiptUploaded, emitReceiptDeleted } from '../services/wsEvents';
 import logger from '../lib/logger';
 
 const prisma = new PrismaClient();
@@ -70,6 +71,11 @@ router.post(
       });
 
       logger.info({ paymentId, bookingId, objectPath, fileSize: req.file.size }, 'Receipt uploaded successfully');
+
+      const isNew = !payment.receiptPath;
+      if (isNew) {
+        emitReceiptUploaded((req as any).user, { paymentId, bookingId });
+      }
 
       // Fire-and-forget: analyze the receipt via Ollama (non-blocking)
       analyzeReceiptAsync(paymentId).catch((err) => {
@@ -150,6 +156,7 @@ router.delete(
       });
 
       logger.info({ paymentId, receiptPath: payment.receiptPath }, 'Receipt deleted successfully');
+      emitReceiptDeleted((req as any).user, { paymentId });
       return res.json({ success: true });
     } catch (err) {
       logger.error({ err }, 'Failed to delete receipt');

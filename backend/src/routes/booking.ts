@@ -11,6 +11,19 @@ import { UserRole } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { sendBookingConfirmation, sendBookingCancellationEmail } from '../services/emailService';
 import { eventBus } from '../services/eventBus';
+import {
+  emitBookingCreated,
+  emitBookingStatusChanged,
+  emitBookingCancelled,
+  emitBookingCompleted,
+  emitBookingUpdated,
+  emitPaymentStatusChanged,
+  emitInvoicePaid,
+  emitInvoiceUnpaid,
+  emitInvoicePaymentAdded,
+  emitOrderChanged,
+  emitRoomUpdated,
+} from '../services/wsEvents';
 import { buildAtlanticDate, getAtlanticHourMinute } from '../utils/timezone';
 
 const router = Router();
@@ -289,26 +302,12 @@ router.patch('/:id/status', requireAuth, requireStaffOrAdmin, async (req, res) =
 
     req.log.info({ bookingId: id, from: booking.bookingStatus, to: status }, 'Booking status changed');
 
-    // Phase 1 PoC: emit realtime event for staff dashboards.
-    try {
-      eventBus.emit({
-        type: 'booking.status_changed',
-        payload: {
-          bookingId: id,
-          fromStatus: booking.bookingStatus,
-          toStatus: status,
-          roomId: booking.roomId,
-        },
-        actor: {
-          userId: (req as any).user?.id,
-          role: (req as any).user?.role,
-        },
-        scope: { bookingId: id, roomId: booking.roomId },
-        audience: 'staff',
-      });
-    } catch (emitErr) {
-      req.log.error({ err: emitErr }, 'eventBus emit failed (non-fatal)');
-    }
+    emitBookingStatusChanged((req as any).user, {
+      bookingId: id,
+      fromStatus: booking.bookingStatus,
+      toStatus: status,
+      roomId: booking.roomId,
+    });
 
     // Send cancellation email when status changed to CANCELLED (fire-and-forget)
     if (status === 'CANCELLED') {
@@ -367,6 +366,8 @@ router.patch('/:id/players', requireAuth, requireStaffOrAdmin, async (req, res) 
         updatedAt: new Date(),
       },
     });
+
+    emitBookingUpdated((req as any).user, { bookingId: id, roomId: updated.roomId, change: 'players' });
 
     return res.json({ 
       booking: presentBooking(updated),
@@ -475,6 +476,8 @@ router.patch('/:id/extend', requireAuth, requireStaffOrAdmin, async (req, res) =
       extensionCount: existingExtOrder ? existingExtOrder.quantity + 1 : 1,
     }, 'Booking extended by 30 minutes');
 
+    emitBookingUpdated((req as any).user, { bookingId: id, roomId: updated?.roomId, change: 'extend' });
+
     return res.json({
       booking: presentBooking(updated!),
       message: 'Booking extended by 30 minutes',
@@ -498,6 +501,8 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
 
     const updated = await cancelBooking(id);
     req.log.info({ bookingId: id, userId: req.user!.id }, 'Booking cancelled by customer');
+
+    emitBookingCancelled((req as any).user, { bookingId: id, roomId: booking.roomId });
 
     // Send cancellation email (fire-and-forget)
     const email = booking.customerEmail || (booking as any).user?.email;
@@ -659,6 +664,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
     
     req.log.info({ bookingId: booking.id, userId: req.user!.id, roomId, hours, price }, 'Online booking created');
+    emitBookingCreated((req as any).user, { bookingId: booking.id, roomId });
     res.status(201).json({ booking: presentBooking(booking) });
   } catch (e: any) {
     if (e.code === 'P2002') { // unique constraint
@@ -755,6 +761,7 @@ router.patch('/rooms/:id', requireAuth, requireStaffOrAdmin, async (req, res) =>
   try {
     const updated = await prisma.room.update({ where: { id }, data });
     req.log.info({ roomId: id, ...data }, 'Room updated');
+    emitRoomUpdated((req as any).user, { roomId: id, change: 'updated' });
     res.json({ room: updated });
   } catch (e) {
     req.log.error({ err: e, roomId: id, data }, 'Room update failed');
@@ -1111,6 +1118,8 @@ router.post('/admin/create', requireAuth, requireStaffOrAdmin, async (req, res) 
 
       req.log.info({ bookingId: result.booking.id, userId: result.user.id, customerMode: 'new', bookingSource, total: pricing.totalPrice }, 'Admin booking created (new customer)');
 
+      emitBookingCreated((req as any).user, { bookingId: result.booking.id, roomId: result.booking.roomId });
+
       return res.status(201).json({
         booking: presentBooking(result.booking),
         userCreated: true,
@@ -1182,6 +1191,8 @@ router.post('/admin/create', requireAuth, requireStaffOrAdmin, async (req, res) 
 
         req.log.info({ bookingId: result.booking.id, userId: result.user.id, customerMode: 'guest', bookingSource, total: pricing.totalPrice }, 'Admin booking created (guest)');
 
+        emitBookingCreated((req as any).user, { bookingId: result.booking.id, roomId: result.booking.roomId });
+
         return res.status(201).json({
           booking: presentBooking(result.booking),
           userCreated: true,
@@ -1226,6 +1237,8 @@ router.post('/admin/create', requireAuth, requireStaffOrAdmin, async (req, res) 
     });
 
     req.log.info({ bookingId: booking.id, userId, customerMode: 'existing', bookingSource, total: pricing.totalPrice }, 'Admin booking created (existing customer)');
+
+    emitBookingCreated((req as any).user, { bookingId: booking.id, roomId: booking.roomId });
 
     res.status(201).json({
       booking: presentBooking(booking),
@@ -1297,6 +1310,8 @@ router.patch('/:id/payment-status', requireAuth, requireStaffOrAdmin, async (req
     });
 
     req.log.info({ bookingId: id, paymentStatus, paymentMethod }, 'Booking payment status updated');
+
+    emitPaymentStatusChanged((req as any).user, { bookingId: id, status: paymentStatus });
 
     return res.json({ booking: presentBooking(updated) });
   } catch (error) {
@@ -1395,6 +1410,8 @@ router.post('/:bookingId/orders', requireAuth, async (req, res) => {
 
     req.log.info({ orderId: order.id, bookingId, seatIndex, menuItemId, customItemName, quantity, unitPrice, total: Number(order.totalPrice) }, 'Order added');
 
+    emitOrderChanged((req as any).user, { bookingId: order.bookingId, orderId: order.id, change: 'created' });
+
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
@@ -1463,6 +1480,8 @@ router.patch('/orders/:orderId', requireAuth, async (req, res) => {
     const updatedOrder = await orderRepo.updateOrder(orderId, quantity);
     req.log.info({ orderId, bookingId, seatIndex, quantity }, 'Order updated');
 
+    emitOrderChanged((req as any).user, { bookingId, orderId, change: 'updated' });
+
     // Recalculate invoice if seat-specific
     if (seatIndex) {
       const updatedInvoice = await invoiceRepo.recalculateInvoice(bookingId, seatIndex);
@@ -1528,6 +1547,8 @@ router.delete('/orders/:orderId', requireAuth, async (req, res) => {
     // Delete order
     await orderRepo.deleteOrder(orderId);
     req.log.info({ orderId, bookingId, seatIndex, unitPrice: Number(order.unitPrice), customItemName: order.customItemName }, 'Order deleted');
+
+    emitOrderChanged((req as any).user, { bookingId, orderId, change: 'deleted' });
 
     // Recalculate invoice if seat-specific
     if (seatIndex) {
@@ -1689,6 +1710,8 @@ router.patch('/invoices/:invoiceId/pay', requireAuth, async (req, res) => {
 
     req.log.info({ invoiceId, bookingId, seatIndex, paymentMethod, tip: tip || 0, total: Number(updatedInvoice.totalAmount), allPaid, paymentsCount: updatedInvoice.payments.length }, 'Invoice paid');
 
+    emitInvoicePaid((req as any).user, { bookingId, invoiceId, status: allPaid ? 'ALL_PAID' : 'PARTIAL' });
+
     return res.json({
       invoice: {
         id: updatedInvoice.id,
@@ -1779,6 +1802,8 @@ router.post('/invoices/:invoiceId/add-payment', requireAuth, async (req, res) =>
 
     req.log.info({ invoiceId, bookingId, seatIndex, method, amount, remaining, status: updatedInvoice.status }, 'Payment added');
 
+    emitInvoicePaymentAdded((req as any).user, { bookingId, invoiceId, status: allPaid ? 'ALL_PAID' : 'PARTIAL' });
+
     return res.json({
       invoice: {
         id: updatedInvoice.id,
@@ -1867,6 +1892,8 @@ router.patch('/invoices/:invoiceId/unpay', requireAuth, async (req, res) => {
 
     req.log.info({ invoiceId, bookingId, seatIndex: invoice.seatIndex, previousMethod: invoice.paymentMethod }, 'Invoice payment cancelled');
 
+    emitInvoiceUnpaid((req as any).user, { bookingId, invoiceId });
+
     return res.json({
       invoice: {
         id: recalculated.id,
@@ -1949,6 +1976,8 @@ router.post('/:bookingId/complete', requireAuth, async (req, res) => {
     // Mark booking as completed
     const completed = await completeBooking(bookingId);
     req.log.info({ bookingId }, 'Booking completed');
+
+    emitBookingCompleted((req as any).user, { bookingId, roomId: completed.roomId });
 
     return res.json({
       booking: presentBooking(completed),

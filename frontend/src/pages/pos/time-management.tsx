@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AdminHeader } from '@/components/AdminHeader';
+import { useWsEvent, useWebSocket } from '@/hooks/use-websocket';
 import {
   listEmployees,
   createEmployee,
@@ -249,11 +250,18 @@ export default function POSTimeManagement({ onBack }: TimeManagementProps) {
     if (tab === 'receipts') loadReconciliation();
   }, [tab, reconciliationDate]);
 
-  // Poll active entries every 30 seconds
+  // Realtime: reload active entries on any timeclock event; fallback to 30s
+  // polling only when WS is down >60s.
+  const { isPollingFallback } = useWebSocket();
+  useWsEvent('timeclock.clocked_in', loadActive);
+  useWsEvent('timeclock.clocked_out', loadActive);
+  useWsEvent('timeclock.edited', loadActive);
+
   useEffect(() => {
+    if (!isPollingFallback) return;
     const interval = setInterval(loadActive, 30000);
     return () => clearInterval(interval);
-  }, [loadActive]);
+  }, [loadActive, isPollingFallback]);
 
   const handleAddEmployee = async () => {
     setFormError('');

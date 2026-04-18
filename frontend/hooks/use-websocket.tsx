@@ -29,6 +29,8 @@ type Listener = (evt: WsEvent) => void
 
 interface WebSocketContextValue {
   status: WsStatus
+  /** True when WS has been disconnected >60s; consumers may resume their polling fallback. */
+  isPollingFallback: boolean
   /** Subscribe to an event type. Returns an unsubscribe function. */
   subscribe: (type: string, listener: Listener) => () => void
 }
@@ -67,15 +69,18 @@ const WS_ELIGIBLE_ROLES = new Set(['ADMIN', 'STAFF', 'SALES'])
 
 const MAX_BACKOFF_MS = 30_000
 const INITIAL_BACKOFF_MS = 1000
+const FALLBACK_TRIGGER_MS = 60_000
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [status, setStatus] = useState<WsStatus>('closed')
+  const [isPollingFallback, setIsPollingFallback] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const listenersRef = useRef<Map<string, Set<Listener>>>(new Map())
   const backoffRef = useRef<number>(INITIAL_BACKOFF_MS)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shouldReconnectRef = useRef<boolean>(true)
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Stable subscribe API
   const subscribe = useMemo(() => {
@@ -131,6 +136,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       ws.onopen = () => {
         backoffRef.current = INITIAL_BACKOFF_MS
         setStatus('open')
+        setIsPollingFallback(false)
+        if (fallbackTimerRef.current) {
+          clearTimeout(fallbackTimerRef.current)
+          fallbackTimerRef.current = null
+        }
       }
 
       ws.onmessage = (ev) => {
@@ -165,6 +175,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     const scheduleReconnect = () => {
       setStatus('reconnecting')
+      // Arm polling-fallback timer on first disconnect; stays armed until reconnect.
+      if (!fallbackTimerRef.current && !isPollingFallback) {
+        fallbackTimerRef.current = setTimeout(() => {
+          setIsPollingFallback(true)
+        }, FALLBACK_TRIGGER_MS)
+      }
       const delay = Math.min(backoffRef.current, MAX_BACKOFF_MS)
       backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS)
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
@@ -179,15 +195,20 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         clearTimeout(reconnectTimerRef.current)
         reconnectTimerRef.current = null
       }
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
+      }
       if (wsRef.current) {
         try { wsRef.current.close() } catch { /* ignore */ }
         wsRef.current = null
       }
       setStatus('closed')
+      setIsPollingFallback(false)
     }
   }, [user?.id, user?.role])
 
-  const value = useMemo<WebSocketContextValue>(() => ({ status, subscribe }), [status, subscribe])
+  const value = useMemo<WebSocketContextValue>(() => ({ status, isPollingFallback, subscribe }), [status, isPollingFallback, subscribe])
 
   return (
     <WebSocketContext.Provider value={value}>
@@ -206,6 +227,7 @@ export function useWebSocket(): WebSocketContextValue {
     // Soft fallback so pages can be rendered outside provider (e.g. tests)
     return {
       status: 'closed',
+      isPollingFallback: false,
       subscribe: () => () => {},
     }
   }
