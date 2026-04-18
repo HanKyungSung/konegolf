@@ -23,6 +23,7 @@ import { BookingModal } from './booking-modal';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
 import { WsStatusDot } from '@/components/WsStatusDot';
+import { PiHealthDot } from '@/components/PiHealthDot';
 import ClockModal from './clock-modal';
 import ManagerPanel from './manager-panel';
 import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString, toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
@@ -385,6 +386,7 @@ export default function POSDashboard() {
                   {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: VENUE_TIMEZONE })}
                 </span>
                 <WsStatusDot />
+                <PiHealthDot />
               </CardTitle>
               <CardDescription>Live view of currently occupied rooms</CardDescription>
             </div>

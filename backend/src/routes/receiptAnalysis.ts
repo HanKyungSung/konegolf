@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireRole';
 import { analyzeReceiptAsync } from '../services/receiptAnalyzer';
-import { checkOcrHealth } from '../services/ocrService';
+import { observeOcrHealth } from '../services/ocrService';
 import logger from '../lib/logger';
 
 const prisma = new PrismaClient();
@@ -195,24 +195,9 @@ router.get('/summary', requireAuth, requireAdmin, async (req: Request, res: Resp
  * Check Pi OCR service health status. Admin only.
  */
 router.get('/health', requireAuth, requireAdmin, async (req: Request, res: Response) => {
-  const ocrUrl = process.env.OCR_SERVICE_URL || 'http://localhost:5050';
-  const startMs = Date.now();
-  try {
-    const health = await checkOcrHealth();
-    return res.json({
-      reachable: true,
-      responseTimeMs: Date.now() - startMs,
-      ocrServiceUrl: ocrUrl,
-      ...health,
-    });
-  } catch (err) {
-    return res.json({
-      reachable: false,
-      responseTimeMs: Date.now() - startMs,
-      ocrServiceUrl: ocrUrl,
-      error: (err as Error).message,
-    });
-  }
+  // observeOcrHealth emits ws transitions + never throws
+  const payload = await observeOcrHealth();
+  return res.json(payload);
 });
 
 /**

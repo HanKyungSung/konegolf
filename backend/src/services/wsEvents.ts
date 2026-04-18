@@ -58,6 +58,23 @@ export type RoomEventPayload = {
   change: 'updated';
 };
 
+export type OcrPiHealthPayload = {
+  reachable: boolean;
+  modelLoaded?: boolean;
+  status?: string;
+  memoryMB?: number;
+  uptimeSeconds?: number;
+  responseTimeMs?: number;
+  ocrServiceUrl?: string;
+  error?: string;
+};
+
+export type ReceiptQueueProgressPayload = {
+  processed: number;
+  total: number;
+  batchId?: string;
+};
+
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
@@ -279,4 +296,28 @@ export function emitRoomUpdated(user: Actor | any, payload: RoomEventPayload): v
       audience: 'staff',
     }),
   'room.updated');
+}
+
+// ---------------------------------------------------------------------------
+// OCR / Receipt queue (staff-wide — Pi outage is operationally relevant)
+// ---------------------------------------------------------------------------
+
+export function emitOcrPiHealthChanged(payload: OcrPiHealthPayload): void {
+  safeEmit(() =>
+    eventBus.emit({
+      type: 'ocr.pi_health_changed',
+      payload,
+      audience: 'staff',
+    }),
+  'ocr.pi_health_changed');
+}
+
+export function emitReceiptQueueProgress(payload: ReceiptQueueProgressPayload): void {
+  safeEmit(() =>
+    eventBus.emit({
+      type: 'receipt.queue_progress',
+      payload,
+      audience: 'staff',
+    }),
+  'receipt.queue_progress');
 }

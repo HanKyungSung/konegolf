@@ -19,6 +19,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/use-auth';
+import { useWsEvent } from '@/hooks/use-websocket';
+import { WsStatusDot } from '@/components/WsStatusDot';
 
 const getApiBase = () => process.env.REACT_APP_API_BASE || 'http://localhost:8080';
 
@@ -188,6 +190,12 @@ export default function ReceiptAnalysisPage() {
     }
   }, [fetchData, fetchPiHealth, user]);
 
+  // Realtime: refetch the list when receipts change; update Pi health on transition
+  useWsEvent('receipt.analysis_complete', fetchData);
+  useWsEvent('receipt.uploaded', fetchData);
+  useWsEvent('receipt.deleted', fetchData);
+  useWsEvent<PiHealth>('ocr.pi_health_changed', (evt) => setPiHealth(evt.payload));
+
   const handleReanalyze = async (paymentId: string) => {
     setReanalyzing(paymentId);
     try {
@@ -196,8 +204,10 @@ export default function ReceiptAnalysisPage() {
         credentials: 'include',
       });
       if (res.ok) {
-        // Re-fetch after a short delay to let analysis start
-        setTimeout(fetchData, 2000);
+        // WS `receipt.analysis_complete` will refresh the list automatically
+        // once the background job finishes. Refresh once now to flip status
+        // to ANALYZING immediately.
+        fetchData();
       }
     } catch (err) {
       console.error('Re-analysis failed', err);
@@ -229,6 +239,7 @@ export default function ReceiptAnalysisPage() {
             <ArrowLeft className="w-4 h-4 mr-1" /> Admin
           </Button>
           <h1 className="text-2xl font-bold">Receipt Analysis</h1>
+          <WsStatusDot className="ml-auto" />
         </div>
 
         {/* Date Nav */}
