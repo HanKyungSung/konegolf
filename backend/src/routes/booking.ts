@@ -10,6 +10,7 @@ import { requireStaffOrAdmin } from '../middleware/requireRole';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { sendBookingConfirmation, sendBookingCancellationEmail } from '../services/emailService';
+import { eventBus } from '../services/eventBus';
 import { buildAtlanticDate, getAtlanticHourMinute } from '../utils/timezone';
 
 const router = Router();
@@ -287,6 +288,27 @@ router.patch('/:id/status', requireAuth, requireStaffOrAdmin, async (req, res) =
     });
 
     req.log.info({ bookingId: id, from: booking.bookingStatus, to: status }, 'Booking status changed');
+
+    // Phase 1 PoC: emit realtime event for staff dashboards.
+    try {
+      eventBus.emit({
+        type: 'booking.status_changed',
+        payload: {
+          bookingId: id,
+          fromStatus: booking.bookingStatus,
+          toStatus: status,
+          roomId: booking.roomId,
+        },
+        actor: {
+          userId: (req as any).user?.id,
+          role: (req as any).user?.role,
+        },
+        scope: { bookingId: id, roomId: booking.roomId },
+        audience: 'staff',
+      });
+    } catch (emitErr) {
+      req.log.error({ err: emitErr }, 'eventBus emit failed (non-fatal)');
+    }
 
     // Send cancellation email when status changed to CANCELLED (fire-and-forget)
     if (status === 'CANCELLED') {

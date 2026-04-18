@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useWebSocket, useWsEvent } from '@/hooks/use-websocket';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { buttonStyles } from '@/styles/buttonStyles';
@@ -141,6 +142,13 @@ export default function POSDashboard() {
     
     return () => clearInterval(pollInterval);
   }, [currentWeekStart]);
+
+  // WebSocket subscription: targeted refetch on booking status change (Phase 1 PoC).
+  // The 5s poll above remains as a safety net; it will be removed in Phase 2.
+  const { status: wsStatus } = useWebSocket();
+  useWsEvent('booking.status_changed', React.useCallback(() => {
+    loadData(false);
+  }, [currentWeekStart]));
 
   async function loadData(showLoading = true) {
     try {

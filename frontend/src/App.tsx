@@ -16,6 +16,7 @@ import CouponPage from './pages/coupon'
 import POSRoutes from './pages/pos'
 import ReceiptTestPage from './pages/receipt-test'
 import { AuthProvider } from '../hooks/use-auth'
+import { WebSocketProvider } from '../hooks/use-websocket'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '../components/theme-provider'
 
@@ -57,9 +58,11 @@ export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <WebSocketProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </WebSocketProvider>
       </AuthProvider>
     </ThemeProvider>
   )
