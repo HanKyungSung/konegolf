@@ -11,3 +11,5 @@ export type { MCToolsRailItem } from './MCToolsRail';
 export { MCActionDock } from './MCActionDock';
 export { MCHealthDot } from './MCHealthDot';
 export { MCTaxDialog } from './MCTaxDialog';
+export { MCAttentionBell } from './MCAttentionBell';
+export type { AttentionItem, AttentionKind, AttentionSeverity } from './MCAttentionBell';

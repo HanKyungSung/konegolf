@@ -499,6 +499,7 @@
   .mc-stream-entry,
   .mc-stream-new--telegraph,
   .mc-stream-new--telegraph::before,
+  .mc-attn-pulse,
   .mc-tick {
     animation: none !important;
   }
@@ -506,5 +507,120 @@
   .mc-btn,
   .mc-tab {
     transition: none !important;
+  }
+}
+
+/*
+ * Attention bell (MCAttentionBell)
+ * Header glyph + popover list of actionable items.
+ */
+.mc-attn-bell {
+  background: transparent;
+}
+.mc-attn-bell:hover {
+  background: var(--mc-bg-raised, rgba(255, 255, 255, 0.03));
+}
+.mc-attn-bell:hover:not([data-has-items]) {
+  color: var(--mc-cyan) !important;
+}
+
+.mc-attn-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  color: #0c0f14;
+  letter-spacing: 0;
+  box-shadow: 0 0 0 1.5px var(--mc-bg, #0a0d12);
+}
+
+.mc-attn-pulse {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  pointer-events: none;
+  animation: mcAttnPulse 1.4s ease-out infinite;
+}
+
+@keyframes mcAttnPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  80% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Popover open/close animation. Radix sets data-state on PopoverContent. */
+.mc-attn-popover[data-state='open'] {
+  animation: mcAttnPopoverIn 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mc-attn-popover[data-state='closed'] {
+  animation: mcAttnPopoverOut 120ms ease-in both;
+}
+
+@keyframes mcAttnPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mcAttnPopoverOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Row hover — uses the same raised surface as other MC affordances */
+.mc-attn-row > button:hover {
+  background: var(--mc-bg-raised, rgba(29, 224, 197, 0.04));
+}
+
+/* Resolving row: fade then collapse. Parent sets data-resolving="true". */
+.mc-attn-row[data-resolving='true'] {
+  animation: mcAttnRowOut 350ms ease-in forwards;
+  overflow: hidden;
+}
+
+@keyframes mcAttnRowOut {
+  0% {
+    opacity: 1;
+    max-height: 120px;
+  }
+  40% {
+    opacity: 0;
+    max-height: 120px;
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
   }
 }

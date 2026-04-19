@@ -87,6 +87,7 @@
   --mc-divider: #1e2735;
   --mc-divider-soft: #141a24;
   --mc-green: #5fd692;
+  --mc-amber: #f59e0b;
 
   /* Text color roles — mapped from reference wallboard image.
      Use these tokens (not raw grays) so text categories stay consistent. */
