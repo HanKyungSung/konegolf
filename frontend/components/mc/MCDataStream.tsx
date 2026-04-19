@@ -92,6 +92,13 @@ export function MCDataStream({
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(() => new Set());
   const timersRef = useRef<Map<string, number>>(new Map());
 
+  // Tracks ids that have EVER played the telegraph animation. These rows
+  // must not fall back to the subtle `.mc-stream-entry` fade (mcStreamIn)
+  // once the telegraph class is removed — otherwise cascade replaces the
+  // animation declaration and mcStreamIn replays from frame 0, producing
+  // a post-fade flicker.
+  const everAnimatedRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (newIds.size === 0) return;
     setAnimatingIds((prev) => {
@@ -100,11 +107,22 @@ export function MCDataStream({
       newIds.forEach((id) => {
         if (!next.has(id)) {
           next.add(id);
+          everAnimatedRef.current.add(id);
           changed = true;
         }
       });
       return changed ? next : prev;
     });
+    // Bound the ever-animated set so it can't grow without limit.
+    const cap = Math.max(maxEntries * 2, 50);
+    if (everAnimatedRef.current.size > cap) {
+      const excess = everAnimatedRef.current.size - cap;
+      const iter = everAnimatedRef.current.values();
+      for (let i = 0; i < excess; i += 1) {
+        const oldest = iter.next().value;
+        if (oldest !== undefined) everAnimatedRef.current.delete(oldest);
+      }
+    }
     newIds.forEach((id) => {
       if (timersRef.current.has(id)) return;
       const handle = window.setTimeout(() => {
@@ -118,7 +136,7 @@ export function MCDataStream({
       }, TELEGRAPH_DURATION_MS);
       timersRef.current.set(id, handle);
     });
-  }, [newIds]);
+  }, [newIds, maxEntries]);
 
   useEffect(() => {
     return () => {
@@ -169,11 +187,17 @@ export function MCDataStream({
         ) : (
           <ul className="flex flex-col gap-4">
             {capped.map((ev) => {
-              const isNew = animatingIds.has(ev.id);
+              const isAnimating = animatingIds.has(ev.id);
+              const hasEverAnimated = everAnimatedRef.current.has(ev.id);
               const className = [
-                'mc-stream-entry mc-mono text-[13px] leading-snug',
-                isNew ? 'mc-stream-new' : '',
-                isNew ? 'mc-stream-new--telegraph' : '',
+                'mc-mono text-[13px] leading-snug',
+                // Subtle mount fade only for rows that never got the telegraph
+                // treatment. Suppressing it on ever-animated rows prevents the
+                // animation declaration from replaying when the telegraph class
+                // is removed.
+                !isAnimating && !hasEverAnimated ? 'mc-stream-entry' : '',
+                isAnimating ? 'mc-stream-new' : '',
+                isAnimating ? 'mc-stream-new--telegraph' : '',
               ]
                 .filter(Boolean)
                 .join(' ');
