@@ -6,6 +6,7 @@ import { normalizePhone } from '../utils/phoneUtils';
 import { requireAuth } from '../middleware/requireAuth';
 import { addBookingOrderToSeat1 } from '../repositories/bookingRepo';
 import { requireStaffOrAdmin } from '../middleware/requireRole';
+import { emitBookingCreated } from '../services/wsEvents';
 
 const router = Router();
 
@@ -196,6 +197,7 @@ router.post('/create', requireAuth, requireAdmin, async (req, res) => {
     await addBookingOrderToSeat1(booking.id, data.duration);
     
     req.log.info({ bookingId: booking.id, customerName: data.customerName, roomId: data.roomId, players: data.players, source: data.bookingSource }, 'Simple booking created');
+    emitBookingCreated((req as any).user, { bookingId: booking.id, roomId: data.roomId });
     return res.status(201).json({
       success: true,
       booking,
@@ -297,6 +299,7 @@ router.post('/quick-sale', requireAuth, requireStaffOrAdmin, async (req, res) =>
     });
 
     req.log.info({ bookingId: booking.id, staffId }, 'Quick sale booking created');
+    emitBookingCreated((req as any).user, { bookingId: booking.id, roomId: booking.roomId });
     return res.status(201).json({
       success: true,
       booking,

@@ -7,8 +7,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { checkOcrHealth } from './ocrService';
+import { observeOcrHealth } from './ocrService';
 import { analyzeReceiptAsync } from './receiptAnalyzer';
+import { emitReceiptQueueProgress } from './wsEvents';
 import logger from '../lib/logger';
 
 const prisma = new PrismaClient();
@@ -30,10 +31,9 @@ async function processQueue(): Promise<void> {
 
   processing = true;
   try {
-    // Check Pi health first — skip entirely if offline
-    try {
-      await checkOcrHealth();
-    } catch {
+    // Observe Pi health (emits ws transition events on change); skip cycle if offline
+    const health = await observeOcrHealth();
+    if (!health.reachable) {
       logger.debug('Receipt queue: Pi OCR offline, skipping cycle');
       return;
     }
@@ -56,12 +56,16 @@ async function processQueue(): Promise<void> {
       return;
     }
 
+    const total = pendingPayments.length;
+    const batchId = `batch-${Date.now()}`;
     logger.info(
-      { count: pendingPayments.length },
+      { count: total, batchId },
       'Receipt queue: processing pending receipts'
     );
+    emitReceiptQueueProgress({ processed: 0, total, batchId });
 
     // Process sequentially to avoid overloading Pi
+    let processed = 0;
     for (const payment of pendingPayments) {
       try {
         await analyzeReceiptAsync(payment.id);
@@ -71,10 +75,12 @@ async function processQueue(): Promise<void> {
           'Receipt queue: analysis failed for payment'
         );
       }
+      processed += 1;
+      emitReceiptQueueProgress({ processed, total, batchId });
     }
 
     logger.info(
-      { count: pendingPayments.length },
+      { count: total, batchId },
       'Receipt queue: cycle complete'
     );
   } catch (err) {

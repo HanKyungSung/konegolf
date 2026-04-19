@@ -11,6 +11,7 @@ import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireRole';
 import { prisma } from '../lib/prisma';
 import { verifyPassword } from '../services/authService';
+import { emitTimeclockEvent } from '../services/wsEvents';
 import logger from '../lib/logger';
 
 const router = Router();
@@ -93,6 +94,7 @@ router.post('/clock-in', async (req, res) => {
     });
 
     log.info({ employeeId: employee.id, name: employee.name }, 'Employee clocked in');
+    emitTimeclockEvent({ id: employee.id, role: 'STAFF' }, { entryId: entry.id, employeeId: employee.id, change: 'clocked_in' });
     res.status(201).json({
       message: 'Clocked in',
       employeeName: employee.name,
@@ -145,6 +147,7 @@ router.post('/clock-out', async (req, res) => {
     const minutes = Math.floor((durationMs % 3600000) / 60000);
 
     log.info({ employeeId: employee.id, name: employee.name, hours, minutes }, 'Employee clocked out');
+    emitTimeclockEvent({ id: employee.id, role: 'STAFF' }, { entryId: entry.id, employeeId: employee.id, change: 'clocked_out' });
     res.json({
       message: 'Clocked out',
       employeeName: employee.name,
@@ -286,6 +289,7 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
     });
 
     log.info({ entryId: id, updates: Object.keys(data) }, 'Time entry updated by admin');
+    emitTimeclockEvent((req as any).user, { entryId: id, employeeId: entry.employeeId, change: 'edited' });
     res.json({ entry });
   } catch (err) {
     log.error({ err }, 'Failed to update time entry');

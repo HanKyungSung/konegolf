@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendImageForOcr, checkOcrHealth } from './ocrService';
 import { parseReceiptText } from './receiptParser';
 import { downloadFile } from './storageService';
+import { emitReceiptAnalysisComplete } from './wsEvents';
 import logger from '../lib/logger';
 
 const prisma = new PrismaClient();
@@ -126,6 +127,8 @@ export async function analyzeReceiptAsync(paymentId: string): Promise<void> {
       { paymentId, matchStatus, systemAmount, extractedAmount: parsed.amount },
       'Receipt analysis complete'
     );
+
+    emitReceiptAnalysisComplete({ paymentId, bookingId: payment.invoice?.bookingId, matchStatus });
   } catch (err) {
     logger.error({ err, paymentId }, 'Receipt analysis failed unexpectedly');
   }
