@@ -33,7 +33,6 @@ import {
   MCTaxDialog,
   type MCStreamEvent,
   type MCStreamEventType,
-  type MCStreamAnimStyle,
   type MCToolsRailItem,
 } from '@/components/mc';
 import {
@@ -320,21 +319,6 @@ export default function POSDashboard() {
     [devEvents, derivedStreamEvents],
   );
 
-  // Persisted animation style for new stream entries (admin-only picker).
-  const STREAM_ANIM_KEY = 'kgolf.mc.streamAnim';
-  const [streamAnim, setStreamAnim] = useState<MCStreamAnimStyle>(() => {
-    if (typeof window === 'undefined') return 'telegraph';
-    const raw = window.localStorage.getItem(STREAM_ANIM_KEY);
-    return raw === 'telegraph' || raw === 'typewriter' || raw === 'pulse'
-      ? raw
-      : 'telegraph';
-  });
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STREAM_ANIM_KEY, streamAnim);
-    }
-  }, [streamAnim]);
-
   const buildDemoEvent = (): MCStreamEvent => {
     const types: MCStreamEventType[] = ['BookingCreate', 'SessionStart', 'PaymentSettle', 'QuickSale'];
     const roomPool = rooms.length ? rooms.map((r) => r.name) : ['Room 1', 'Room 2'];
@@ -381,12 +365,6 @@ export default function POSDashboard() {
   };
 
   const handleSimulateEvent = () => {
-    pushDemoEvent();
-  };
-
-  const handleAnimStyleChange = (next: MCStreamAnimStyle) => {
-    setStreamAnim(next);
-    // Preview the new style immediately so the admin sees the effect.
     pushDemoEvent();
   };
 
@@ -575,8 +553,6 @@ export default function POSDashboard() {
           <div className="mc-panel py-6 max-h-[720px] overflow-hidden">
             <MCDataStream
               events={streamEvents}
-              animStyle={streamAnim}
-              onAnimStyleChange={isAdmin ? handleAnimStyleChange : undefined}
               onSimulate={isAdmin ? handleSimulateEvent : undefined}
             />
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Sparkles, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 export type MCStreamEventType =
   | 'BookingCreate'
@@ -18,21 +18,6 @@ export interface MCStreamEvent {
   meta?: string;
 }
 
-/**
- * Animation style for newly-appended entries. Maps to
- * `.mc-stream-new--<style>` blocks in mission-control.css.
- */
-export type MCStreamAnimStyle = 'telegraph' | 'typewriter' | 'pulse';
-
-export const MC_STREAM_ANIM_STYLES: ReadonlyArray<{
-  value: MCStreamAnimStyle;
-  label: string;
-}> = [
-  { value: 'telegraph', label: 'Telegraph' },
-  { value: 'typewriter', label: 'Typewriter' },
-  { value: 'pulse', label: 'Pulse' },
-];
-
 interface MCDataStreamProps {
   events: MCStreamEvent[];
   maxEntries?: number;
@@ -41,13 +26,6 @@ interface MCDataStreamProps {
    * Gated by caller (e.g. admin-only on the dashboard).
    */
   onSimulate?: () => void;
-  /** Current entrance animation style. Defaults to 'telegraph'. */
-  animStyle?: MCStreamAnimStyle;
-  /**
-   * When provided, renders a picker in the header so the admin can switch
-   * the entrance animation style. Gated by caller (admin-only on dashboard).
-   */
-  onAnimStyleChange?: (next: MCStreamAnimStyle) => void;
 }
 
 const typeColor: Record<MCStreamEventType, string> = {
@@ -82,8 +60,6 @@ export function MCDataStream({
   events,
   maxEntries = 30,
   onSimulate,
-  animStyle = 'telegraph',
-  onAnimStyleChange,
 }: MCDataStreamProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const capped = events.slice(0, maxEntries);
@@ -121,25 +97,6 @@ export function MCDataStream({
           <div className="mc-meta mt-1">Real-Time</div>
         </div>
         <div className="flex items-center gap-3">
-          {onAnimStyleChange && (
-            <label
-              className="mc-chip mc-mono flex items-center gap-1.5 cursor-pointer"
-              aria-label="Animation style"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <select
-                value={animStyle}
-                onChange={(e) => onAnimStyleChange(e.target.value as MCStreamAnimStyle)}
-                className="bg-transparent border-none outline-none text-inherit mc-mono cursor-pointer pr-1"
-              >
-                {MC_STREAM_ANIM_STYLES.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-[color:var(--mc-surface-raised,#0f1628)] text-white">
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           {onSimulate && (
             <button
               type="button"
@@ -172,7 +129,7 @@ export function MCDataStream({
               const className = [
                 'mc-stream-entry mc-mono text-[13px] leading-snug',
                 isNew ? 'mc-stream-new' : '',
-                isNew ? `mc-stream-new--${animStyle}` : '',
+                isNew ? 'mc-stream-new--telegraph' : '',
               ]
                 .filter(Boolean)
                 .join(' ');
