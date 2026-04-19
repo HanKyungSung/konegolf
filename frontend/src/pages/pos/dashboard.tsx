@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useWebSocket, useWsEvent } from '@/hooks/use-websocket';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { buttonStyles } from '@/styles/buttonStyles';
@@ -21,6 +22,8 @@ import {
 import { BookingModal } from './booking-modal';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
+import { WsStatusDot } from '@/components/WsStatusDot';
+import { PiHealthDot } from '@/components/PiHealthDot';
 import ClockModal from './clock-modal';
 import ManagerPanel from './manager-panel';
 import { VENUE_TIMEZONE, todayRange, weekRange, todayDateString, toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
@@ -80,8 +83,13 @@ export default function POSDashboard() {
     loadData(false);
   }, [currentWeekStart, activeTimezone]);
 
-  // Poll for room status updates and current week bookings every 5 seconds (smooth, no flickering)
+  // Realtime: WS drives updates normally; polling kicks in only when WS down >60s.
+  const { status: wsStatus, isPollingFallback } = useWebSocket();
+
+  // Polling fallback: only runs while WS is down >60s. When WS is healthy, the
+  // WS subscriptions below handle all updates without any timer.
   useEffect(() => {
+    if (!isPollingFallback) return;
     const pollInterval = setInterval(async () => {
       try {
         // Update room status and today's bookings
@@ -140,7 +148,25 @@ export default function POSDashboard() {
     }, 5000);
     
     return () => clearInterval(pollInterval);
-  }, [currentWeekStart]);
+  }, [currentWeekStart, isPollingFallback]);
+
+  // WebSocket subscription: targeted refetch on any staff-facing mutation.
+  // When WS is healthy, polling is disabled (see poll effect above). When WS is
+  // disconnected for >60s, the polling fallback kicks in automatically.
+  const refetchFromEvent = React.useCallback(() => { loadData(false); }, [currentWeekStart, activeTimezone]);
+  useWsEvent('booking.status_changed', refetchFromEvent);
+  useWsEvent('booking.created', refetchFromEvent);
+  useWsEvent('booking.updated', refetchFromEvent);
+  useWsEvent('booking.cancelled', refetchFromEvent);
+  useWsEvent('booking.completed', refetchFromEvent);
+  useWsEvent('payment.status_changed', refetchFromEvent);
+  useWsEvent('invoice.paid', refetchFromEvent);
+  useWsEvent('invoice.unpaid', refetchFromEvent);
+  useWsEvent('invoice.payment_added', refetchFromEvent);
+  useWsEvent('order.created', refetchFromEvent);
+  useWsEvent('order.updated', refetchFromEvent);
+  useWsEvent('order.deleted', refetchFromEvent);
+  useWsEvent('room.updated', refetchFromEvent);
 
   async function loadData(showLoading = true) {
     try {
@@ -359,6 +385,8 @@ export default function POSDashboard() {
                 <span className="text-xs font-normal text-slate-400 font-mono">
                   {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: VENUE_TIMEZONE })}
                 </span>
+                <WsStatusDot />
+                <PiHealthDot />
               </CardTitle>
               <CardDescription>Live view of currently occupied rooms</CardDescription>
             </div>

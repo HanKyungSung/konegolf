@@ -3,6 +3,7 @@
  */
 
 import { OcrTextLine } from './receiptParser';
+import { emitOcrPiHealthChanged, OcrPiHealthPayload } from './wsEvents';
 
 const OCR_SERVICE_URL =
   process.env.OCR_SERVICE_URL || 'http://localhost:5050';
@@ -91,6 +92,76 @@ export async function checkOcrHealth(): Promise<OcrHealthResponse> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Health-change tracker — emits `ocr.pi_health_changed` on (reachable,
+// modelLoaded) tuple transitions only. Every caller that invokes
+// `checkOcrHealth` in a loop (receiptQueue, receiptAnalyzer, pi-health route)
+// should pipe through `observeOcrHealth()` so UIs stay in sync without spam.
+// ---------------------------------------------------------------------------
+
+interface LastHealthState {
+  reachable: boolean;
+  modelLoaded: boolean;
+}
+
+let lastHealthState: LastHealthState | null = null;
+
+function makePayload(
+  reachable: boolean,
+  startMs: number,
+  health?: OcrHealthResponse,
+  error?: string
+): OcrPiHealthPayload {
+  return {
+    reachable,
+    modelLoaded: health?.modelLoaded,
+    status: health?.status,
+    memoryMB: health?.memoryMB,
+    uptimeSeconds: health?.uptimeSeconds,
+    responseTimeMs: Date.now() - startMs,
+    ocrServiceUrl: OCR_SERVICE_URL,
+    error,
+  };
+}
+
+/**
+ * Run a health check and emit `ocr.pi_health_changed` on transitions.
+ *
+ * Returns the payload (reachable=false if the check threw) so callers that
+ * need the raw result (e.g., the GET /health route) can still respond.
+ * Never throws.
+ */
+export async function observeOcrHealth(): Promise<OcrPiHealthPayload> {
+  const startMs = Date.now();
+  let payload: OcrPiHealthPayload;
+  let current: LastHealthState;
+
+  try {
+    const health = await checkOcrHealth();
+    payload = makePayload(true, startMs, health);
+    current = { reachable: true, modelLoaded: !!health.modelLoaded };
+  } catch (err) {
+    payload = makePayload(false, startMs, undefined, (err as Error).message);
+    current = { reachable: false, modelLoaded: false };
+  }
+
+  if (
+    lastHealthState === null ||
+    lastHealthState.reachable !== current.reachable ||
+    lastHealthState.modelLoaded !== current.modelLoaded
+  ) {
+    lastHealthState = current;
+    emitOcrPiHealthChanged(payload);
+  }
+
+  return payload;
+}
+
+/** For tests / server restart — clear the transition cache. */
+export function resetOcrHealthTracker(): void {
+  lastHealthState = null;
 }
 
 /**
