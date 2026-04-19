@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useWebSocket, useWsEvent } from '@/hooks/use-websocket';
+import { useAttentionMock } from '@/hooks/use-attention-mock';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Users, Camera, FileSearch, Utensils, UsersRound, Percent } from 'lucide-react';
 import {
@@ -33,6 +34,7 @@ import {
   MCToolsRail,
   MCActionDock,
   MCHealthDot,
+  MCAttentionBell,
   MCTaxDialog,
   type MCStreamEvent,
   type MCStreamEventType,
@@ -52,6 +54,10 @@ export default function POSDashboard() {
   const isReadOnly = user?.role === 'SALES';
   const isStaff = user?.role === 'STAFF';
   const isAdmin = user?.role === 'ADMIN';
+
+  // PROTOTYPE: in-memory mock for attention notifications. Backend service
+  // and WS-driven hook will replace this in Phase 2.
+  const attentionMock = useAttentionMock();
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -473,6 +479,20 @@ export default function POSDashboard() {
             <WsStatusDot />
             <PiHealthDot />
             <MCHealthDot enabled={user?.role === 'ADMIN'} />
+            <span
+              aria-hidden
+              className="inline-block h-5 w-px"
+              style={{ background: 'var(--mc-divider)' }}
+            />
+            <MCAttentionBell
+              items={attentionMock.items}
+              readIds={attentionMock.readIds}
+              onMarkRead={attentionMock.markRead}
+              onMarkAllRead={attentionMock.markAllRead}
+              onOpenItem={(item) => {
+                if (item.linkHref) navigate(item.linkHref);
+              }}
+            />
           </div>
         }
       />
