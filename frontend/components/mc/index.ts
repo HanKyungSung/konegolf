@@ -15,4 +15,5 @@ export { MCAttentionBell } from './MCAttentionBell';
 export { MCAttentionList } from './MCAttentionList';
 export { MCRoomTiles } from './MCRoomTiles';
 export { MCTodayTimeline } from './MCTodayTimeline';
+export { TimelineView } from './TimelineView';
 export type { AttentionItem, AttentionKind, AttentionSeverity } from './MCAttentionBell';

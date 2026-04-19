@@ -1,73 +1,95 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Plus,
-  ShoppingBag,
-  Utensils,
-  Clock as ClockIcon,
-  Camera,
-  UsersRound,
-} from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useAttentionMock } from '@/hooks/use-attention-mock';
 import {
   listBookings,
   listRooms,
+  createQuickSale,
   type Booking,
   type Room,
 } from '@/services/pos-api';
+import { BookingModal } from './booking-modal';
+import { BookingDetailModal } from '@/components/BookingDetailModal';
+import { AdminHeader } from '@/components/AdminHeader';
 import { WsStatusDot } from '@/components/WsStatusDot';
 import { PiHealthDot } from '@/components/PiHealthDot';
 import {
   MCHero,
   MCDataStream,
-  MCRoomTiles,
-  MCTodayTimeline,
+  MCRoomRail,
+  MCTelemetryRail,
+  MCToolsRail,
+  MCActionDock,
+  MCHealthDot,
   MCAttentionBell,
   MCAttentionList,
-  MCHealthDot,
+  TimelineView,
   type MCStreamEvent,
   type MCStreamEventType,
+  type MCToolsRailItem,
 } from '@/components/mc';
 import {
   VENUE_TIMEZONE,
-  todayRange,
+  weekRange,
   toDateStringInTz,
   getTimePartsInTz,
 } from '@/lib/timezone';
+import { Camera, Clock, FileSearch, Utensils, UsersRound } from 'lucide-react';
 
 /**
- * Wallboard POC — single-viewport dashboard (1440×900 target, zero scroll).
- * Admin-only. Real /pos/dashboard untouched.
+ * Wallboard POC — mirrors /pos/dashboard panel-for-panel, but adds the
+ * Attention notification panel directly beneath the TimelineView.
+ * Admin-only dev route. Real dashboard is untouched.
  */
 export default function WallboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.role === 'ADMIN';
+  const isStaff = user?.role === 'STAFF';
+  const isReadOnly = !isAdmin && !isStaff;
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [lastSync, setLastSync] = useState<Date | undefined>(undefined);
 
-  // Live clock for the header + relative-time derivations.
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+  });
+  const [timelineTz, setTimelineTz] = useState<'venue' | 'browser'>(() => {
+    return (localStorage.getItem('pos-timeline-tz') as 'venue' | 'browser') || 'venue';
+  });
+  const activeTimezone =
+    timelineTz === 'venue'
+      ? VENUE_TIMEZONE
+      : Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
+
   useEffect(() => {
     const t = window.setInterval(() => setCurrentTime(new Date()), 1000);
     return () => window.clearInterval(t);
   }, []);
 
-  const load = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const today = todayRange();
-      const [todayBookings, roomsData] = await Promise.all([
-        listBookings({ startDate: today.start, endDate: today.end, limit: 200 }),
+      const week = weekRange(currentWeekStart);
+      const [list, roomList] = await Promise.all([
+        listBookings({ startDate: week.start, endDate: week.end, limit: 500 }),
         listRooms(),
       ]);
-      const enriched = todayBookings.map((b) => {
+      const enriched = list.map((b) => {
         const start = new Date(b.startTime);
         const end = new Date(b.endTime);
-        const room = roomsData.find((r) => r.id === b.roomId);
-        const localDate = toDateStringInTz(start, VENUE_TIMEZONE);
-        const tp = getTimePartsInTz(start, VENUE_TIMEZONE);
+        const room = roomList.find((r) => r.id === b.roomId);
+        const localDate = toDateStringInTz(start, activeTimezone);
+        const tp = getTimePartsInTz(start, activeTimezone);
         const localTime = `${String(tp.hours).padStart(2, '0')}:${String(tp.minutes).padStart(2, '0')}`;
         return {
           ...b,
@@ -78,21 +100,21 @@ export default function WallboardPage() {
         };
       });
       setBookings(enriched);
-      setRooms(roomsData);
-    } finally {
-      setLoading(false);
+      setRooms(roomList);
+      setLastSync(new Date());
+    } catch (err) {
+      console.warn('wallboard load failed', err);
     }
-  }, []);
+  }, [currentWeekStart, activeTimezone]);
 
   useEffect(() => {
-    load();
-    const poll = window.setInterval(load, 15_000);
+    loadData();
+    const poll = window.setInterval(loadData, 30_000);
     return () => window.clearInterval(poll);
-  }, [load]);
+  }, [loadData]);
 
   const attentionMock = useAttentionMock();
 
-  // Active sessions count for the header stats.
   const activeCount = useMemo(() => {
     const now = currentTime.getTime();
     return bookings.filter((b) => {
@@ -103,24 +125,22 @@ export default function WallboardPage() {
     }).length;
   }, [bookings, currentTime]);
 
-  // Derive stream events restricted to today. Same shape as the main dashboard.
-  const streamEvents = useMemo<MCStreamEvent[]>(() => {
+  const todayCount = useMemo(() => {
+    const today = toDateStringInTz(currentTime, activeTimezone);
+    return bookings.filter((b) => b.date === today).length;
+  }, [bookings, currentTime, activeTimezone]);
+
+  const derivedStreamEvents = useMemo<MCStreamEvent[]>(() => {
     const events: MCStreamEvent[] = [];
     const now = currentTime.getTime();
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayStartMs = todayStart.getTime();
-    const inToday = (ms: number) =>
-      ms >= todayStartMs && ms < todayStartMs + 86_400_000;
-
+    const windowMs = 24 * 60 * 60 * 1000;
     bookings.forEach((b) => {
       const created = new Date(b.createdAt).getTime();
       const start = new Date(b.startTime).getTime();
       const end = new Date(b.endTime).getTime();
       const status = (b.bookingStatus || b.status || '').toUpperCase();
       const payStatus = (b.paymentStatus || '').toUpperCase();
-
-      if (inToday(created)) {
+      if (now - created < windowMs) {
         events.push({
           id: `create-${b.id}`,
           timestamp: new Date(b.createdAt),
@@ -132,12 +152,7 @@ export default function WallboardPage() {
           meta: b.bookingSource || 'ONLINE',
         });
       }
-      if (
-        status === 'BOOKED' &&
-        start <= now &&
-        end > now &&
-        inToday(start)
-      ) {
+      if (status === 'BOOKED' && start <= now && end > now && now - start < windowMs) {
         events.push({
           id: `start-${b.id}`,
           timestamp: new Date(start),
@@ -146,7 +161,7 @@ export default function WallboardPage() {
           secondary: b.customerName,
         });
       }
-      if (status === 'COMPLETED' && inToday(end)) {
+      if (status === 'COMPLETED' && now - end < windowMs) {
         events.push({
           id: `end-${b.id}`,
           timestamp: new Date(end),
@@ -155,7 +170,7 @@ export default function WallboardPage() {
           secondary: b.customerName,
         });
       }
-      if (payStatus === 'PAID' && b.updatedAt && inToday(new Date(b.updatedAt).getTime())) {
+      if (payStatus === 'PAID' && b.updatedAt && now - new Date(b.updatedAt).getTime() < windowMs) {
         events.push({
           id: `pay-${b.id}`,
           timestamp: new Date(b.updatedAt),
@@ -165,13 +180,25 @@ export default function WallboardPage() {
         });
       }
     });
-
     return events
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, 60);
+      .slice(0, 50);
   }, [bookings, currentTime]);
 
-  if (user?.role !== 'ADMIN') {
+  const openBookingDetail = useCallback((id: string) => {
+    setSelectedBookingId(id);
+    setBookingModalOpen(true);
+  }, []);
+
+  const toolsRailItems: MCToolsRailItem[] = [
+    { key: 'receipts', label: 'Receipts', icon: <Camera className="w-4 h-4" />, onClick: () => navigate('/pos/pending-receipts') },
+    { key: 'scan', label: 'Scan', icon: <FileSearch className="w-4 h-4" />, onClick: () => navigate('/pos/receipt-scan') },
+    { key: 'menu', label: 'Menu', icon: <Utensils className="w-4 h-4" />, onClick: () => navigate('/pos/menu') },
+    { key: 'customers', label: 'Customers', icon: <UsersRound className="w-4 h-4" />, onClick: () => navigate('/admin/customers') },
+    { key: 'time', label: 'Time', icon: <Clock className="w-4 h-4" />, onClick: () => navigate('/pos/time-management') },
+  ];
+
+  if (!isAdmin) {
     return (
       <div className="min-h-screen mc-root flex items-center justify-center">
         <div className="text-center">
@@ -182,270 +209,179 @@ export default function WallboardPage() {
     );
   }
 
-  const clockText = currentTime.toLocaleTimeString('en-CA', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: VENUE_TIMEZONE,
-  });
-
   return (
-    <div
-      className="mc-root grid"
-      style={{
-        height: '100dvh',
-        gridTemplateRows: '56px 1fr 64px',
-      }}
-    >
-      {/* HEADER */}
-      <header
-        className="flex items-center justify-between px-6 border-b"
-        style={{ background: 'var(--mc-bg)', borderColor: 'var(--mc-divider)' }}
-      >
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => navigate('/pos/dashboard')}
-            className="mc-mono text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-            style={{ color: 'var(--mc-text-meta-dim)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--mc-cyan)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--mc-text-meta-dim)')}
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back
-          </button>
-          <div className="flex flex-col leading-tight">
+    <div className="mc-root">
+      <AdminHeader
+        title="K one Golf"
+        subtitle="// POS · WALLBOARD POC"
+        variant="mc"
+        mcRightExtras={
+          <div className="flex items-center gap-2">
+            <WsStatusDot />
+            <PiHealthDot />
+            <MCHealthDot enabled={isAdmin} />
             <span
-              className="text-sm font-semibold"
-              style={{ color: 'var(--mc-text-hero)' }}
-            >
-              K one Golf
-            </span>
-            <span className="mc-section-label">// WALLBOARD · POC</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-5 mc-mono text-[12px]">
-          <Pill label="Clock" value={clockText} />
-          <Pill label="Today" value={String(bookings.length)} />
-          <Pill label="Active" value={String(activeCount)} accent />
-          <Pill label="Attention" value={String(attentionMock.items.length)} />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <WsStatusDot />
-          <PiHealthDot />
-          <MCHealthDot enabled />
-          <span
-            aria-hidden
-            className="inline-block h-5 w-px"
-            style={{ background: 'var(--mc-divider)' }}
-          />
-          <MCAttentionBell
-            items={attentionMock.items}
-            readIds={attentionMock.readIds}
-            onMarkRead={attentionMock.markRead}
-            onMarkAllRead={attentionMock.markAllRead}
-            onOpenItem={(item) => {
-              if (item.linkHref) navigate(item.linkHref);
-            }}
-          />
-        </div>
-      </header>
-
-      {/* MAIN GRID */}
-      <main
-        className="min-h-0 grid gap-3 px-3 py-3"
-        style={{
-          gridTemplateColumns: '280px 1fr 340px',
-          gridTemplateRows: '260px 1fr',
-          gridTemplateAreas: `
-            "stats timeline stream"
-            "rooms attention stream"
-          `,
-        }}
-      >
-        {/* STATS */}
-        <section className="mc-panel p-4 flex flex-col gap-3" style={{ gridArea: 'stats' }}>
-          <div className="mc-section-label">// STATS</div>
-          <div className="flex-1 flex flex-col justify-around">
-            <MCHero
-              number={bookings.length}
-              label="Today's Bookings"
-              sublabel={loading ? 'Loading…' : 'Confirmed + completed'}
-              muted
+              aria-hidden
+              className="inline-block h-5 w-px"
+              style={{ background: 'var(--mc-divider)' }}
             />
-            <MCHero
-              number={activeCount}
-              label="Active Sessions"
-              sublabel="In progress now"
-              accent
-            />
-          </div>
-        </section>
-
-        {/* TIMELINE */}
-        <section className="mc-panel p-4 flex flex-col gap-3 min-h-0" style={{ gridArea: 'timeline' }}>
-          <div className="flex items-center justify-between">
-            <div className="mc-section-label">// TODAY · 6AM → 11PM</div>
-            <span
-              className="mc-mono text-[11px] uppercase tracking-wider"
-              style={{ color: 'var(--mc-text-meta-dim)' }}
-            >
-              {bookings.length} booking{bookings.length === 1 ? '' : 's'}
-            </span>
-          </div>
-          <div className="flex-1 min-h-0">
-            <MCTodayTimeline
-              rooms={rooms}
-              bookings={bookings}
-              onBookingClick={(id) => navigate(`/pos/booking/${id}`)}
-            />
-          </div>
-        </section>
-
-        {/* STREAM */}
-        <section
-          className="mc-panel p-4 flex flex-col min-h-0"
-          style={{ gridArea: 'stream' }}
-        >
-          <MCDataStream events={streamEvents} maxEntries={60} />
-        </section>
-
-        {/* ROOM TILES */}
-        <section className="mc-panel p-4 flex flex-col gap-3 min-h-0" style={{ gridArea: 'rooms' }}>
-          <div className="mc-section-label">// ROOM STATUS</div>
-          <div className="flex-1 min-h-0">
-            <MCRoomTiles
-              rooms={rooms}
-              bookings={bookings}
-              onSelectRoom={(roomId) => {
-                const current = bookings.find((b) => {
-                  if (b.roomId !== roomId) return false;
-                  const now = Date.now();
-                  const start = new Date(b.startTime).getTime();
-                  const end = new Date(b.endTime).getTime();
-                  return start <= now && end > now;
-                });
-                if (current) navigate(`/pos/booking/${current.id}`);
+            <MCAttentionBell
+              items={attentionMock.items}
+              readIds={attentionMock.readIds}
+              onMarkRead={attentionMock.markRead}
+              onMarkAllRead={attentionMock.markAllRead}
+              onOpenItem={(item) => {
+                if (item.linkHref) navigate(item.linkHref);
               }}
             />
           </div>
-        </section>
+        }
+      />
 
-        {/* ATTENTION */}
-        <section
-          className="mc-panel flex flex-col min-h-0 overflow-hidden"
-          style={{ gridArea: 'attention' }}
-        >
-          <MCAttentionList
-            items={attentionMock.items}
-            readIds={attentionMock.readIds}
-            onMarkRead={attentionMock.markRead}
-            onMarkAllRead={attentionMock.markAllRead}
-            onOpenItem={(item) => {
-              if (item.linkHref) navigate(item.linkHref);
-            }}
-            listClassName="flex-1 overflow-y-auto"
-          />
-        </section>
+      <MCRoomRail
+        rooms={rooms}
+        bookings={bookings}
+        isReadOnly={isReadOnly}
+        onSelectRoom={(roomId) => {
+          const current = bookings.find((b) => {
+            if (b.roomId !== roomId) return false;
+            const now = Date.now();
+            const start = new Date(b.startTime).getTime();
+            const end = new Date(b.endTime).getTime();
+            return start <= now && end > now;
+          });
+          if (current) {
+            openBookingDetail(current.id);
+          } else if (!isReadOnly) {
+            setPreselectedRoomId(roomId);
+            setShowCreateModal(true);
+          }
+        }}
+      />
+      <MCTelemetryRail
+        bookingsCount={bookings.length}
+        roomsCount={rooms.length}
+        activeCount={activeCount}
+        lastSync={lastSync}
+      />
+
+      <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-8 max-w-[1800px] 2xl:max-w-none">
+        {/* Top zone: Stats | Timeline+Attention | Data Stream */}
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-2">
+          {/* LEFT — stacked stats + controls */}
+          <div className="flex flex-col gap-2">
+            <div className="mc-panel py-6">
+              <MCHero
+                number={bookings.length}
+                label="Total Bookings"
+                sublabel="Loaded this session"
+                muted
+              />
+            </div>
+            <div className="mc-panel py-6">
+              <MCHero
+                number={activeCount}
+                label="Active Sessions"
+                sublabel={`${todayCount} bookings today`}
+                accent
+                legend={[
+                  { variant: 'cyan', label: 'Occupied' },
+                  { variant: 'purple', label: 'Recently ended' },
+                  { variant: 'gray', label: 'Available' },
+                ]}
+              />
+            </div>
+            <div className="mc-panel py-4">
+              {!isReadOnly && (
+                <>
+                  <div className="mc-section-label px-5 pb-2">Actions</div>
+                  <div className="px-5 pb-4">
+                    <MCActionDock
+                      onCreateBooking={() => setShowCreateModal(true)}
+                      onQuickSale={async () => {
+                        try {
+                          const booking = await createQuickSale();
+                          navigate(`/pos/booking/${booking.id}`);
+                        } catch (err: any) {
+                          alert(err.message || 'Failed to create quick sale');
+                        }
+                      }}
+                    />
+                  </div>
+                  <div
+                    aria-hidden
+                    className="mx-5"
+                    style={{ height: 1, background: 'var(--mc-divider-soft)' }}
+                  />
+                </>
+              )}
+              <div className="mc-section-label px-5 pt-3 pb-2">Tools</div>
+              <MCToolsRail items={toolsRailItems} variant="vertical" />
+            </div>
+          </div>
+
+          {/* CENTER — Timeline (week) + Attention panel beneath */}
+          <div className="flex flex-col gap-2 min-w-0">
+            <TimelineView
+              bookings={bookings}
+              rooms={rooms}
+              onBookingClick={openBookingDetail}
+              currentWeekStart={currentWeekStart}
+              setCurrentWeekStart={setCurrentWeekStart}
+              taxRate={8}
+              activeTimezone={activeTimezone}
+              timelineTz={timelineTz}
+              setTimelineTz={(tz) => {
+                localStorage.setItem('pos-timeline-tz', tz);
+                setTimelineTz(tz);
+              }}
+            />
+
+            {/* ATTENTION panel — beneath the weekly timeline */}
+            <div className="mc-panel py-4">
+              <MCAttentionList
+                items={attentionMock.items}
+                readIds={attentionMock.readIds}
+                onMarkRead={attentionMock.markRead}
+                onMarkAllRead={attentionMock.markAllRead}
+                onOpenItem={(item) => {
+                  if (item.linkHref) navigate(item.linkHref);
+                }}
+                listClassName="max-h-[320px] overflow-y-auto"
+              />
+            </div>
+          </div>
+
+          {/* RIGHT — Data stream */}
+          <div className="mc-panel py-6 max-h-[720px] overflow-hidden">
+            <MCDataStream events={derivedStreamEvents} />
+          </div>
+        </div>
       </main>
 
-      {/* FOOTER ACTION DOCK */}
-      <footer
-        className="flex items-center justify-between px-6 border-t"
-        style={{ background: 'var(--mc-bg)', borderColor: 'var(--mc-divider)' }}
-      >
-        <div className="flex items-center gap-3">
-          <FooterPrimary icon={<Plus className="w-4 h-4" />} label="Booking" onClick={() => navigate('/pos/dashboard')} />
-          <FooterPrimary icon={<ShoppingBag className="w-4 h-4" />} label="Quick Sale" onClick={() => navigate('/pos/dashboard')} />
-        </div>
-        <div className="flex items-center gap-4">
-          <FooterChip icon={<Utensils className="w-3.5 h-3.5" />} label="Menu" onClick={() => navigate('/pos/menu')} />
-          <FooterChip icon={<ClockIcon className="w-3.5 h-3.5" />} label="Time" onClick={() => navigate('/pos/time-management')} />
-          <FooterChip icon={<Camera className="w-3.5 h-3.5" />} label="Receipts" onClick={() => navigate('/pos/pending-receipts')} />
-          <FooterChip icon={<UsersRound className="w-3.5 h-3.5" />} label="Customers" onClick={() => navigate('/admin/customers')} />
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function Pill({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <span
-        className="text-[10px] uppercase tracking-[0.14em]"
-        style={{ color: 'var(--mc-text-meta-dim)' }}
-      >
-        {label}
-      </span>
-      <span
-        className="mc-mono"
-        style={{
-          color: accent ? 'var(--mc-cyan)' : 'var(--mc-text-primary)',
-          fontSize: 14,
+      <BookingModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setPreselectedRoomId(undefined);
         }}
-      >
-        {value}
-      </span>
+        rooms={rooms}
+        onSuccess={() => {
+          loadData();
+        }}
+        preselectedRoomId={preselectedRoomId}
+      />
+
+      <BookingDetailModal
+        bookingId={selectedBookingId}
+        open={bookingModalOpen}
+        onOpenChange={setBookingModalOpen}
+        onClose={() => {
+          setBookingModalOpen(false);
+          setSelectedBookingId(null);
+          loadData();
+        }}
+      />
     </div>
-  );
-}
-
-function FooterPrimary({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-2 px-4 py-2 rounded-sm mc-mono text-[12px] uppercase tracking-wider transition-colors"
-      style={{
-        color: 'var(--mc-cyan)',
-        border: '1px solid var(--mc-cyan)',
-        background: 'transparent',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(29, 224, 197, 0.08)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-      }}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-function FooterChip({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-1.5 mc-mono text-[11px] uppercase tracking-wider transition-colors"
-      style={{ color: 'var(--mc-text-meta)' }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--mc-cyan)')}
-      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--mc-text-meta)')}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
