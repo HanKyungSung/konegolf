@@ -1,5 +1,8 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Zap } from 'lucide-react';
+
+/** Ceiling on the Telegraph entrance animation (translate 520ms + flash 1400ms + safety). */
+const TELEGRAPH_DURATION_MS = 1500;
 
 export type MCStreamEventType =
   | 'BookingCreate'
@@ -83,6 +86,47 @@ export function MCDataStream({
     seenIdsRef.current = new Set(capped.map((ev) => ev.id));
   }, [capped]);
 
+  // Animation class lifetime decoupled from detection so the class survives
+  // intermediate re-renders (e.g. the dashboard's 1-second clock tick) for
+  // the full animation duration.
+  const [animatingIds, setAnimatingIds] = useState<Set<string>>(() => new Set());
+  const timersRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    if (newIds.size === 0) return;
+    setAnimatingIds((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      newIds.forEach((id) => {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+    newIds.forEach((id) => {
+      if (timersRef.current.has(id)) return;
+      const handle = window.setTimeout(() => {
+        timersRef.current.delete(id);
+        setAnimatingIds((prev) => {
+          if (!prev.has(id)) return prev;
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, TELEGRAPH_DURATION_MS);
+      timersRef.current.set(id, handle);
+    });
+  }, [newIds]);
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach((handle) => window.clearTimeout(handle));
+      timersRef.current.clear();
+    };
+  }, []);
+
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = 0;
@@ -125,7 +169,7 @@ export function MCDataStream({
         ) : (
           <ul className="flex flex-col gap-4">
             {capped.map((ev) => {
-              const isNew = newIds.has(ev.id);
+              const isNew = animatingIds.has(ev.id);
               const className = [
                 'mc-stream-entry mc-mono text-[13px] leading-snug',
                 isNew ? 'mc-stream-new' : '',
