@@ -12,6 +12,8 @@ export interface TimelineViewProps {
   activeTimezone: string;
   timelineTz: 'venue' | 'browser';
   setTimelineTz: (tz: 'venue' | 'browser') => void;
+  /** Hide Prev/Next week buttons (useful for wallboards locked to current week). */
+  hideWeekNav?: boolean;
 }
 
 const ROOM_COLORS = [
@@ -51,6 +53,7 @@ export function TimelineView({
   activeTimezone,
   timelineTz,
   setTimelineTz,
+  hideWeekNav = false,
 }: TimelineViewProps) {
   const dayStart = 10 * 60;
   const dayEnd = 24 * 60;
@@ -112,13 +115,15 @@ export function TimelineView({
       {/* Header panel */}
       <div className="mc-panel px-5 py-3 flex items-center gap-3 flex-wrap">
         <div className="mc-section-label flex-1 min-w-[160px]">Weekly Timeline</div>
-        <button
-          className="mc-btn"
-          style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-          onClick={() => navigateWeek('prev')}
-        >
-          ← Prev
-        </button>
+        {!hideWeekNav && (
+          <button
+            className="mc-btn"
+            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+            onClick={() => navigateWeek('prev')}
+          >
+            ← Prev
+          </button>
+        )}
         <span className="mc-mono mc-meta text-xs min-w-[180px] text-center">
           {weekDays[0].toLocaleDateString('en-US', {
             month: 'short',
@@ -133,13 +138,15 @@ export function TimelineView({
             timeZone: activeTimezone,
           })}
         </span>
-        <button
-          className="mc-btn"
-          style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-          onClick={() => navigateWeek('next')}
-        >
-          Next →
-        </button>
+        {!hideWeekNav && (
+          <button
+            className="mc-btn"
+            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+            onClick={() => navigateWeek('next')}
+          >
+            Next →
+          </button>
+        )}
         <button
           className="mc-btn"
           style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
