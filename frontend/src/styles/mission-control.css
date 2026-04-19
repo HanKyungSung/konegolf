@@ -179,6 +179,63 @@
   }
 }
 
+/*
+ * New-event telegraph animation.
+ * Applied to .mc-stream-entry.mc-stream-new.mc-stream-new--telegraph.
+ * Keeps the entry in normal document flow while a ::before pseudo paints
+ * the animated cyan accent + background wash so layout never shifts.
+ */
+.mc-stream-new {
+  position: relative;
+}
+
+.mc-stream-new--telegraph {
+  animation: mcStreamTelegraphIn 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mc-stream-new--telegraph::before {
+  content: '';
+  position: absolute;
+  inset: -2px -4px -2px -6px;
+  border-left: 2px solid var(--mc-cyan);
+  background: linear-gradient(
+    90deg,
+    rgba(29, 224, 197, 0.18) 0%,
+    rgba(29, 224, 197, 0.06) 35%,
+    transparent 90%
+  );
+  box-shadow: -6px 0 14px -4px rgba(29, 224, 197, 0.55);
+  pointer-events: none;
+  animation: mcStreamTelegraphFlash 1400ms ease-out both;
+}
+
+@keyframes mcStreamTelegraphIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mcStreamTelegraphFlash {
+  0% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Hero number tick */
 .mc-tick {
   animation: mcTick 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -440,6 +497,8 @@
   .mc-pulse,
   .mc-pulse-ring,
   .mc-stream-entry,
+  .mc-stream-new--telegraph,
+  .mc-stream-new--telegraph::before,
   .mc-tick {
     animation: none !important;
   }

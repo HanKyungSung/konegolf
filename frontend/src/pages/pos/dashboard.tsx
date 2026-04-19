@@ -32,6 +32,7 @@ import {
   MCHealthDot,
   MCTaxDialog,
   type MCStreamEvent,
+  type MCStreamEventType,
   type MCToolsRailItem,
 } from '@/components/mc';
 import {
@@ -47,6 +48,7 @@ export default function POSDashboard() {
   const navigate = useNavigate();
   const isReadOnly = user?.role === 'SALES';
   const isStaff = user?.role === 'STAFF';
+  const isAdmin = user?.role === 'ADMIN';
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -251,7 +253,7 @@ export default function POSDashboard() {
   }, [bookings]);
 
   // Derive the real-time data stream from bookings/rooms
-  const streamEvents = useMemo<MCStreamEvent[]>(() => {
+  const derivedStreamEvents = useMemo<MCStreamEvent[]>(() => {
     const events: MCStreamEvent[] = [];
     const now = currentTime.getTime();
     const windowMs = 24 * 60 * 60 * 1000;
@@ -309,6 +311,56 @@ export default function POSDashboard() {
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, 50);
   }, [bookings, currentTime]);
+
+  // Admin-only synthetic events for previewing the stream animation.
+  const [devEvents, setDevEvents] = useState<MCStreamEvent[]>([]);
+  const streamEvents = useMemo<MCStreamEvent[]>(
+    () => [...devEvents, ...derivedStreamEvents].slice(0, 50),
+    [devEvents, derivedStreamEvents],
+  );
+
+  const handleSimulateEvent = () => {
+    const types: MCStreamEventType[] = ['BookingCreate', 'SessionStart', 'PaymentSettle', 'QuickSale'];
+    const roomPool = rooms.length ? rooms.map((r) => r.name) : ['Room 1', 'Room 2'];
+    const namePool = ['Demo Golfer', 'Walk-In', 'Jordan K.', 'Alex P.', 'Sam R.'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const room = roomPool[Math.floor(Math.random() * roomPool.length)];
+    const customer = namePool[Math.floor(Math.random() * namePool.length)];
+    const players = 1 + Math.floor(Math.random() * 4);
+    const amount = (50 + Math.floor(Math.random() * 200)).toFixed(2);
+
+    let primary = `${room}`;
+    let meta: string | undefined;
+    switch (type) {
+      case 'BookingCreate':
+        primary = `${room} · ${players}p · 1h`;
+        meta = 'DEMO';
+        break;
+      case 'SessionStart':
+        primary = `${room} · until ${new Date(Date.now() + 60 * 60 * 1000).toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: VENUE_TIMEZONE })}`;
+        break;
+      case 'PaymentSettle':
+        primary = `${room} · $${amount}`;
+        break;
+      case 'QuickSale':
+        primary = `${room} · $${amount}`;
+        meta = 'DEMO';
+        break;
+      default:
+        break;
+    }
+
+    const newEvent: MCStreamEvent = {
+      id: `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: new Date(),
+      type,
+      primary,
+      secondary: customer,
+      meta,
+    };
+
+    setDevEvents((prev) => [newEvent, ...prev].slice(0, 10));
+  };
 
   // Hero number: currently active sessions
   const activeCount = currentBookings.length;
@@ -493,7 +545,10 @@ export default function POSDashboard() {
 
           {/* RIGHT — Data stream */}
           <div className="mc-panel py-6 max-h-[720px] overflow-hidden">
-            <MCDataStream events={streamEvents} />
+            <MCDataStream
+              events={streamEvents}
+              onSimulate={isAdmin ? handleSimulateEvent : undefined}
+            />
           </div>
         </div>
 
