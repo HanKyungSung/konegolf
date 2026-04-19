@@ -77,17 +77,6 @@ export default function WallboardPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  // Keep wallboard pinned to the current week — snap `currentWeekStart` forward
-  // whenever the local day changes so the rolling 7-day window stays fresh
-  // without a manual refresh.
-  useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (today.getTime() !== currentWeekStart.getTime()) {
-      setCurrentWeekStart(today);
-    }
-  }, [currentTime, currentWeekStart]);
-
   const loadData = useCallback(async () => {
     try {
       const week = weekRange(currentWeekStart);
@@ -346,7 +335,8 @@ export default function WallboardPage() {
                 localStorage.setItem('pos-timeline-tz', tz);
                 setTimelineTz(tz);
               }}
-              hideWeekNav
+              daysToShow={1}
+              navStep="day"
             />
 
             {/* ATTENTION panel — beneath the weekly timeline */}

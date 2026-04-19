@@ -14,6 +14,10 @@ export interface TimelineViewProps {
   setTimelineTz: (tz: 'venue' | 'browser') => void;
   /** Hide Prev/Next week buttons (useful for wallboards locked to current week). */
   hideWeekNav?: boolean;
+  /** Number of day panels to render, starting at currentWeekStart. Defaults to 7. */
+  daysToShow?: number;
+  /** How far Prev/Next moves the anchor date. Defaults to 'week'. */
+  navStep?: 'day' | 'week';
 }
 
 const ROOM_COLORS = [
@@ -54,6 +58,8 @@ export function TimelineView({
   timelineTz,
   setTimelineTz,
   hideWeekNav = false,
+  daysToShow = 7,
+  navStep = 'week',
 }: TimelineViewProps) {
   const dayStart = 10 * 60;
   const dayEnd = 24 * 60;
@@ -67,19 +73,26 @@ export function TimelineView({
   }, []);
 
   const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
+    return Array.from({ length: daysToShow }, (_, i) => {
       const day = new Date(currentWeekStart);
       day.setDate(currentWeekStart.getDate() + i);
       return day;
     });
-  }, [currentWeekStart]);
+  }, [currentWeekStart, daysToShow]);
 
   const navigateWeek = (dir: 'prev' | 'next') => {
+    const stride = navStep === 'day' ? 1 : 7;
     setCurrentWeekStart((prev) => {
       const newDate = new Date(prev);
-      newDate.setDate(prev.getDate() + (dir === 'prev' ? -7 : 7));
+      newDate.setDate(prev.getDate() + (dir === 'prev' ? -stride : stride));
       return newDate;
     });
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(today);
   };
 
   const dateKey = (d: Date) => toDateStringInTz(d, activeTimezone);
@@ -114,7 +127,9 @@ export function TimelineView({
     <>
       {/* Header panel */}
       <div className="mc-panel px-5 py-3 flex items-center gap-3 flex-wrap">
-        <div className="mc-section-label flex-1 min-w-[160px]">Weekly Timeline</div>
+        <div className="mc-section-label flex-1 min-w-[160px]">
+          {daysToShow === 1 ? 'Daily Timeline' : 'Weekly Timeline'}
+        </div>
         {!hideWeekNav && (
           <button
             className="mc-btn"
@@ -125,18 +140,24 @@ export function TimelineView({
           </button>
         )}
         <span className="mc-mono mc-meta text-xs min-w-[180px] text-center">
-          {weekDays[0].toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            timeZone: activeTimezone,
-          })}{' '}
-          –{' '}
-          {weekDays[6].toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            timeZone: activeTimezone,
-          })}
+          {daysToShow === 1
+            ? weekDays[0].toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: activeTimezone,
+              })
+            : `${weekDays[0].toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                timeZone: activeTimezone,
+              })} – ${weekDays[weekDays.length - 1].toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: activeTimezone,
+              })}`}
         </span>
         {!hideWeekNav && (
           <button
@@ -145,6 +166,15 @@ export function TimelineView({
             onClick={() => navigateWeek('next')}
           >
             Next →
+          </button>
+        )}
+        {!hideWeekNav && (
+          <button
+            className="mc-btn"
+            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+            onClick={goToToday}
+          >
+            Today
           </button>
         )}
         <button
