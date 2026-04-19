@@ -7,6 +7,7 @@ import POSMenuManagement from './menu-management';
 import POSTimeManagement from './time-management';
 import PendingReceiptsPage from './pending-receipts';
 import AttentionPreviewPage from './attention-preview';
+import WallboardPage from './wallboard';
 
 /**
  * POS Routes
@@ -54,6 +55,7 @@ export default function POSRoutes() {
       <Route path="time-management" element={<TimeManagementWrapper />} />
       <Route path="pending-receipts" element={<PendingReceiptsWrapper />} />
       <Route path="dev/attention" element={<AttentionPreviewPage />} />
+      <Route path="dev/wallboard" element={<WallboardPage />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );

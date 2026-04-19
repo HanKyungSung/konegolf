@@ -12,4 +12,7 @@ export { MCActionDock } from './MCActionDock';
 export { MCHealthDot } from './MCHealthDot';
 export { MCTaxDialog } from './MCTaxDialog';
 export { MCAttentionBell } from './MCAttentionBell';
+export { MCAttentionList } from './MCAttentionList';
+export { MCRoomTiles } from './MCRoomTiles';
+export { MCTodayTimeline } from './MCTodayTimeline';
 export type { AttentionItem, AttentionKind, AttentionSeverity } from './MCAttentionBell';

@@ -510,6 +510,14 @@
   }
 }
 
+/* Room tile hover */
+.mc-room-tile {
+  transition: background-color 140ms ease-out, border-color 140ms ease-out;
+}
+.mc-room-tile:hover {
+  background: var(--mc-bg-raised, rgba(29, 224, 197, 0.03)) !important;
+}
+
 /*
  * Attention bell (MCAttentionBell)
  * Header glyph + popover list of actionable items.
