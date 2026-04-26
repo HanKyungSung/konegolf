@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useWebSocket, useWsEvent } from '@/hooks/use-websocket';
 import { useAttentionMock } from '@/hooks/use-attention-mock';
-import { useMockLogTail } from '@/hooks/use-mock-log-tail';
+import { useMockLogTail, type LogLine } from '@/hooks/use-mock-log-tail';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Users, Camera, FileSearch, Utensils, UsersRound, Percent } from 'lucide-react';
 import {
@@ -38,6 +38,7 @@ import {
   MCAttentionBell,
   MCAttentionList,
   MCLogTail,
+  MCLogDetailDialog,
   MCTaxDialog,
   TimelineView,
   type MCStreamEvent,
@@ -63,6 +64,7 @@ export default function POSDashboard() {
   // and WS-driven hook will replace this in Phase 2.
   const attentionMock = useAttentionMock();
   const logLines = useMockLogTail(200);
+  const [selectedLog, setSelectedLog] = useState<LogLine | null>(null);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -631,7 +633,7 @@ export default function POSDashboard() {
               />
             </div>
             <div className="mc-panel py-4 px-4 flex-1 min-h-0 overflow-hidden basis-[45%]">
-              <MCLogTail lines={logLines} />
+              <MCLogTail lines={logLines} onLineClick={setSelectedLog} />
             </div>
           </div>
         </div>
@@ -703,6 +705,13 @@ export default function POSDashboard() {
         onSave={async (rate) => {
           await updateGlobalTaxRate(rate);
           setTaxRate(rate);
+        }}
+      />
+
+      <MCLogDetailDialog
+        line={selectedLog}
+        onOpenChange={(open) => {
+          if (!open) setSelectedLog(null);
         }}
       />
     </div>

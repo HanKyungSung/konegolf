@@ -17,4 +17,5 @@ export { MCRoomTiles } from './MCRoomTiles';
 export { MCTodayTimeline } from './MCTodayTimeline';
 export { TimelineView } from './TimelineView';
 export { MCLogTail } from './MCLogTail';
+export { MCLogDetailDialog } from './MCLogDetailDialog';
 export type { AttentionItem, AttentionKind, AttentionSeverity } from './MCAttentionBell';

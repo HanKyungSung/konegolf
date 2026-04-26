@@ -7,6 +7,8 @@ interface MCLogTailProps {
   heading?: React.ReactNode;
   /** Filter to a subset of levels. Defaults to all. */
   levels?: LogLevel[];
+  /** Click handler for a log line. When provided, rows render as buttons. */
+  onLineClick?: (line: LogLine) => void;
 }
 
 const LEVEL_COLOR: Record<LogLevel, string> = {
@@ -27,7 +29,7 @@ function formatTs(d: Date): string {
  * Compact, scrolling backend log tail. Auto-scrolls to bottom on new lines
  * unless the user has scrolled up (then we hold position).
  */
-export function MCLogTail({ lines, heading, levels }: MCLogTailProps) {
+export function MCLogTail({ lines, heading, levels, onLineClick }: MCLogTailProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
 
@@ -85,7 +87,20 @@ export function MCLogTail({ lines, heading, levels }: MCLogTailProps) {
           </div>
         ) : (
           filtered.map((line) => (
-            <div key={line.id} className="flex gap-2 whitespace-nowrap">
+            <button
+              key={line.id}
+              type="button"
+              onClick={() => onLineClick?.(line)}
+              disabled={!onLineClick}
+              className="mc-log-row flex gap-2 whitespace-nowrap w-full text-left px-1 -mx-1 rounded-sm transition-colors disabled:cursor-default"
+              style={{ background: 'transparent' }}
+              onMouseEnter={(e) => {
+                if (onLineClick) e.currentTarget.style.background = 'rgba(29,224,197,0.06)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
               <span style={{ color: 'var(--mc-text-meta-dim)' }}>
                 {formatTs(line.ts)}
               </span>
@@ -114,7 +129,7 @@ export function MCLogTail({ lines, heading, levels }: MCLogTailProps) {
               >
                 {line.message}
               </span>
-            </div>
+            </button>
           ))
         )}
       </div>
