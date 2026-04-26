@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import type { AttentionItem, AttentionKind } from './MCAttentionBell';
+import { MCPanelHeader } from './MCSection';
 
 interface MCAttentionListProps {
   items: AttentionItem[];
@@ -14,6 +15,8 @@ interface MCAttentionListProps {
   listClassName?: string;
   /** Hide the header bar entirely. */
   hideHeader?: boolean;
+  /** Optional id for aria-labelledby when this list acts as a dialog body. */
+  headingId?: string;
 }
 
 const KIND_LABEL: Record<AttentionKind, string> = {
@@ -50,6 +53,7 @@ export function MCAttentionList({
   heading,
   listClassName = 'max-h-[60vh] overflow-y-auto',
   hideHeader = false,
+  headingId,
 }: MCAttentionListProps) {
   const [nowTick, setNowTick] = useState(() => Date.now());
   useEffect(() => {
@@ -64,16 +68,19 @@ export function MCAttentionList({
   const defaultHeading = (
     <>// ATTENTION{items.length > 0 ? ` · ${items.length} OPEN` : ''}</>
   );
+  const scrollClassName = `${listClassName} mc-scroll-thin`;
 
   return (
     <>
       {!hideHeader && (
-        <div
-          className="flex items-center justify-between px-4 py-3 border-b"
-          style={{ borderColor: 'var(--mc-divider)' }}
-        >
-          <div className="mc-section-label">{heading ?? defaultHeading}</div>
-          {unreadCount > 0 && onMarkAllRead && (
+        <MCPanelHeader
+          label={heading ?? defaultHeading}
+          headingId={headingId}
+          as="div"
+          border
+          flush
+          className="px-4 py-3"
+          right={unreadCount > 0 && onMarkAllRead ? (
             <button
               type="button"
               onClick={onMarkAllRead}
@@ -84,8 +91,8 @@ export function MCAttentionList({
             >
               Mark all read
             </button>
-          )}
-        </div>
+          ) : null}
+        />
       )}
 
       {isIdle ? (
@@ -101,7 +108,7 @@ export function MCAttentionList({
           </span>
         </div>
       ) : (
-        <ul role="list" aria-live="polite" className={listClassName}>
+        <ul role="list" aria-live="polite" className={scrollClassName}>
           {items.map((item, idx) => {
             const isRead = read.has(item.id);
             const pipColor =

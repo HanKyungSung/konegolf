@@ -110,11 +110,7 @@ export function MCAttentionBell({
         <div
           role="dialog"
           aria-labelledby="mc-attn-heading"
-          className="mc-panel overflow-hidden"
-          style={{
-            boxShadow:
-              '0 8px 32px rgba(29, 224, 197, 0.08), 0 2px 8px rgba(0,0,0,0.4)',
-          }}
+          className="mc-panel mc-popover-panel overflow-hidden"
         >
           <MCAttentionList
             items={items}
@@ -122,6 +118,7 @@ export function MCAttentionBell({
             onMarkRead={onMarkRead}
             onMarkAllRead={onMarkAllRead}
             onOpenItem={onOpenItem}
+            headingId="mc-attn-heading"
           />
         </div>
       </PopoverContent>

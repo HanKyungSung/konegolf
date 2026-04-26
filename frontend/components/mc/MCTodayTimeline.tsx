@@ -151,10 +151,7 @@ export function MCTodayTimeline({
             )}
 
             {/* Lanes */}
-            <div
-              className="absolute inset-0 overflow-y-auto"
-              style={{ scrollbarWidth: 'thin' }}
-            >
+            <div className="absolute inset-0 overflow-y-auto mc-scroll-thin">
               {sortedRooms.map((room, idx) => {
                 const color = ROOM_COLORS[idx % ROOM_COLORS.length];
                 const laneBookings = todayBookings.filter(

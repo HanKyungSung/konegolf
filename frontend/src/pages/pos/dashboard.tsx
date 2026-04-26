@@ -548,7 +548,7 @@ export default function POSDashboard() {
           </div>
 
           {/* BOTTOM — controls, Attention, Data Stream, and Backend Log in one operational row. */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[210px_minmax(250px,0.85fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 lg:min-h-0 lg:h-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_minmax(250px,0.85fr)_minmax(0,0.8fr)_minmax(0,1fr)] gap-2 lg:min-h-0 lg:h-full">
             <div className="mc-panel py-3 flex flex-col min-h-[260px] lg:min-h-0 overflow-hidden">
               {!isReadOnly && (
                 <>

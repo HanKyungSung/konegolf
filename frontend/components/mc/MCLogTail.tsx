@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { LogLine, LogLevel } from '@/hooks/use-mock-log-tail';
+import { MCPanelHeader } from './MCSection';
 
 interface MCLogTailProps {
   lines: LogLine[];
@@ -57,26 +58,27 @@ export function MCLogTail({ lines, heading, levels, onLineClick }: MCLogTailProp
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-baseline justify-between px-1 pb-2 flex-shrink-0">
-        <div className="mc-section-label">
-          {heading ?? '// BACKEND · LOG TAIL'}
-        </div>
-        <div className="flex items-center gap-2 mc-mono text-[10px] uppercase tracking-wider">
-          {(['ERROR', 'WARN', 'INFO'] as LogLevel[]).map((lvl) =>
-            counts[lvl] ? (
-              <span key={lvl} style={{ color: LEVEL_COLOR[lvl] }}>
-                {lvl[0]}·{counts[lvl]}
-              </span>
-            ) : null,
-          )}
-        </div>
-      </div>
+      <MCPanelHeader
+        label={heading ?? '// BACKEND · LOG TAIL'}
+        tight
+        className="px-1"
+        right={
+          <div className="flex items-center gap-2 mc-mono text-[10px] uppercase tracking-wider">
+            {(['ERROR', 'WARN', 'INFO'] as LogLevel[]).map((lvl) =>
+              counts[lvl] ? (
+                <span key={lvl} style={{ color: LEVEL_COLOR[lvl] }}>
+                  {lvl[0]}·{counts[lvl]}
+                </span>
+              ) : null,
+            )}
+          </div>
+        }
+      />
 
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto mc-mono text-[11px] leading-[1.45] px-1"
-        style={{ scrollbarWidth: 'thin' }}
+        className="flex-1 min-h-0 overflow-y-auto mc-scroll-thin mc-mono text-[11px] leading-[1.45] px-1"
       >
         {filtered.length === 0 ? (
           <div

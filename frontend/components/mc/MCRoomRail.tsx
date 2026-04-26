@@ -51,7 +51,7 @@ export function MCRoomRail({
         <div className="mc-section-label mb-1">Now Playing</div>
         <div className="mc-meta-dim mc-mono mb-4">{sorted.length} rooms</div>
 
-        <ul className="flex flex-col gap-3 overflow-y-auto flex-1" style={{ scrollbarWidth: 'none' }}>
+        <ul className="flex flex-col gap-3 overflow-y-auto flex-1 mc-scroll-none">
           {sorted.map((room) => {
             const current = bookings.find((b) => {
               if (b.roomId !== room.id) return false;
@@ -94,7 +94,7 @@ export function MCRoomRail({
                       <PopoverContent
                         align="start"
                         sideOffset={6}
-                        className="w-44 p-1 bg-[color:var(--mc-surface-raised,#0f1628)] border-[color:var(--mc-divider)] text-white"
+                        className="mc-popover-content w-44 p-1"
                       >
                         <div className="mc-section-label px-2 pt-1 pb-1">{room.name}</div>
                         <div className="flex flex-col">

@@ -37,27 +37,21 @@ export function MCLogDetailDialog({ line, onOpenChange }: MCLogDetailDialogProps
       >
         {line && (
           <div
-            className="relative rounded-sm overflow-hidden"
+            className="mc-dialog-frame"
             style={{
-              background:
-                'linear-gradient(180deg, rgba(15,22,40,0.96) 0%, rgba(8,12,22,0.96) 100%)',
               border: `1px solid ${accent}`,
               boxShadow: `0 0 0 1px rgba(0,0,0,0.4), 0 0 24px -2px ${accent}, inset 0 1px 0 rgba(255,255,255,0.04)`,
             }}
           >
             <div
               aria-hidden
-              className="absolute inset-x-0 top-0"
+              className="mc-dialog-frame-accent"
               style={{
-                height: 1,
                 background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
               }}
             />
 
-            <div
-              className="px-5 py-3 flex items-center gap-3 border-b"
-              style={{ borderColor: 'var(--mc-divider)' }}
-            >
+            <div className="mc-dialog-header">
               <span
                 className="mc-mono text-[11px] uppercase tracking-[0.2em] px-2 py-0.5 rounded-sm"
                 style={{
@@ -85,7 +79,7 @@ export function MCLogDetailDialog({ line, onOpenChange }: MCLogDetailDialogProps
               </span>
             </div>
 
-            <div className="px-5 py-4 space-y-3">
+            <div className="mc-dialog-body space-y-3">
               <div>
                 <div className="mc-section-label mb-1">// MESSAGE</div>
                 <div
@@ -115,11 +109,9 @@ export function MCLogDetailDialog({ line, onOpenChange }: MCLogDetailDialogProps
                 <div>
                   <div className="mc-section-label mb-1">// PAYLOAD</div>
                   <pre
-                    className="mc-mono text-[11px] leading-[1.5] p-3 rounded-sm overflow-auto max-h-[180px]"
+                    className="mc-code-block mc-scroll-thin mc-mono text-[11px] leading-[1.5] p-3 overflow-auto max-h-[180px]"
                     style={{
                       color: 'var(--mc-text-primary)',
-                      background: 'rgba(0,0,0,0.4)',
-                      border: '1px solid var(--mc-divider-soft)',
                     }}
                   >
                     {JSON.stringify(line.payload, null, 2)}
@@ -131,10 +123,9 @@ export function MCLogDetailDialog({ line, onOpenChange }: MCLogDetailDialogProps
                 <div>
                   <div className="mc-section-label mb-1">// STACK</div>
                   <pre
-                    className="mc-mono text-[11px] leading-[1.5] p-3 rounded-sm overflow-auto max-h-[180px]"
+                    className="mc-code-block mc-scroll-thin mc-mono text-[11px] leading-[1.5] p-3 overflow-auto max-h-[180px]"
                     style={{
                       color: 'var(--mc-magenta)',
-                      background: 'rgba(0,0,0,0.4)',
                       border: '1px solid rgba(244,122,165,0.35)',
                     }}
                   >
@@ -144,10 +135,7 @@ export function MCLogDetailDialog({ line, onOpenChange }: MCLogDetailDialogProps
               )}
             </div>
 
-            <div
-              className="px-5 py-2.5 flex items-center justify-between border-t"
-              style={{ borderColor: 'var(--mc-divider)' }}
-            >
+            <div className="mc-dialog-footer">
               <span
                 className="mc-mono text-[10px] uppercase tracking-[0.2em]"
                 style={{ color: 'var(--mc-text-meta-dim)' }}

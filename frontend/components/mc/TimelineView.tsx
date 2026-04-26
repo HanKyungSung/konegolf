@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Booking, Room } from '@/services/pos-api';
 import { toDateStringInTz, getTimePartsInTz } from '@/lib/timezone';
+import { MCPanelHeader } from './MCSection';
 
 export interface TimelineViewProps {
   bookings: Booking[];
@@ -129,75 +130,81 @@ export function TimelineView({
   return (
     <>
       {/* Header panel */}
-      <div className={`mc-panel px-5 ${compact ? 'py-2' : 'py-3'} flex items-center gap-3 flex-wrap`}>
-        <div className="mc-section-label flex-1 min-w-[160px]">
-          {daysToShow === 1 ? 'Daily Timeline' : 'Weekly Timeline'}
-        </div>
-        {!hideWeekNav && (
-          <button
-            className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-            onClick={() => navigateWeek('prev')}
-          >
-            ← Prev
-          </button>
-        )}
-        <span className="mc-mono mc-meta text-xs min-w-[180px] text-center">
-          {daysToShow === 1
-            ? weekDays[0].toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                timeZone: activeTimezone,
-              })
-            : `${weekDays[0].toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                timeZone: activeTimezone,
-              })} – ${weekDays[weekDays.length - 1].toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                timeZone: activeTimezone,
-              })}`}
-        </span>
-        {!hideWeekNav && (
-          <button
-            className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-            onClick={() => navigateWeek('next')}
-          >
-            Next →
-          </button>
-        )}
-        {!hideWeekNav && (
-          <button
-            className="mc-btn"
-            style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-            onClick={goToToday}
-          >
-            Today
-          </button>
-        )}
-        <button
-          className="mc-btn"
-          style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
-          onClick={() => {
-            const next = timelineTz === 'venue' ? 'browser' : 'venue';
-            localStorage.setItem('pos-timeline-tz', next);
-            setTimelineTz(next);
-          }}
-          title={`Currently: ${activeTimezone}`}
-        >
-          {timelineTz === 'venue'
-            ? 'AT'
-            : Intl.DateTimeFormat()
-                .resolvedOptions()
-                .timeZone.split('/')
-                .pop()
-                ?.replace('_', ' ')}
-        </button>
+      <div className={`mc-panel px-5 ${compact ? 'py-2' : 'py-3'}`}>
+        <MCPanelHeader
+          label={daysToShow === 1 ? 'Daily Timeline' : 'Weekly Timeline'}
+          flush
+          className="flex-wrap"
+          right={
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              {!hideWeekNav && (
+                <button
+                  className="mc-btn"
+                  style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+                  onClick={() => navigateWeek('prev')}
+                >
+                  ← Prev
+                </button>
+              )}
+              <span className="mc-mono mc-meta text-xs min-w-[180px] text-center">
+                {daysToShow === 1
+                  ? weekDays[0].toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      timeZone: activeTimezone,
+                    })
+                  : `${weekDays[0].toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      timeZone: activeTimezone,
+                    })} – ${weekDays[weekDays.length - 1].toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      timeZone: activeTimezone,
+                    })}`}
+              </span>
+              {!hideWeekNav && (
+                <button
+                  className="mc-btn"
+                  style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+                  onClick={() => navigateWeek('next')}
+                >
+                  Next →
+                </button>
+              )}
+              {!hideWeekNav && (
+                <button
+                  className="mc-btn"
+                  style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+                  onClick={goToToday}
+                >
+                  Today
+                </button>
+              )}
+              <button
+                className="mc-btn"
+                style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
+                onClick={() => {
+                  const next = timelineTz === 'venue' ? 'browser' : 'venue';
+                  localStorage.setItem('pos-timeline-tz', next);
+                  setTimelineTz(next);
+                }}
+                title={`Currently: ${activeTimezone}`}
+              >
+                {timelineTz === 'venue'
+                  ? 'AT'
+                  : Intl.DateTimeFormat()
+                      .resolvedOptions()
+                      .timeZone.split('/')
+                      .pop()
+                      ?.replace('_', ' ')}
+              </button>
+            </div>
+          }
+        />
       </div>
 
       {/* Per-day panels */}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Zap } from 'lucide-react';
+import { MCPanelHeader } from './MCSection';
 
 /** Ceiling on the Telegraph entrance animation (translate 520ms + flash 1400ms + safety). */
 const TELEGRAPH_DURATION_MS = 1500;
@@ -152,35 +153,34 @@ export function MCDataStream({
   }, [events.length]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="mc-section-label">Data Stream</div>
-          <div className="mc-meta mt-1">Real-Time</div>
-        </div>
-        <div className="flex items-center gap-3">
-          {onSimulate && (
-            <button
-              type="button"
-              onClick={onSimulate}
-              className="mc-chip mc-mono"
-              aria-label="Simulate event"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              Simulate
-            </button>
-          )}
-          <div className="mc-meta mc-mono text-right">
-            <div>{formatTime(new Date())}</div>
-            <div className="mc-meta-dim mt-1">{formatDate(new Date())}</div>
-          </div>
-        </div>
-      </div>
+    <div className="flex flex-col h-full min-h-0">
+      <MCPanelHeader
+        label="Data Stream"
+        meta="Real-Time"
+        right={
+          <>
+            {onSimulate && (
+              <button
+                type="button"
+                onClick={onSimulate}
+                className="mc-chip mc-mono"
+                aria-label="Simulate event"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Simulate
+              </button>
+            )}
+            <div className="mc-meta mc-mono text-right">
+              <div>{formatTime(new Date())}</div>
+              <div className="mc-meta-dim mt-1">{formatDate(new Date())}</div>
+            </div>
+          </>
+        }
+      />
 
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto pr-1"
-        style={{ scrollbarWidth: 'thin' }}
+        className="flex-1 min-h-0 overflow-y-auto pr-1 mc-scroll-thin"
       >
         {capped.length === 0 ? (
           <div className="mc-meta mc-mono py-6 text-center">// awaiting events</div>

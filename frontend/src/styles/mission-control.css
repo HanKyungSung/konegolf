@@ -647,6 +647,121 @@
   overflow: hidden;
 }
 
+.mc-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.mc-panel-header-tight {
+  margin-bottom: 0.5rem;
+}
+
+.mc-panel-header-flush {
+  margin-bottom: 0;
+}
+
+.mc-panel-header-bordered {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--mc-divider-soft);
+}
+
+.mc-panel-header-title {
+  min-width: 0;
+}
+
+.mc-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.mc-scroll-thin {
+  scrollbar-width: thin;
+}
+
+.mc-scroll-none {
+  scrollbar-width: none;
+}
+
+.mc-popover-panel {
+  box-shadow: 0 8px 32px rgba(29, 224, 197, 0.08), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.mc-popover-content {
+  background: var(--mc-surface-raised, #0f1628);
+  border: 1px solid var(--mc-divider);
+  color: var(--mc-text-primary, var(--mc-white));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.mc-dialog-content {
+  background: var(--mc-surface-raised, #0f1628);
+  border: 1px solid var(--mc-divider);
+  color: var(--mc-text-primary, var(--mc-white));
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.46), 0 0 28px rgba(29, 224, 197, 0.08);
+}
+
+.mc-dialog-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(15, 22, 40, 0.96) 0%, rgba(8, 12, 22, 0.96) 100%);
+}
+
+.mc-dialog-frame-accent {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+}
+
+.mc-dialog-header {
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--mc-divider);
+}
+
+.mc-dialog-body {
+  padding: 1rem 1.25rem;
+}
+
+.mc-dialog-footer {
+  padding: 0.625rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--mc-divider);
+}
+
+.mc-input {
+  background: transparent;
+  border: 1px solid var(--mc-divider);
+  border-radius: 4px;
+  color: var(--mc-text-primary, var(--mc-white));
+  padding: 0.5rem 0.75rem;
+  outline: none;
+}
+
+.mc-input:focus {
+  border-color: var(--mc-cyan);
+}
+
+.mc-code-block {
+  color: var(--mc-text-primary);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--mc-divider-soft);
+  border-radius: 3px;
+}
+
 @keyframes mcAttnRowOut {
   0% {
     opacity: 1;

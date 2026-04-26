@@ -31,10 +31,16 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 - fix paidAt to use starttime instead
 
 ### 🔄 Ongoing Tasks
+- [x] **Mission Control Style Unification Pass** (2026-04-26)
+  - [x] Added a shared `MCPanelHeader` pattern for dashboard panel headings, meta text, and right-side actions
+  - [x] Centralized Mission Control dialog, popover, input, code block, and thin-scrollbar styling in `mission-control.css`
+  - [x] Applied the shared panel header to Timeline, Attention, Data Stream, Log Tail, and generic `MCSection`
+  - [x] Aligned the Tax dialog, Log Detail dialog, Attention popover, and room-status popover with the shared MC shell styles
 - [x] **Mission Control Dashboard One-Screen Layout Pass** (2026-04-26)
   - [x] Removed Total Bookings and Active Sessions KPI panels from the dashboard grid
   - [x] Made the daily timeline span the full operational grid width as the top band
   - [x] Moved controls, Attention, Data Stream, and Backend Log Tail into one lower operational row
+  - [x] Increased the controls/actions column and slightly reduced the Data Stream column width
   - [x] Kept only necessary UI adjustments: compact timeline mode, denser action/tool spacing, fixed desktop viewport grid
   - [x] Timeline keeps an internal horizontal scroll on smaller screens where the readable minimum width cannot fit
   - [x] Data Stream, Backend Log Tail, and Attention use bounded internal heights in the lower row

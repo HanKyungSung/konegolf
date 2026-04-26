@@ -53,7 +53,7 @@ export function MCTaxDialog({ open, onOpenChange, currentRate, onSave }: MCTaxDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[360px] bg-[color:var(--mc-surface-raised,#0f1628)] border border-[color:var(--mc-divider)] text-white duration-300 data-[state=open]:slide-in-from-top-4 data-[state=closed]:slide-out-to-top-4">
+      <DialogContent className="mc-dialog-content sm:max-w-[360px] duration-300 data-[state=open]:slide-in-from-top-4 data-[state=closed]:slide-out-to-top-4">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
             <Percent className="h-4 w-4 text-[color:var(--mc-cyan)]" />
@@ -73,7 +73,7 @@ export function MCTaxDialog({ open, onOpenChange, currentRate, onSave }: MCTaxDi
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSave();
             }}
-            className="flex-1 bg-transparent border border-[color:var(--mc-divider)] rounded px-3 py-2 text-white text-xl font-semibold mc-mono focus:outline-none focus:border-[color:var(--mc-cyan)] tabular-nums"
+            className="mc-input flex-1 text-xl font-semibold mc-mono tabular-nums"
             step="0.1"
             min="0"
             max="100"
