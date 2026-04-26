@@ -598,6 +598,8 @@ export default function POSDashboard() {
               activeTimezone={activeTimezone}
               timelineTz={timelineTz}
               setTimelineTz={setTimelineTz}
+              daysToShow={1}
+              navStep="day"
             />
           </div>
 
