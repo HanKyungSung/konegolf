@@ -35,6 +35,7 @@ import {
   MCActionDock,
   MCHealthDot,
   MCAttentionBell,
+  MCAttentionList,
   MCTaxDialog,
   TimelineView,
   type MCStreamEvent,
@@ -601,6 +602,21 @@ export default function POSDashboard() {
               daysToShow={1}
               navStep="day"
             />
+
+            {/* Attention panel — sits beneath the timeline so staff can see
+                items needing follow-up alongside today's bookings. */}
+            <div className="mc-panel py-4">
+              <MCAttentionList
+                items={attentionMock.items}
+                readIds={attentionMock.readIds}
+                onMarkRead={attentionMock.markRead}
+                onMarkAllRead={attentionMock.markAllRead}
+                onOpenItem={(item) => {
+                  if (item.linkHref) navigate(item.linkHref);
+                }}
+                listClassName="max-h-[320px] overflow-y-auto"
+              />
+            </div>
           </div>
 
           {/* RIGHT — Data stream */}
