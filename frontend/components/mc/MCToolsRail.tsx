@@ -39,7 +39,7 @@ export function MCToolsRail({ items, variant = 'horizontal' }: MCToolsRailProps)
 
   if (variant === 'vertical') {
     return (
-      <nav className="flex flex-col" aria-label="Tools">
+      <nav className="mc-tools-rail mc-tools-rail-vertical flex flex-col" aria-label="Tools">
         {visible.map((item, idx) => {
           const content = <MCToolsRailButton item={item} variant="vertical" />;
           const separator =
@@ -122,7 +122,7 @@ function MCToolsRailButton({
   const isVertical = variant === 'vertical';
   return (
     <span
-      className={`${
+      className={`mc-tools-rail-button ${
         isVertical ? 'w-full' : 'flex-1 min-w-[120px]'
       } flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
         item.active ? 'bg-[color:var(--mc-surface-raised)]' : 'hover:bg-[color:var(--mc-surface-raised)]'
@@ -140,7 +140,7 @@ function MCToolsRailButton({
       </span>
       <span className="flex-1 flex items-center justify-between gap-2 min-w-0">
         <span
-          className="text-[13px] font-semibold truncate"
+          className="mc-tools-rail-label text-[13px] font-semibold truncate"
           style={{
             color: item.active ? 'var(--mc-text-hero)' : 'var(--mc-text-primary)',
           }}

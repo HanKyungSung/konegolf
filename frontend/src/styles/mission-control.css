@@ -42,6 +42,38 @@
   color: var(--mc-text-meta);
 }
 
+/* Desktop dashboard density: keep existing panels visible within one viewport. */
+.mc-one-screen .mc-panel-label {
+  margin-bottom: 0.4rem;
+}
+
+.mc-one-screen .mc-action-dock {
+  gap: 0.4rem;
+}
+
+.mc-one-screen .mc-action-btn {
+  padding: 0.58rem 0.75rem;
+}
+
+.mc-one-screen .mc-tools-rail-button {
+  gap: 0.6rem;
+  padding: 0.48rem 0.8rem;
+}
+
+.mc-one-screen .mc-tools-rail-button > span:first-child {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.mc-one-screen .mc-tools-rail-label {
+  font-size: 0.75rem;
+}
+
+.mc-one-screen .mc-tools-rail-vertical [aria-hidden='true'] {
+  margin-left: 0.8rem;
+  margin-right: 0.8rem;
+}
+
 /* Bordered panel — the core layout primitive in the reference */
 .mc-panel {
   border: 1px solid var(--mc-divider);

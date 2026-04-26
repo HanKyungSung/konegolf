@@ -18,6 +18,8 @@ export interface TimelineViewProps {
   daysToShow?: number;
   /** How far Prev/Next moves the anchor date. Defaults to 'week'. */
   navStep?: 'day' | 'week';
+  /** Denser vertical rhythm for one-screen dashboards. */
+  compact?: boolean;
 }
 
 const ROOM_COLORS = [
@@ -60,6 +62,7 @@ export function TimelineView({
   hideWeekNav = false,
   daysToShow = 7,
   navStep = 'week',
+  compact = false,
 }: TimelineViewProps) {
   const dayStart = 10 * 60;
   const dayEnd = 24 * 60;
@@ -126,7 +129,7 @@ export function TimelineView({
   return (
     <>
       {/* Header panel */}
-      <div className="mc-panel px-5 py-3 flex items-center gap-3 flex-wrap">
+      <div className={`mc-panel px-5 ${compact ? 'py-2' : 'py-3'} flex items-center gap-3 flex-wrap`}>
         <div className="mc-section-label flex-1 min-w-[160px]">
           {daysToShow === 1 ? 'Daily Timeline' : 'Weekly Timeline'}
         </div>
@@ -207,12 +210,18 @@ export function TimelineView({
             const totalHours = filtered.reduce((s, b) => s + (b.duration || 0), 0);
 
             return (
-              <div key={dayStr} className="mc-panel px-5 py-4">
-                <div className="overflow-x-auto -mx-5 px-5">
-                  <div className="min-w-[760px] space-y-3">
+              <div key={dayStr} className={`mc-panel px-5 ${compact ? 'py-3' : 'py-4'}`}>
+                <div
+                  className={
+                    compact
+                      ? 'overflow-x-auto -mx-5 px-5 lg:mx-0 lg:px-0 lg:overflow-hidden'
+                      : 'overflow-x-auto -mx-5 px-5'
+                  }
+                >
+                  <div className={`${compact ? 'min-w-[760px] lg:min-w-0 lg:w-full' : 'min-w-[760px]'} ${compact ? 'space-y-2' : 'space-y-3'}`}>
                 {/* Day header */}
                 <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-medium min-w-[140px]">
+                  <h3 className={`text-sm font-medium ${compact ? 'min-w-[120px] lg:min-w-[104px]' : 'min-w-[140px]'}`}>
                     {day.toLocaleDateString('en-US', {
                       weekday: 'long',
                       timeZone: activeTimezone,
@@ -234,7 +243,7 @@ export function TimelineView({
 
                 {/* Hour labels */}
                 <div className="flex items-start gap-3">
-                  <div className="min-w-[90px]" />
+                  <div className={compact ? 'w-[82px] lg:w-[72px] flex-shrink-0' : 'min-w-[90px]'} />
                   <div className="flex-1 flex">
                     {Array.from({ length: 14 }, (_, i) => {
                       const hour = i + 10;
@@ -259,14 +268,14 @@ export function TimelineView({
                   const roomColor = ROOM_COLORS[roomIdx % ROOM_COLORS.length];
 
                   return (
-                    <div key={room.id} className="flex items-start gap-3">
-                      <div className="min-w-[90px] pt-3 flex items-center gap-2">
+                    <div key={room.id} className={`flex items-start ${compact ? 'gap-2' : 'gap-3'}`}>
+                      <div className={`${compact ? 'w-[82px] lg:w-[72px]' : 'min-w-[90px]'} pt-3 flex items-center gap-2 flex-shrink-0`}>
                         <span
                           className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                           style={{ background: roomColor.solid }}
                           aria-hidden="true"
                         />
-                        <span className="text-[13px] font-semibold text-[color:var(--mc-text-primary)]">
+                        <span className={`${compact ? 'text-[11px]' : 'text-[13px]'} font-semibold text-[color:var(--mc-text-primary)] truncate`}>
                           {room.name}
                         </span>
                       </div>

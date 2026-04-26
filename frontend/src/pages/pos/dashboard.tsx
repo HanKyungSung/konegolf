@@ -26,7 +26,6 @@ import { PiHealthDot } from '@/components/PiHealthDot';
 import ClockModal from './clock-modal';
 import ManagerPanel from './manager-panel';
 import {
-  MCHero,
   MCDataStream,
   MCSection,
   MCStatDot,
@@ -283,15 +282,6 @@ export default function POSDashboard() {
     });
   }, [bookings, currentTime]);
 
-  const todayBookings = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const today = `${year}-${month}-${day}`;
-    return bookings.filter((b) => b.date === today);
-  }, [bookings]);
-
   // Derive the real-time data stream from bookings/rooms
   const derivedStreamEvents = useMemo<MCStreamEvent[]>(() => {
     const events: MCStreamEvent[] = [];
@@ -408,9 +398,7 @@ export default function POSDashboard() {
     pushDemoEvent();
   };
 
-  // Hero number: currently active sessions
   const activeCount = currentBookings.length;
-  const todayCount = todayBookings.length;
 
   if (loading) {
     return (
@@ -476,7 +464,7 @@ export default function POSDashboard() {
   ];
 
   return (
-    <div className="mc-root">
+    <div className="mc-root lg:h-screen lg:overflow-hidden">
       <AdminHeader
         title="K one Golf"
         subtitle="// POS · MISSION CONTROL"
@@ -535,39 +523,37 @@ export default function POSDashboard() {
         lastSync={lastSync}
       />
 
-      <main className="mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-6 sm:py-10 space-y-8 max-w-[1800px] 2xl:max-w-none">
-        {/* Top zone: Stats | Timeline | Data Stream — each panel is a raised surface with gutters */}
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_320px] gap-2">
-          {/* LEFT — stacked stats + controls panel */}
-          <div className="flex flex-col gap-2">
-            <div className="mc-panel py-6">
-              <MCHero
-                number={bookings.length}
-                label="Total Bookings"
-                sublabel="Loaded this session"
-                muted
-              />
-            </div>
-            <div className="mc-panel py-6">
-              <MCHero
-                number={activeCount}
-                label="Active Sessions"
-                sublabel={`${todayCount} bookings today`}
-                accent
-                legend={[
-                  { variant: 'cyan', label: 'Occupied' },
-                  { variant: 'purple', label: 'Recently ended' },
-                  { variant: 'gray', label: 'Available' },
-                ]}
-              />
-            </div>
+      <main
+        className={`mc-one-screen mx-auto px-4 sm:px-8 2xl:pl-[224px] 2xl:pr-[244px] 2xl:px-0 py-4 lg:py-3 max-w-[1800px] 2xl:max-w-none lg:h-[calc(100dvh-56px)] ${
+          isStaff ? 'lg:overflow-y-auto' : 'lg:overflow-hidden'
+        }`}
+      >
+        <div className="grid grid-cols-1 gap-2 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)] min-h-0">
+          {/* TOP — timeline owns the full operational grid width. */}
+          <div className="flex flex-col gap-2 min-w-0 lg:min-h-0">
+            <TimelineView
+              bookings={bookings}
+              rooms={rooms}
+              onBookingClick={openBookingDetail}
+              currentWeekStart={currentWeekStart}
+              setCurrentWeekStart={setCurrentWeekStart}
+              taxRate={taxRate}
+              activeTimezone={activeTimezone}
+              timelineTz={timelineTz}
+              setTimelineTz={setTimelineTz}
+              daysToShow={1}
+              navStep="day"
+              compact
+            />
+          </div>
 
-            {/* Controls panel — actions + tools, stacked vertically */}
-            <div className="mc-panel py-4">
+          {/* BOTTOM — controls, Attention, Data Stream, and Backend Log in one operational row. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[210px_minmax(250px,0.85fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 lg:min-h-0 lg:h-full">
+            <div className="mc-panel py-3 flex flex-col min-h-[260px] lg:min-h-0 overflow-hidden">
               {!isReadOnly && (
                 <>
-                  <div className="mc-section-label px-5 pb-2">Actions</div>
-                  <div className="px-5 pb-4">
+                  <div className="mc-section-label px-4 pb-2">Actions</div>
+                  <div className="px-4 pb-3">
                     <MCActionDock
                       onCreateBooking={() => setShowCreateModal(true)}
                       onQuickSale={async () => {
@@ -582,35 +568,16 @@ export default function POSDashboard() {
                   </div>
                   <div
                     aria-hidden
-                    className="mx-5"
+                    className="mx-4"
                     style={{ height: 1, background: 'var(--mc-divider-soft)' }}
                   />
                 </>
               )}
-              <div className="mc-section-label px-5 pt-3 pb-2">Tools</div>
+              <div className="mc-section-label px-4 pt-3 pb-2">Tools</div>
               <MCToolsRail items={toolsRailItems} variant="vertical" />
             </div>
-          </div>
 
-          {/* CENTER — Timeline (stacked panels: header + one per day) */}
-          <div className="flex flex-col gap-2 min-w-0">
-            <TimelineView
-              bookings={bookings}
-              rooms={rooms}
-              onBookingClick={openBookingDetail}
-              currentWeekStart={currentWeekStart}
-              setCurrentWeekStart={setCurrentWeekStart}
-              taxRate={taxRate}
-              activeTimezone={activeTimezone}
-              timelineTz={timelineTz}
-              setTimelineTz={setTimelineTz}
-              daysToShow={1}
-              navStep="day"
-            />
-
-            {/* Attention panel — sits beneath the timeline so staff can see
-                items needing follow-up alongside today's bookings. */}
-            <div className="mc-panel py-4">
+            <div className="mc-panel py-0 flex flex-col min-h-[300px] lg:min-h-0 overflow-hidden">
               <MCAttentionList
                 items={attentionMock.items}
                 readIds={attentionMock.readIds}
@@ -619,20 +586,18 @@ export default function POSDashboard() {
                 onOpenItem={(item) => {
                   if (item.linkHref) navigate(item.linkHref);
                 }}
-                listClassName="max-h-[320px] overflow-y-auto"
+                listClassName="flex-1 min-h-0 overflow-y-auto"
               />
             </div>
-          </div>
 
-          {/* RIGHT — Data stream + Backend log tail (split) */}
-          <div className="flex flex-col gap-2 max-h-[720px] min-h-0">
-            <div className="mc-panel py-6 flex-1 min-h-0 overflow-hidden basis-[55%]">
+            <div className="mc-panel py-4 min-h-[300px] lg:min-h-0 overflow-hidden">
               <MCDataStream
                 events={streamEvents}
                 onSimulate={isAdmin ? handleSimulateEvent : undefined}
               />
             </div>
-            <div className="mc-panel py-4 px-4 flex-1 min-h-0 overflow-hidden basis-[45%]">
+
+            <div className="mc-panel py-3 px-4 min-h-[300px] lg:min-h-0 overflow-hidden">
               <MCLogTail lines={logLines} onLineClick={setSelectedLog} />
             </div>
           </div>
@@ -640,17 +605,6 @@ export default function POSDashboard() {
 
         {/* Manager panel — only tab left; render directly for staff */}
         {isStaff && <ManagerPanel />}
-
-        {/* Debug strip (kept minimal for devs) */}
-        <details className="pt-6 border-t border-[color:var(--mc-divider-soft)]">
-          <summary className="mc-meta mc-mono cursor-pointer hover:text-[color:var(--mc-cyan)] transition-colors">
-            debug · {bookings.length} bookings · {rooms.length} rooms ·{' '}
-            {currentBookings.length} live · {streamEvents.length} events
-          </summary>
-          <pre className="mt-3 text-[10px] mc-mono max-h-40 overflow-auto text-[color:var(--mc-gray-dim)] p-3 border border-[color:var(--mc-divider-soft)] rounded">
-            {JSON.stringify(bookings.slice(0, 3), null, 2)}
-          </pre>
-        </details>
       </main>
 
       <BookingModal
@@ -717,4 +671,3 @@ export default function POSDashboard() {
     </div>
   );
 }
-

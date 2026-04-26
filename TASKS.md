@@ -31,6 +31,16 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 - fix paidAt to use starttime instead
 
 ### 🔄 Ongoing Tasks
+- [x] **Mission Control Dashboard One-Screen Layout Pass** (2026-04-26)
+  - [x] Removed Total Bookings and Active Sessions KPI panels from the dashboard grid
+  - [x] Made the daily timeline span the full operational grid width as the top band
+  - [x] Moved controls, Attention, Data Stream, and Backend Log Tail into one lower operational row
+  - [x] Kept only necessary UI adjustments: compact timeline mode, denser action/tool spacing, fixed desktop viewport grid
+  - [x] Timeline keeps an internal horizontal scroll on smaller screens where the readable minimum width cannot fit
+  - [x] Data Stream, Backend Log Tail, and Attention use bounded internal heights in the lower row
+  - [x] Tools panel is denser and no longer uses its own vertical scroll
+  - [x] Removed the bottom debug strip so the dashboard can stay within one desktop screen
+  - [x] Panels now keep overflow inside their own scroll regions instead of pushing the whole page downward
 - [x] **Fix Seed Script: Overlapping Bookings & Production Safety** (2026-03-26)
   - [x] Seed created overlapping bookings on same room (broken slot collision detection due to `Math.random()` non-determinism across re-runs)
   - [x] Fix: Clean all mock data (payments/orders/invoices/bookings) before re-seeding instead of stale idempotent check
