@@ -55,6 +55,7 @@ export function MCRoomRail({
           {sorted.map((room) => {
             const current = bookings.find((b) => {
               if (b.roomId !== room.id) return false;
+              if (b.bookingSource === 'QUICK_SALE') return false;
               const start = new Date(b.startTime).getTime();
               const end = new Date(b.endTime).getTime();
               const status = (b.bookingStatus || b.status || '').toUpperCase();

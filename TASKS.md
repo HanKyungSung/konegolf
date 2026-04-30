@@ -31,6 +31,53 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
 - fix paidAt to use starttime instead
 
 ### 🔄 Ongoing Tasks
+- [x] **Theme Migration Plan Document** (2026-04-26)
+  - [x] Created `THEME_MIGRATION.md` with prioritized style migration targets
+  - [x] Documented feasibility and recommended implementation for an old/new theme toggle
+  - [x] Consolidated migration and completed targets into one tracker with Status and Model columns
+- [x] **Staff/Admin Theme Toggle Foundation** (2026-04-26)
+  - [x] Added persistent `classic` / `mission-control` UI theme state and root `data-ui-theme`
+  - [x] Added a shared `UiThemeToggle` button to `AdminHeader`
+  - [x] Added the same toggle to the legacy `/admin` header that does not use `AdminHeader`
+  - [x] Added the same toggle inside the embedded Manager Panel so the control is visible there too
+  - [x] Polished the toggle into a clear Old/New switch with active-state thumb and accessible labels
+  - [x] Added Old/New MC token overrides so the dashboard visibly changes when the switch is used
+  - [x] Documented that exact old UI compatibility needs page-level old/new component variants
+  - [x] Split POS dashboard into `dashboard-old.tsx`, `dashboard-mission-control.tsx`, and a theme-driven route wrapper
+  - [x] New dashboard opens booking detail as a full page instead of embedding the full workflow in a modal
+  - [x] Split POS booking detail into `booking-detail-old.tsx`, `booking-detail-mission-control.tsx`, and a theme-driven route wrapper
+  - [x] Added `kg-*` theme tokens/utilities so future pages can migrate without duplicate component trees
+  - [x] Initialized stored theme before React render to reduce toggle flicker
+- [x] **Mission Control Manager Console Access** (2026-04-26)
+  - [x] Replaced the below-dashboard STAFF-only manager panel with a Manager header control for ADMIN and STAFF
+  - [x] Opens Manager Panel in a fixed overlay console so the one-screen dashboard layout stays intact
+  - [x] Added Escape/Close behavior for the Manager Console overlay
+- [x] **Mission Control Booking Detail UX Analysis** (2026-04-30)
+  - [x] Audited the current booking-detail workflow surface: booking/session context, seat/order ledger, discounts/coupons/gift cards, split/move, payment collection, receipt delivery, receipt photo capture, and booking lifecycle actions
+  - [x] Recommended a page-first MC workspace with command header, session/context rail, selected-seat ledger, sticky settlement rail, and focused dialogs/drawers for sub-actions
+  - [x] Recommended keeping existing business handlers intact for the first redesign slice while replacing the old two-column/accordion-first layout
+- [x] **Local Booking Detail Test Data for 2026-04-30** (2026-04-30)
+  - [x] Seeded five local `kgolf_app` bookings tagged `COPILOT_UI_TEST_2026_04_30`
+  - [x] Covered unpaid, partial-card, paid-missing-receipt, gift-card checkout, and evening multi-seat scenarios
+  - [x] Restored those five local bookings after the e2e seed reset local bookings/orders during validation
+  - [x] Added `E2E_SKIP_DB_SEED=true` support to Playwright global setup so focused UI tests can avoid resetting local booking data
+- [x] **Mission Control Booking Detail Redesign Slice** (2026-04-30)
+  - [x] Replaced the New booking-detail body with a page-first MC command workspace: booking header, session rail, selected-seat ledger, sticky settlement rail, and menu drawer
+  - [x] Preserved existing order, payment, receipt, discount, coupon, gift-card, and lifecycle handlers for behavior compatibility
+  - [x] Verified seat selection and menu drawer flow against the local `COPILOT_UI_TEST_2026_04_30` seeded booking
+  - [x] Added Playwright coverage for the New booking-detail command workspace and menu drawer
+  - [x] Removed the New-only visible Tax command so the redesigned page does not introduce an action absent from Old booking detail
+  - [x] Changed the New seat selector from a 2x2 card grid to a 1x4 vertical row list for easier scanning
+  - [x] Removed the redundant Attention panel and consolidated partial-payment/missing-receipt indicators into Settlement
+  - [x] Disabled Command Stack actions when the booking is completed, with a hint to reopen before editing
+- [x] **Mission Control Dashboard Quick Sales Surface** (2026-04-30)
+  - [x] Added a same-day Quick Sales queue to the New dashboard for POS operators
+  - [x] Moved Quick Sales out of the Actions/Tools column into its own dedicated panel above Attention
+  - [x] Replaced the bare count with an explicit open-sales count label
+  - [x] Tuned the Quick Sales and Attention stack to a 4:6 panel ratio with internal scrolling
+  - [x] Quick-sale rows show time/amount and open the booking detail page for normal settlement work
+  - [x] Excluded `QUICK_SALE` bookings from current-session and room-rail occupancy calculations
+  - [x] Added focused Playwright coverage with a STAFF user and `E2E_SKIP_DB_SEED=true`
 - [x] **Mission Control Style Unification Pass** (2026-04-26)
   - [x] Added a shared `MCPanelHeader` pattern for dashboard panel headings, meta text, and right-side actions
   - [x] Centralized Mission Control dialog, popover, input, code block, and thin-scrollbar styling in `mission-control.css`

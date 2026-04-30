@@ -11,23 +11,27 @@ import path from 'path';
  * - PostgreSQL running with kgolf_app database
  */
 async function globalSetup() {
-  console.log('\n🌱 Running database seed for E2E tests...');
-  
   const backendDir = path.resolve(__dirname, '../backend');
 
-  try {
-    // Run seed to ensure rooms, menu items, and admin user exist
-    // Uses the npm script which runs tsx directly
-    execSync('npm run db:seed:dev', {
-      cwd: backendDir,
-      stdio: 'pipe',
-      env: { ...process.env },
-      timeout: 30000,
-    });
-    console.log('✅ Database seeded successfully');
-  } catch (error: any) {
-    console.error('⚠️  Seed failed (may already be seeded):', error.stderr?.toString()?.slice(0, 200));
-    // Don't fail — seed is idempotent, existing data is fine
+  if (process.env.E2E_SKIP_DB_SEED === 'true') {
+    console.log('\n⏭️  Skipping database seed for E2E tests (E2E_SKIP_DB_SEED=true)');
+  } else {
+    console.log('\n🌱 Running database seed for E2E tests...');
+
+    try {
+      // Run seed to ensure rooms, menu items, and admin user exist
+      // Uses the npm script which runs tsx directly
+      execSync('npm run db:seed:dev', {
+        cwd: backendDir,
+        stdio: 'pipe',
+        env: { ...process.env },
+        timeout: 30000,
+      });
+      console.log('✅ Database seeded successfully');
+    } catch (error: any) {
+      console.error('⚠️  Seed failed (may already be seeded):', error.stderr?.toString()?.slice(0, 200));
+      // Don't fail — seed is idempotent, existing data is fine
+    }
   }
 
   // Verify backend is reachable

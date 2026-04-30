@@ -4,7 +4,7 @@ import { useWebSocket, useWsEvent } from '@/hooks/use-websocket';
 import { useAttentionMock } from '@/hooks/use-attention-mock';
 import { useMockLogTail, type LogLine } from '@/hooks/use-mock-log-tail';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Users, Camera, FileSearch, Utensils, UsersRound, Percent, X } from 'lucide-react';
+import { Clock, Users, Camera, FileSearch, Utensils, UsersRound, Percent, ShoppingBag, X } from 'lucide-react';
 import {
   listBookings,
   listRooms,
@@ -18,7 +18,6 @@ import {
   type Room,
 } from '@/services/pos-api';
 import { BookingModal } from './booking-modal';
-import { BookingDetailModal } from '@/components/BookingDetailModal';
 import { AdminHeader } from '@/components/AdminHeader';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { WsStatusDot } from '@/components/WsStatusDot';
@@ -78,8 +77,6 @@ export default function POSDashboard() {
     return now;
   });
 
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
-  const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
   const [showClockModal, setShowClockModal] = useState(false);
@@ -167,6 +164,7 @@ export default function POSDashboard() {
           const start = new Date(b.startTime);
           const end = new Date(b.endTime);
           const room = roomsData.find((r) => r.id === b.roomId);
+          const isQuickSale = b.bookingSource === 'QUICK_SALE';
           const localDate = toDateStringInTz(start, activeTimezone);
           const tp = getTimePartsInTz(start, activeTimezone);
           const localTime = `${String(tp.hours).padStart(2, '0')}:${String(tp.minutes).padStart(2, '0')}`;
@@ -175,7 +173,7 @@ export default function POSDashboard() {
             date: localDate,
             time: localTime,
             duration: (end.getTime() - start.getTime()) / (1000 * 60 * 60),
-            roomName: room?.name || 'Unknown Room',
+            roomName: isQuickSale ? 'Quick Sale' : room?.name || 'Unknown Room',
           };
         });
 
@@ -229,6 +227,7 @@ export default function POSDashboard() {
         const start = new Date(b.startTime);
         const end = new Date(b.endTime);
         const room = roomsData.find((r) => r.id === b.roomId);
+        const isQuickSale = b.bookingSource === 'QUICK_SALE';
         const localDate = toDateStringInTz(start, activeTimezone);
         const tp = getTimePartsInTz(start, activeTimezone);
         const localTime = `${String(tp.hours).padStart(2, '0')}:${String(tp.minutes).padStart(2, '0')}`;
@@ -237,7 +236,7 @@ export default function POSDashboard() {
           date: localDate,
           time: localTime,
           duration: (end.getTime() - start.getTime()) / (1000 * 60 * 60),
-          roomName: room?.name || 'Unknown Room',
+          roomName: isQuickSale ? 'Quick Sale' : room?.name || 'Unknown Room',
         };
       });
 
@@ -273,14 +272,7 @@ export default function POSDashboard() {
   }
 
   function openBookingDetail(bookingId: string) {
-    setSelectedBookingId(bookingId);
-    setBookingModalOpen(true);
-  }
-
-  function closeBookingDetail() {
-    setBookingModalOpen(false);
-    setSelectedBookingId(null);
-    loadData(false);
+    navigate(`/pos/booking/${bookingId}`);
   }
 
   const currentBookings = useMemo(() => {
@@ -289,9 +281,19 @@ export default function POSDashboard() {
       const start = new Date(b.startTime);
       const end = new Date(b.endTime);
       const status = (b.bookingStatus || b.status || '').toUpperCase();
-      return now >= start && now <= end && status !== 'CANCELLED' && status !== 'COMPLETED';
+      return b.bookingSource !== 'QUICK_SALE' && now >= start && now <= end && status !== 'CANCELLED' && status !== 'COMPLETED';
     });
   }, [bookings, currentTime]);
+
+  const selectedDayQuickSales = useMemo(() => {
+    const selectedDate = toDateStringInTz(currentWeekStart, activeTimezone);
+    return bookings
+      .filter((b) => {
+        const status = (b.bookingStatus || b.status || '').toUpperCase();
+        return b.bookingSource === 'QUICK_SALE' && b.date === selectedDate && status !== 'CANCELLED' && status !== 'COMPLETED';
+      })
+      .sort((a, b) => new Date(b.createdAt || b.startTime).getTime() - new Date(a.createdAt || a.startTime).getTime());
+  }, [bookings, currentWeekStart, activeTimezone]);
 
   // Derive the real-time data stream from bookings/rooms
   const derivedStreamEvents = useMemo<MCStreamEvent[]>(() => {
@@ -305,19 +307,20 @@ export default function POSDashboard() {
       const end = new Date(b.endTime).getTime();
       const status = (b.bookingStatus || b.status || '').toUpperCase();
       const payStatus = (b.paymentStatus || '').toUpperCase();
+      const isQuickSale = b.bookingSource === 'QUICK_SALE';
 
       if (now - created < windowMs) {
         events.push({
           id: `create-${b.id}`,
           timestamp: new Date(b.createdAt),
-          type: b.bookingSource === 'QUICK_SALE' ? 'QuickSale' : 'BookingCreate',
-          primary: `${b.roomName} · ${b.players}p · ${b.duration}h`,
+          type: isQuickSale ? 'QuickSale' : 'BookingCreate',
+          primary: isQuickSale ? `$${b.price.toFixed(2)} · ${payStatus || 'UNPAID'}` : `${b.roomName} · ${b.players}p · ${b.duration}h`,
           secondary: b.customerName,
           meta: b.bookingSource || 'ONLINE',
         });
       }
 
-      if (status === 'BOOKED' && start <= now && end > now && now - start < windowMs) {
+      if (!isQuickSale && status === 'BOOKED' && start <= now && end > now && now - start < windowMs) {
         events.push({
           id: `start-${b.id}`,
           timestamp: new Date(start),
@@ -327,7 +330,7 @@ export default function POSDashboard() {
         });
       }
 
-      if (status === 'COMPLETED' && now - end < windowMs) {
+      if (!isQuickSale && status === 'COMPLETED' && now - end < windowMs) {
         events.push({
           id: `end-${b.id}`,
           timestamp: new Date(end),
@@ -342,7 +345,7 @@ export default function POSDashboard() {
           id: `pay-${b.id}`,
           timestamp: new Date(b.updatedAt),
           type: 'PaymentSettle',
-          primary: `${b.roomName} · $${b.price.toFixed(2)}`,
+          primary: isQuickSale ? `Quick Sale · $${b.price.toFixed(2)}` : `${b.roomName} · $${b.price.toFixed(2)}`,
           secondary: b.customerName,
         });
       }
@@ -563,9 +566,9 @@ export default function POSDashboard() {
             />
           </div>
 
-          {/* BOTTOM — controls, Attention, Data Stream, and Backend Log in one operational row. */}
+          {/* BOTTOM — controls, quick-sales queue, Attention, Data Stream, and Backend Log in one operational row. */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_minmax(250px,0.85fr)_minmax(0,0.8fr)_minmax(0,1fr)] gap-2 lg:min-h-0 lg:h-full">
-            <div className="mc-panel py-3 flex flex-col min-h-[260px] lg:min-h-0 overflow-hidden">
+            <div className="mc-panel py-3 flex flex-col min-h-[260px] lg:min-h-0 overflow-y-auto mc-scroll-thin">
               {!isReadOnly && (
                 <>
                   <div className="mc-section-label px-4 pb-2">Actions</div>
@@ -593,17 +596,67 @@ export default function POSDashboard() {
               <MCToolsRail items={toolsRailItems} variant="vertical" />
             </div>
 
-            <div className="mc-panel py-0 flex flex-col min-h-[300px] lg:min-h-0 overflow-hidden">
-              <MCAttentionList
-                items={attentionMock.items}
-                readIds={attentionMock.readIds}
-                onMarkRead={attentionMock.markRead}
-                onMarkAllRead={attentionMock.markAllRead}
-                onOpenItem={(item) => {
-                  if (item.linkHref) navigate(item.linkHref);
-                }}
-                listClassName="flex-1 min-h-0 overflow-y-auto"
-              />
+            <div className="grid grid-rows-[minmax(0,2fr)_minmax(0,3fr)] gap-2 min-h-[520px] lg:min-h-0 lg:h-full overflow-hidden">
+              <section
+                className="mc-panel py-0 flex flex-col min-h-0 overflow-hidden"
+                style={{ padding: 0 }}
+                aria-labelledby="dashboard-quick-sales-heading"
+              >
+                <div
+                  className="shrink-0 h-8 flex items-center justify-between gap-2 px-4"
+                  style={{ borderBottom: '1px solid var(--mc-divider-soft)' }}
+                >
+                  <h2 id="dashboard-quick-sales-heading" className="mc-section-label">
+                    Quick Sales
+                  </h2>
+                  {selectedDayQuickSales.length > 0 ? (
+                    <span className="mc-mono text-[11px] text-[color:var(--mc-text-accent-pink)]">
+                      {selectedDayQuickSales.length} open
+                    </span>
+                  ) : null}
+                </div>
+                {selectedDayQuickSales.length === 0 ? (
+                  <div className="flex-1 px-4 py-2 mc-meta-dim mc-mono">// no open quick sales</div>
+                ) : (
+                  <div className="flex-1 min-h-0 overflow-y-auto mc-scroll-thin">
+                    {selectedDayQuickSales.map((sale, idx) => (
+                      <button
+                        key={sale.id}
+                        type="button"
+                        onClick={() => openBookingDetail(sale.id)}
+                        className="w-full h-7 text-left px-4 flex items-center gap-2.5 transition-colors hover:bg-[color:var(--mc-surface-raised)] focus:outline-none focus-visible:bg-[color:var(--mc-surface-raised)]"
+                        style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--mc-divider-soft)' }}
+                        aria-label={`Open quick sale ${sale.id}`}
+                      >
+                        <ShoppingBag className="h-3.5 w-3.5 text-[color:var(--mc-magenta)] shrink-0" />
+                        <span className="min-w-0 flex-1 flex items-center gap-2">
+                          <span className="text-xs font-semibold text-[color:var(--mc-text-primary)] truncate">{sale.customerName || 'Quick Sale'}</span>
+                          <span className="mc-meta-dim mc-mono shrink-0">{sale.time}</span>
+                        </span>
+                        <span className="mc-mono text-xs text-[color:var(--mc-text-accent-pink)]">
+                          ${sale.price.toFixed(2)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+              <div
+                className="mc-panel py-0 flex flex-col min-h-0 overflow-hidden"
+                style={{ padding: 0 }}
+                aria-label="Attention panel"
+              >
+                <MCAttentionList
+                  items={attentionMock.items}
+                  readIds={attentionMock.readIds}
+                  onMarkRead={attentionMock.markRead}
+                  onMarkAllRead={attentionMock.markAllRead}
+                  onOpenItem={(item) => {
+                    if (item.linkHref) navigate(item.linkHref);
+                  }}
+                  listClassName="flex-1 min-h-0 overflow-y-auto"
+                />
+              </div>
             </div>
 
             <div className="mc-panel py-4 min-h-[300px] lg:min-h-0 overflow-hidden">
@@ -661,13 +714,6 @@ export default function POSDashboard() {
           loadData();
         }}
         preselectedRoomId={preselectedRoomId}
-      />
-
-      <BookingDetailModal
-        bookingId={selectedBookingId}
-        open={bookingModalOpen}
-        onOpenChange={setBookingModalOpen}
-        onClose={closeBookingDetail}
       />
 
       <ConfirmDialog

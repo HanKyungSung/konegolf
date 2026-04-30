@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookingDetailModal } from '@/components/BookingDetailModal';
+import { UiThemeToggle } from '@/components/UiThemeToggle';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -464,6 +465,11 @@ export default function ManagerPanel() {
   if (!unlocked) {
     return (
       <Card className="bg-slate-800/60 border-slate-700">
+        <CardHeader className="pb-0">
+          <div className="flex items-center justify-end">
+            <UiThemeToggle variant="ghost" />
+          </div>
+        </CardHeader>
         <CardContent>
           <PinPad onSubmit={handlePinSubmit} error={pinError} loading={pinLoading} />
         </CardContent>
@@ -483,14 +489,17 @@ export default function ManagerPanel() {
               {managerName}
             </Badge>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-slate-400 hover:text-white"
-            onClick={handleLock}
-          >
-            <Lock className="w-3 h-3 mr-1" /> Lock
-          </Button>
+          <div className="flex items-center gap-2">
+            <UiThemeToggle variant="ghost" />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-slate-400 hover:text-white"
+              onClick={handleLock}
+            >
+              <Lock className="w-3 h-3 mr-1" /> Lock
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

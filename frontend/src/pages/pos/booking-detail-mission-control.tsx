@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2, Camera } from 'lucide-react';
+import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2, Camera, ArrowLeft, Phone, ReceiptText } from 'lucide-react';
 import Receipt from '../../components/Receipt';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { VENUE_TIMEZONE } from '@/lib/timezone';
@@ -107,6 +107,8 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
   // Order management
   const [numberOfSeats, setNumberOfSeats] = useState<number>(1);
+  const [selectedSeat, setSelectedSeat] = useState<number>(1);
+  const [showMenuPanel, setShowMenuPanel] = useState(false);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [orderLoading, setOrderLoading] = useState(false);
 
@@ -181,6 +183,20 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   // Load data on mount
   useEffect(() => {
     loadData();
+  }, [bookingId]);
+
+  // Auto-open gift card dialog if ?action=gift-card is in URL (from MC Action Dock)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'gift-card') {
+      setGiftCardAmount('');
+      setShowGiftCardDialog(true);
+      params.delete('action');
+      const next = params.toString();
+      const url = `${window.location.pathname}${next ? `?${next}` : ''}`;
+      window.history.replaceState({}, '', url);
+    }
   }, [bookingId]);
 
   // Keep only UI preferences in localStorage (like expanded seats, custom tax rate)
@@ -1115,8 +1131,77 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
     );
   }
 
+  const activeSeat = Math.min(Math.max(selectedSeat, 1), numberOfSeats);
+  const seatSummaries = Array.from({ length: numberOfSeats }, (_, i) => {
+    const seat = i + 1;
+    const isPaid = isSeatPaid(seat);
+    const seatItems = getItemsForSeat(seat);
+    const regularItems = seatItems.filter(item => (item.splitPrice || item.menuItem.price) >= 0);
+    const discountItems = seatItems.filter(item => (item.splitPrice || item.menuItem.price) < 0);
+    const payment = getSeatPayment(seat);
+    const invoice = invoices.find(inv => inv.seatIndex === seat);
+    const payments = invoice?.payments || [];
+    const subtotal = calculateSeatSubtotal(seat);
+    const preDiscountSubtotal = regularItems.reduce((sum, item) => sum + (item.splitPrice || item.menuItem.price) * item.quantity, 0);
+    const discountTotal = discountItems.reduce((sum, item) => sum + (item.splitPrice || item.menuItem.price) * item.quantity, 0);
+    const tax = calculateSeatTax(seat);
+    const tipAmount = isPaid
+      ? payment?.tip || 0
+      : parseFloat(tipAmountBySeat[seat] || '0') || 0;
+    const total = subtotal + tax + tipAmount;
+    const paidSoFar = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const remaining = isPaid ? 0 : Math.max(0, Math.round((total - paidSoFar) * 100) / 100);
+    const missingReceiptPayments = payments.filter(p => (p.method === 'CARD' || p.method === 'GIFT_CARD') && !p.receiptPath && !receiptPhotos[p.id]);
+    const hasCouponDiscount = discountItems.some(item => (item.menuItem?.name || '').includes('🎟️'));
+
+    return {
+      seat,
+      isPaid,
+      seatItems,
+      regularItems,
+      discountItems,
+      payment,
+      invoice,
+      payments,
+      subtotal,
+      preDiscountSubtotal,
+      discountTotal,
+      tax,
+      tipAmount,
+      total,
+      paidSoFar,
+      remaining,
+      missingReceiptPayments,
+      hasCouponDiscount,
+    };
+  });
+  const selectedSeatSummary = seatSummaries.find(summary => summary.seat === activeSeat) || seatSummaries[0];
+  const totalCollected = getTotalPaid();
+  const totalDue = getTotalDue();
+  const missingReceiptCount = seatSummaries.reduce((sum, summary) => sum + summary.missingReceiptPayments.length, 0);
+  const endTimeLabel = new Date(booking.endTime).toLocaleTimeString('en-US', {
+    timeZone: VENUE_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const formatMoney = (value: number) => `$${value.toFixed(2)}`;
+  const isBookingCompleted = booking.bookingStatus?.toUpperCase() === 'COMPLETED';
+  const commandButtonClass = 'mc-action-btn disabled:opacity-40 disabled:pointer-events-none';
+  const getSettlementLabel = (summary: (typeof seatSummaries)[number]) => {
+    if (summary.missingReceiptPayments.length > 0) return `RECEIPT ${summary.missingReceiptPayments.length}`;
+    if (!summary.isPaid && summary.payments.length > 0) return `PARTIAL ${formatMoney(summary.remaining)}`;
+    if (summary.isPaid) return 'PAID';
+    return formatMoney(summary.remaining || summary.total);
+  };
+  const getSettlementTone = (summary: (typeof seatSummaries)[number]) => {
+    if (summary.missingReceiptPayments.length > 0) return 'text-[color:var(--mc-magenta)]';
+    if (!summary.isPaid && summary.payments.length > 0) return 'text-[color:var(--mc-purple)]';
+    if (summary.isPaid) return 'text-[color:var(--mc-green)]';
+    return 'text-[color:var(--mc-amber)]';
+  };
+
   return (
-    <div ref={scrollContainerRef} className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-black">
+    <div ref={scrollContainerRef} className="mc-root w-full h-full flex flex-col overflow-y-auto">
       <style>{`
         @media print {
           * {
@@ -1206,7 +1291,598 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
         <div className="print-separator" />
       </div>
 
-      <main className="flex-1 px-3 sm:px-6 py-4 sm:py-8 space-y-6 max-w-[1800px] mx-auto w-full">
+      <main className="no-print flex-1 w-full max-w-[1900px] mx-auto px-3 sm:px-5 py-4 space-y-3">
+        <div className="mc-panel py-3 px-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={onBack}
+              className="mc-chip shrink-0"
+              aria-label="Back to dashboard"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </button>
+            <div className="min-w-0">
+              <div className="mc-section-label">Booking Command</div>
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-[color:var(--mc-text-hero)] truncate">
+                {booking.customerName}
+              </h1>
+              <div className="mc-meta mc-mono truncate">
+                {roomColor} · {booking.date} · {booking.time}-{endTimeLabel} · {booking.duration}h · {booking.players} player{booking.players === 1 ? '' : 's'}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={`${statusStyles[booking.bookingStatus?.toLowerCase() || 'booked']} uppercase text-xs px-3 py-1.5`}>
+              {booking.bookingStatus || 'BOOKED'}
+            </Badge>
+            {booking.paymentStatus && (
+              <Badge className={`${paymentStatusStyles[booking.paymentStatus]} uppercase text-xs px-3 py-1.5`}>
+                {booking.paymentStatus}
+              </Badge>
+            )}
+            {missingReceiptCount > 0 && (
+              <span className="mc-chip-alert mc-chip">
+                <Camera className="h-3.5 w-3.5" />
+                {missingReceiptCount} receipt{missingReceiptCount === 1 ? '' : 's'}
+              </span>
+            )}
+            {!isReadOnly && (
+              booking.bookingStatus?.toUpperCase() === 'COMPLETED' ? (
+                <button type="button" onClick={handleReopenBooking} className="mc-chip">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Reopen
+                </button>
+              ) : (
+                <button type="button" onClick={handleCompleteBooking} className="mc-chip">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Complete
+                </button>
+              )
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_340px] gap-3 items-start">
+          <aside className="space-y-3 xl:sticky xl:top-3">
+            <section className="mc-panel space-y-4">
+              <div>
+                <div className="mc-section-label">Session</div>
+                <div className="mt-1 flex items-center gap-2 text-[color:var(--mc-text-hero)]">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-[color:var(--mc-cyan)] shadow-[0_0_16px_rgba(29,224,197,0.45)]" />
+                  <span className="font-semibold">{roomColor}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <InfoBlock label="Date" value={<span className="mc-mono">{booking.date}</span>} />
+                <InfoBlock label="Time" value={<span className="mc-mono">{booking.time}</span>} />
+                <InfoBlock label="End" value={<span className="mc-mono">{endTimeLabel}</span>} />
+                <InfoBlock label="Source" value={booking.bookingSource || 'ONLINE'} />
+              </div>
+
+              <div className="h-px bg-[color:var(--mc-divider-soft)]" />
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-[color:var(--mc-cyan)]" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-[color:var(--mc-text-primary)] truncate">{booking.customerName}</div>
+                    <div className="mc-meta-dim mc-mono truncate">ID {booking.id.slice(0, 8)}</div>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-[color:var(--mc-text-primary)]">
+                    <Phone className="h-3.5 w-3.5 text-[color:var(--mc-text-meta)]" />
+                    <span className="mc-mono truncate">{booking.customerPhone || 'No phone'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[color:var(--mc-text-primary)]">
+                    <Mail className="h-3.5 w-3.5 text-[color:var(--mc-text-meta)]" />
+                    <span className="truncate">{booking.customerEmail || 'No email'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[color:var(--mc-text-primary)]">
+                    <Calendar className="h-3.5 w-3.5 text-[color:var(--mc-text-meta)]" />
+                    <span>{booking.user?.dateOfBirth || 'DOB not set'}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="mc-panel space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="mc-section-label">Seats</div>
+                  <div className="mc-meta">Adjust players and choose the active ledger.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={handleReduceSeats}
+                      disabled={!canReduceSeats()}
+                      className="mc-chip px-2 disabled:opacity-40 disabled:pointer-events-none"
+                      aria-label="Reduce seats"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <span className="mc-mono text-lg text-[color:var(--mc-cyan)] min-w-6 text-center">{numberOfSeats}</span>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const newCount = Math.min(MAX_SEATS, numberOfSeats + 1);
+                        if (booking) {
+                          try {
+                            await apiUpdateBookingPlayers(booking.id, newCount);
+                            setNumberOfSeats(newCount);
+                            setSelectedSeat(newCount);
+                          } catch (err) {
+                            alert(`Failed to update seats: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                          }
+                        }
+                      }}
+                      disabled={numberOfSeats >= MAX_SEATS}
+                      className="mc-chip px-2 disabled:opacity-40 disabled:pointer-events-none"
+                      aria-label="Add seat"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {seatSummaries.map((summary) => (
+                  <button
+                    key={summary.seat}
+                    type="button"
+                    onClick={() => setSelectedSeat(summary.seat)}
+                    className={`mc-row w-full text-left p-3 flex items-center justify-between gap-3 ${summary.seat === activeSeat ? 'border-[color:var(--mc-cyan)] bg-[rgba(29,224,197,0.08)]' : ''}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 font-semibold text-[color:var(--mc-text-hero)]">
+                        <span className={`h-2.5 w-2.5 rounded-full ${seatColors[summary.seat - 1]}`} />
+                        Seat {summary.seat}
+                      </div>
+                      <div className="mt-1 mc-meta-dim">{summary.regularItems.length} item{summary.regularItems.length === 1 ? '' : 's'} · {summary.isPaid ? 'paid' : 'open'}</div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="mc-mono text-sm text-[color:var(--mc-text-primary)]">{formatMoney(summary.total)}</span>
+                      {summary.isPaid ? (
+                        <CheckCircle2 className="h-4 w-4 text-[color:var(--mc-green)]" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-[color:var(--mc-amber)]" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+          </aside>
+
+          <section className="mc-panel p-0 overflow-hidden">
+            <div className="mc-panel-header mc-panel-header-bordered px-5 py-4">
+              <div>
+                <div className="mc-section-label">Seat Ledger</div>
+                <div className="mc-meta mt-1">Focused work surface for seat {activeSeat}</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenReceiptModal('seat', activeSeat)}
+                  disabled={loadingReceipt || selectedSeatSummary.seatItems.length === 0}
+                  className="mc-chip disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  Seat Receipt
+                </button>
+                {!selectedSeatSummary.isPaid && !isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentDialogSeat(activeSeat);
+                      setPaymentDialogAmount(selectedSeatSummary.remaining > 0 ? selectedSeatSummary.remaining.toFixed(2) : selectedSeatSummary.total.toFixed(2));
+                      setPaymentDialogMethod(null);
+                      setTipMethodBySeat(prev => ({ ...prev, [activeSeat]: 'CARD' }));
+                    }}
+                    disabled={selectedSeatSummary.subtotal === 0 && !selectedSeatSummary.hasCouponDiscount}
+                    className="mc-chip disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Collect
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-5 space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="mc-row">
+                  <div className="mc-meta-dim">Subtotal</div>
+                  <div className="mc-mono text-lg text-[color:var(--mc-text-hero)]">{formatMoney(selectedSeatSummary.preDiscountSubtotal)}</div>
+                </div>
+                <div className="mc-row">
+                  <div className="mc-meta-dim">Discount</div>
+                  <div className="mc-mono text-lg text-[color:var(--mc-green)]">{formatMoney(Math.abs(selectedSeatSummary.discountTotal))}</div>
+                </div>
+                <div className="mc-row">
+                  <div className="mc-meta-dim">Tax</div>
+                  <div className="mc-mono text-lg text-[color:var(--mc-text-primary)]">{formatMoney(selectedSeatSummary.tax)}</div>
+                </div>
+                <div className="mc-row">
+                  <div className="mc-meta-dim">Seat Total</div>
+                  <div className="mc-mono text-lg text-[color:var(--mc-cyan)]">{formatMoney(selectedSeatSummary.total)}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_320px] gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="mc-section-label">Orders</div>
+                    {!isReadOnly && !selectedSeatSummary.isPaid && (
+                      <button type="button" onClick={() => setShowMenuPanel(true)} className="mc-chip">
+                        <Plus className="h-3.5 w-3.5" />
+                        Add item
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedSeatSummary.regularItems.length === 0 && selectedSeatSummary.discountItems.length === 0 ? (
+                    <div className="mc-row py-10 text-center">
+                      <div className="text-[color:var(--mc-text-primary)]">No items on this seat yet.</div>
+                      <div className="mc-meta mt-1">Use Add item to start the ledger.</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedSeatSummary.regularItems.map((item) => (
+                        <div key={item.id} className="mc-row flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="font-semibold text-[color:var(--mc-text-hero)] truncate">
+                                {item.menuItem ? item.menuItem.name : (item as any).customItemName || 'Custom Item'}
+                              </div>
+                              {item.menuItem?.id?.startsWith('custom-') && (
+                                <span className="mc-mono text-[11px] text-[color:var(--mc-purple)]">CUSTOM</span>
+                              )}
+                            </div>
+                            <div className="mc-meta">
+                              {item.splitPrice ? `${formatMoney(item.splitPrice)} each · split` : `${formatMoney(item.menuItem.price)} × ${item.quantity}`}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                            <span className="mc-mono text-[color:var(--mc-cyan)] min-w-[76px] sm:text-right">
+                              {formatMoney((item.splitPrice || item.menuItem.price) * item.quantity)}
+                            </span>
+                            {!selectedSeatSummary.isPaid && !isReadOnly && (
+                              <>
+                                <button type="button" onClick={() => handleMoveItem(item)} className="mc-chip px-2" title="Move item">
+                                  <MoveRight className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Move</span>
+                                </button>
+                                <button type="button" onClick={() => handleSplitItem(item)} className="mc-chip px-2" title="Split item">
+                                  <Split className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Split</span>
+                                </button>
+                                <button type="button" onClick={() => updateItemQuantity(item.id, -1)} className="mc-chip px-2" title="Decrease quantity">
+                                  <Minus className="h-3.5 w-3.5" />
+                                </button>
+                                <button type="button" onClick={() => updateItemQuantity(item.id, 1)} className="mc-chip px-2" title="Increase quantity">
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setRemoveOrderId(item.id); setRemoveOrderName(item.menuItem?.name || 'this item'); }}
+                                  className="mc-chip mc-chip-alert px-2"
+                                  title="Remove item"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {selectedSeatSummary.discountItems.map((item) => (
+                        <div key={item.id} className="mc-row flex items-center justify-between gap-3 border-[rgba(95,214,146,0.35)] bg-[rgba(95,214,146,0.06)]">
+                          <div className="min-w-0">
+                            <div className="font-semibold text-[color:var(--mc-green)] truncate">{item.menuItem.name}</div>
+                            <div className="mc-meta">Discount</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="mc-mono text-[color:var(--mc-green)]">
+                              -{formatMoney(Math.abs((item.splitPrice || item.menuItem.price) * item.quantity))}
+                            </span>
+                            {!selectedSeatSummary.isPaid && !isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => { setRemoveOrderId(item.id); setRemoveOrderName(item.menuItem?.name || 'this discount'); }}
+                                className="mc-chip mc-chip-alert px-2"
+                                title="Remove discount"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="mc-row space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="mc-section-label">Payment</div>
+                      {selectedSeatSummary.isPaid ? (
+                        <span className="text-xs font-semibold text-[color:var(--mc-green)]">PAID</span>
+                      ) : (
+                        <span className="text-xs font-semibold text-[color:var(--mc-amber)]">OPEN</span>
+                      )}
+                    </div>
+                    <div className="space-y-2 mc-mono text-sm">
+                      <div className="flex justify-between text-[color:var(--mc-text-primary)]"><span>Subtotal</span><span>{formatMoney(selectedSeatSummary.preDiscountSubtotal)}</span></div>
+                      {selectedSeatSummary.discountItems.map((item) => (
+                        <div key={item.id} className="flex justify-between text-[color:var(--mc-green)]">
+                          <span>{item.menuItem.name}</span>
+                          <span>-{formatMoney(Math.abs((item.splitPrice || item.menuItem.price) * item.quantity))}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between text-[color:var(--mc-text-primary)]"><span>Tax ({effectiveTaxRate}%)</span><span>{formatMoney(selectedSeatSummary.tax)}</span></div>
+                      {selectedSeatSummary.tipAmount > 0 && (
+                        <div className="flex justify-between text-[color:var(--mc-text-primary)]"><span>Tip</span><span>{formatMoney(selectedSeatSummary.tipAmount)}</span></div>
+                      )}
+                      <div className="h-px bg-[color:var(--mc-divider-soft)]" />
+                      <div className="flex justify-between text-[color:var(--mc-text-hero)] font-semibold"><span>Total</span><span>{formatMoney(selectedSeatSummary.total)}</span></div>
+                      {selectedSeatSummary.payments.length > 0 && (
+                        <div className="flex justify-between text-[color:var(--mc-green)]"><span>Paid</span><span>{formatMoney(selectedSeatSummary.paidSoFar)}</span></div>
+                      )}
+                      {!selectedSeatSummary.isPaid && selectedSeatSummary.total > 0 && (
+                        <div className="flex justify-between text-[color:var(--mc-amber)]"><span>Remaining</span><span>{formatMoney(selectedSeatSummary.remaining)}</span></div>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedSeatSummary.payments.length > 0 && (
+                    <div className="mc-row space-y-2">
+                      <div className="mc-section-label">Payment Records</div>
+                      {selectedSeatSummary.payments.map((payment) => {
+                        const needsReceipt = (payment.method === 'CARD' || payment.method === 'GIFT_CARD') && !payment.receiptPath && !receiptPhotos[payment.id];
+                        return (
+                          <div key={payment.id} className="rounded-sm border border-[color:var(--mc-divider-soft)] p-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-2 text-sm text-[color:var(--mc-text-primary)]">
+                                {payment.method === 'CARD' ? <CreditCard className="h-3.5 w-3.5" /> : payment.method === 'GIFT_CARD' ? <Gift className="h-3.5 w-3.5" /> : <Banknote className="h-3.5 w-3.5" />}
+                                {payment.method === 'GIFT_CARD' ? 'Gift Card' : payment.method === 'CARD' ? 'Card' : 'Cash'}
+                              </span>
+                              <span className="mc-mono text-[color:var(--mc-green)]">{formatMoney(Number(payment.amount))}</span>
+                            </div>
+                            {(payment.method === 'CARD' || payment.method === 'GIFT_CARD') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCaptureMode(needsReceipt ? 'upload' : 'view');
+                                  setCapturePaymentId(payment.id);
+                                }}
+                                className={`mt-2 mc-chip w-full justify-center ${needsReceipt ? 'mc-chip-alert' : ''}`}
+                              >
+                                {needsReceipt ? <Camera className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                {needsReceipt ? 'Upload Receipt' : 'View Receipt'}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {!isReadOnly && selectedSeatSummary.isPaid && (
+                        <button
+                          type="button"
+                          onClick={() => setCancelPaymentSeat(activeSeat)}
+                          disabled={processingPayment === activeSeat}
+                          className="mc-chip mc-chip-alert w-full justify-center disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          {processingPayment === activeSeat ? 'Processing...' : 'Cancel Payment'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside className="space-y-3 xl:sticky xl:top-3">
+            <section className="mc-panel space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="mc-section-label">Settlement</div>
+                  <div className="mc-meta">Payment, balance, receipt state</div>
+                </div>
+                <div className="mc-mono text-[color:var(--mc-cyan)]">{Math.round(getPaymentProgress())}%</div>
+              </div>
+              <Progress value={getPaymentProgress()} className="h-2 bg-[color:var(--mc-divider-soft)]" />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="mc-row">
+                  <div className="mc-meta-dim">Collected</div>
+                  <div className="mc-mono text-lg text-[color:var(--mc-green)]">{formatMoney(totalCollected)}</div>
+                </div>
+                <div className="mc-row">
+                  <div className="mc-meta-dim">Due</div>
+                  <div className="mc-mono text-lg text-[color:var(--mc-amber)]">{formatMoney(totalDue)}</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {seatSummaries.map((summary) => (
+                  <button
+                    key={summary.seat}
+                    type="button"
+                    onClick={() => setSelectedSeat(summary.seat)}
+                    className={`mc-row w-full flex items-center justify-between gap-2 text-left py-2.5 ${summary.seat === activeSeat ? 'border-[color:var(--mc-cyan)]' : ''}`}
+                  >
+                    <span className="flex items-center gap-2 text-sm text-[color:var(--mc-text-primary)]">
+                      <span className={`h-2 w-2 rounded-full ${seatColors[summary.seat - 1]}`} />
+                      Seat {summary.seat}
+                    </span>
+                    <span className={`mc-mono text-xs ${getSettlementTone(summary)}`}>
+                      {getSettlementLabel(summary)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {!isReadOnly && (
+              <section className="mc-panel space-y-3">
+                <div>
+                  <div className="mc-section-label">Command Stack</div>
+                  {isBookingCompleted && (
+                    <div className="mc-meta mt-1">Reopen booking to use edit commands.</div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setShowMenuPanel(true)} disabled={isBookingCompleted} className={commandButtonClass}>
+                    <Plus className="h-4 w-4" />
+                    Item
+                  </button>
+                  <button type="button" onClick={() => setShowCustomItemDialog(true)} disabled={isBookingCompleted} className={commandButtonClass}>
+                    <Edit className="h-4 w-4" />
+                    Custom
+                  </button>
+                  <button type="button" onClick={() => setShowDiscountDialog(true)} disabled={isBookingCompleted} className={commandButtonClass}>
+                    <Minus className="h-4 w-4" />
+                    Discount
+                  </button>
+                  <button type="button" onClick={() => { setCouponCode(''); setCouponData(null); setShowCouponDialog(true); }} disabled={isBookingCompleted} className={commandButtonClass}>
+                    <Ticket className="h-4 w-4" />
+                    Coupon
+                  </button>
+                  {booking.bookingSource !== 'QUICK_SALE' ? (
+                    <button type="button" onClick={handleExtendBooking} disabled={isBookingCompleted} className={commandButtonClass}>
+                      <Clock className="h-4 w-4" />
+                      +30m
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => { setGiftCardAmount(''); setShowGiftCardDialog(true); }} disabled={isBookingCompleted} className={commandButtonClass}>
+                      <Gift className="h-4 w-4" />
+                      Gift Card
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <section className="mc-panel space-y-3">
+              <div className="mc-section-label">Receipts</div>
+              <button
+                type="button"
+                onClick={() => handleOpenReceiptModal('full')}
+                disabled={loadingReceipt || orderItems.length === 0}
+                className="mc-chip w-full justify-center disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                Full receipt
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenReceiptModal('seat', activeSeat)}
+                disabled={loadingReceipt || selectedSeatSummary.seatItems.length === 0}
+                className="mc-chip w-full justify-center disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <ReceiptText className="h-3.5 w-3.5" />
+                Seat {activeSeat} receipt
+              </button>
+              {!isReadOnly && booking.bookingStatus?.toUpperCase() !== 'COMPLETED' && (
+                <button type="button" onClick={() => setCancelBookingOpen(true)} className="mc-chip mc-chip-alert w-full justify-center">
+                  <X className="h-3.5 w-3.5" />
+                  Cancel booking
+                </button>
+              )}
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      {showMenuPanel && (
+        <div className="no-print fixed inset-0 z-50 bg-black/70 backdrop-blur-sm p-3 sm:p-5" role="dialog" aria-modal="true" aria-label="Add items">
+          <div className="mc-panel h-full max-w-[900px] ml-auto p-0 flex flex-col shadow-2xl">
+            <div className="mc-dialog-header">
+              <div>
+                <div className="mc-section-label">Menu Command</div>
+                <div className="mc-meta mt-1">Add menu items to a seat, then return to the ledger.</div>
+              </div>
+              <button type="button" className="mc-chip ml-auto" onClick={() => setShowMenuPanel(false)}>
+                <X className="h-3.5 w-3.5" />
+                Close
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto mc-scroll-thin p-4 space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button type="button" onClick={() => { setShowMenuPanel(false); setShowCustomItemDialog(true); }} className="mc-action-btn">
+                  <Plus className="h-4 w-4" />
+                  Custom
+                </button>
+                <button type="button" onClick={() => { setShowMenuPanel(false); setShowDiscountDialog(true); }} className="mc-action-btn">
+                  <Minus className="h-4 w-4" />
+                  Discount
+                </button>
+                <button type="button" onClick={() => { setShowMenuPanel(false); setCouponCode(''); setCouponData(null); setShowCouponDialog(true); }} className="mc-action-btn">
+                  <Ticket className="h-4 w-4" />
+                  Coupon
+                </button>
+                {booking.bookingSource === 'QUICK_SALE' && (
+                  <button type="button" onClick={() => { setShowMenuPanel(false); setGiftCardAmount(''); setShowGiftCardDialog(true); }} className="mc-action-btn">
+                    <Gift className="h-4 w-4" />
+                    Gift Card
+                  </button>
+                )}
+              </div>
+
+              {menu.length === 0 ? (
+                <div className="mc-row py-10 text-center">
+                  <div className="text-[color:var(--mc-text-primary)]">Menu not available</div>
+                  <div className="mc-meta mt-1">Custom items are still available.</div>
+                </div>
+              ) : (
+                <Tabs defaultValue="hours" className="space-y-4">
+                  <TabsList className="grid grid-cols-5 bg-[color:var(--mc-surface-raised)] border border-[color:var(--mc-divider)]">
+                    <TabsTrigger value="hours">Hours</TabsTrigger>
+                    <TabsTrigger value="food">Food</TabsTrigger>
+                    <TabsTrigger value="drinks">Drinks</TabsTrigger>
+                    <TabsTrigger value="appetizers">Appetizers</TabsTrigger>
+                    <TabsTrigger value="desserts">Desserts</TabsTrigger>
+                  </TabsList>
+                  {(['hours', 'food', 'drinks', 'appetizers', 'desserts'] as const).map((category) => (
+                    <TabsContent key={category} value={category}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {getItemsByCategory(category).map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              handleMenuItemClick(item);
+                              setShowMenuPanel(false);
+                            }}
+                            className="mc-row text-left hover:border-[color:var(--mc-cyan)]"
+                          >
+                            <div className="font-semibold text-[color:var(--mc-text-hero)]">{item.name}</div>
+                            <div className="mc-meta line-clamp-2">{item.description}</div>
+                            <div className="mc-mono mt-2 text-[color:var(--mc-cyan)]">{formatMoney(item.price)}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="hidden flex-1 px-3 sm:px-6 py-4 sm:py-8 space-y-6 max-w-[1800px] mx-auto w-full">
         {/* Header */}
         <div className="flex items-center justify-between no-print">
           <div>
