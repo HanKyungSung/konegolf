@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { buttonStyles } from '@/styles/buttonStyles';
 import { useAuth } from '@/hooks/use-auth';
 import { Menu, X } from 'lucide-react';
+import { UiThemeToggle } from '@/components/UiThemeToggle';
 
 interface NavItem {
   label: string;
@@ -46,6 +47,7 @@ export function AdminHeader({
   };
 
   const visibleNavItems = navItems.filter(item => item.show !== false);
+  const canToggleUiTheme = user?.role === 'ADMIN' || user?.role === 'STAFF';
 
   // Mission Control variant — minimal dark header that blends with the MC dashboard
   if (variant === 'mc') {
@@ -75,6 +77,7 @@ export function AdminHeader({
             {/* Right: desktop nav */}
             <div className="hidden sm:flex items-center gap-2">
               {mcRightExtras}
+              {canToggleUiTheme && <UiThemeToggle variant="mc" />}
               {visibleNavItems.map((item, i) =>
                 item.to ? (
                   <Link key={i} to={item.to}>
@@ -116,6 +119,7 @@ export function AdminHeader({
               <div className="mc-mono text-xs text-[color:var(--mc-gray)] pb-2 border-b border-[color:var(--mc-divider-soft)]">
                 {user?.email || user?.name}
               </div>
+              {canToggleUiTheme && <UiThemeToggle variant="mc" fullWidth />}
               {visibleNavItems.map((item, i) =>
                 item.to ? (
                   <Link
@@ -162,7 +166,7 @@ export function AdminHeader({
     : 'container mx-auto px-3 sm:px-6';
 
   return (
-    <header className={`border-b border-slate-700 ${headerBg} ${sticky ? 'sticky top-0 z-50' : ''}`}>
+    <header className={`kg-app-header border-b border-slate-700 ${headerBg} ${sticky ? 'sticky top-0 z-50' : ''}`}>
       <div className={containerClass}>
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Left: Title */}
@@ -177,6 +181,7 @@ export function AdminHeader({
 
           {/* Right: Desktop nav */}
           <div className="hidden sm:flex items-center gap-3 sm:gap-4">
+            {canToggleUiTheme && <UiThemeToggle variant="admin" />}
             {visibleNavItems.map((item, i) => (
               item.to ? (
                 <Link key={i} to={item.to}>
@@ -221,6 +226,7 @@ export function AdminHeader({
             <div className="text-sm text-slate-400 pb-1 border-b border-slate-700 mb-2">
               {variant === 'admin' ? user?.name : user?.email}
             </div>
+            {canToggleUiTheme && <UiThemeToggle variant="admin" fullWidth />}
             {visibleNavItems.map((item, i) => (
               item.to ? (
                 <Link key={i} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block">

@@ -19,9 +19,11 @@ import { AuthProvider } from '../hooks/use-auth'
 import { WebSocketProvider } from '../hooks/use-websocket'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '../components/theme-provider'
+import { useUiTheme } from '../hooks/use-ui-theme'
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const { uiTheme } = useUiTheme();
   // redirect to home on auth-expired
   React.useEffect(() => {
     const onExpired = () => navigate('/', { replace: true });
@@ -29,7 +31,7 @@ function AppRoutes() {
     return () => window.removeEventListener('auth-expired', onExpired as EventListener);
   }, [navigate]);
   return (
-    <>
+    <div className="kg-theme-root" data-ui-theme={uiTheme}>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/admin" element={<AdminPage />} />
@@ -49,7 +51,7 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
-    </>
+    </div>
   );
 }
 
