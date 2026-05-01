@@ -70,6 +70,13 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Changed the New seat selector from a 2x2 card grid to a 1x4 vertical row list for easier scanning
   - [x] Removed the redundant Attention panel and consolidated partial-payment/missing-receipt indicators into Settlement
   - [x] Disabled Command Stack actions when the booking is completed, with a hint to reopen before editing
+- [x] **Mission Control Collect Payment Modal** (2026-04-30)
+  - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
+  - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow
+  - [x] Fixed currency input padding so tip and payment amount digits do not overlap the `$` prefix
+  - [x] Matched Upload Receipt and Cancel Payment action sizing in paid seat payment records
+  - [x] Preserved existing payment submission behavior, partial-payment handling, coupon $0 flow, and tip method logic
+  - [x] Added focused Playwright coverage for opening the modal and selecting Card tender
 - [x] **Mission Control Dashboard Quick Sales Surface** (2026-04-30)
   - [x] Added a same-day Quick Sales queue to the New dashboard for POS operators
   - [x] Moved Quick Sales out of the Actions/Tools column into its own dedicated panel above Attention

@@ -56,6 +56,23 @@ async function createQuickSaleBooking(page: import('@playwright/test').Page): Pr
   return bookingId;
 }
 
+async function addCustomOrder(page: import('@playwright/test').Page, bookingId: string) {
+  const response = await page.request.post(`${API_BASE}/api/bookings/${bookingId}/orders`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-pos-admin-key': 'pos-dev-key-change-in-production',
+    },
+    data: {
+      customItemName: 'Payment Modal Test Item',
+      customItemPrice: 25,
+      seatIndex: 1,
+      quantity: 1,
+    },
+  });
+
+  expect(response.ok()).toBeTruthy();
+}
+
 test.describe('Mission Control booking detail', () => {
   test.beforeEach(async ({ page }) => {
     await page.context().clearCookies();
@@ -122,5 +139,62 @@ test.describe('Mission Control booking detail', () => {
     await expect(commandStack.getByRole('button', { name: 'Discount' })).toBeDisabled();
     await expect(commandStack.getByRole('button', { name: 'Coupon' })).toBeDisabled();
     await expect(commandStack.getByRole('button', { name: 'Gift Card' })).toBeDisabled();
+  });
+
+  test('opens the Mission Control collect payment modal', async ({ page }) => {
+    const bookingId = await createQuickSaleBooking(page);
+    await addCustomOrder(page, bookingId);
+
+    await page.goto(`/pos/booking/${bookingId}`);
+
+    await page.getByRole('button', { name: /^Collect$/ }).click();
+    await expect(page.getByRole('heading', { name: 'Collect Payment' })).toBeVisible();
+    await expect(page.getByText('Seat 1 balance')).toBeVisible();
+    await expect(page.getByText('Payment Method', { exact: true })).toBeVisible();
+    await expect(page.getByText('Amount', { exact: true })).toBeVisible();
+    await expect(page.getByText('Select a payment method to continue.')).toBeVisible();
+
+    await page.getByRole('button', { name: /^Card$/ }).click();
+    await expect(page.getByText('Ready to settle by Card.')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Pay \$.* by Card/ })).toBeEnabled();
+
+    const tipAmountInput = page.getByLabel('Tip amount');
+    await tipAmountInput.fill('12.34');
+
+    const tipPrefixHasRoom = await tipAmountInput.evaluate((input) => {
+      const prefix = input.previousElementSibling as HTMLElement | null;
+      if (!prefix) return false;
+
+      const inputRect = input.getBoundingClientRect();
+      const prefixRect = prefix.getBoundingClientRect();
+      const paddingLeft = parseFloat(window.getComputedStyle(input).paddingLeft);
+
+      return inputRect.left + paddingLeft > prefixRect.right + 2;
+    });
+    expect(tipPrefixHasRoom).toBeTruthy();
+  });
+
+  test('keeps receipt upload and cancel payment actions the same size', async ({ page }) => {
+    const bookingId = await createQuickSaleBooking(page);
+    await addCustomOrder(page, bookingId);
+
+    await page.goto(`/pos/booking/${bookingId}`);
+
+    await page.getByRole('button', { name: /^Collect$/ }).click();
+    await page.getByRole('button', { name: /^Card$/ }).click();
+    await page.getByRole('button', { name: /Pay \$.* by Card/ }).click();
+    await expect(page.getByText('Payment Records')).toBeVisible();
+
+    const paymentRecords = page.locator('.mc-row').filter({ hasText: 'Payment Records' }).first();
+    const uploadReceipt = paymentRecords.getByRole('button', { name: /Upload Receipt|View Receipt/ }).first();
+    const cancelPayment = paymentRecords.getByRole('button', { name: 'Cancel Payment' }).first();
+
+    const uploadBox = await uploadReceipt.boundingBox();
+    const cancelBox = await cancelPayment.boundingBox();
+
+    expect(uploadBox).not.toBeNull();
+    expect(cancelBox).not.toBeNull();
+    expect(Math.abs(uploadBox!.width - cancelBox!.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(uploadBox!.height - cancelBox!.height)).toBeLessThanOrEqual(1);
   });
 });

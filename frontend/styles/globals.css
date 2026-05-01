@@ -438,10 +438,12 @@
 }
 
 /*
- * Mission Control surfaces still use `mc-*` tokens directly. These scoped
- * overrides make the Old/New switch visibly affect the dashboard before
- * each panel is migrated to the `kg-*` shell classes.
+ * Mission Control surfaces and portaled dialogs still use `mc-*` tokens
+ * directly. Keep these tokens on the active theme root as well as `.mc-root`
+ * so Radix portals inherit the same palette as the page that opened them.
  */
+:root[data-ui-theme='classic'],
+[data-ui-theme='classic'],
 [data-ui-theme='classic'] .mc-root {
   --mc-bg: #0f172a;
   --mc-surface: rgba(30, 41, 59, 0.82);
@@ -466,6 +468,8 @@
   --mc-text-accent-pink: #fb7185;
 }
 
+:root[data-ui-theme='mission-control'],
+[data-ui-theme='mission-control'],
 [data-ui-theme='mission-control'] .mc-root {
   --mc-bg: #06090e;
   --mc-surface: #0e1319;

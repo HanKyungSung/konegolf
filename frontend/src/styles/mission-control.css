@@ -387,6 +387,12 @@
   background: rgba(244, 122, 165, 0.08);
 }
 
+.mc-payment-action {
+  min-height: 2.5rem;
+  width: 100%;
+  justify-content: center;
+}
+
 .mc-chip-badge {
   display: inline-block;
   width: 7px;
@@ -724,6 +730,7 @@
 .mc-dialog-header {
   padding: 0.75rem 1.25rem;
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.75rem;
   border-bottom: 1px solid var(--mc-divider);
@@ -749,6 +756,21 @@
   color: var(--mc-text-primary, var(--mc-white));
   padding: 0.5rem 0.75rem;
   outline: none;
+}
+
+.mc-input.mc-input-currency {
+  padding-left: 1.9rem;
+}
+
+.mc-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.mc-input[type='number']::-webkit-outer-spin-button,
+.mc-input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .mc-input:focus {
