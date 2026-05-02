@@ -73,6 +73,11 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Removed duplicate seat-selection buttons from Settlement; seat switching now lives only in the Seats panel
   - [x] Emphasized the Seat Ledger print and collect actions, including a high-contrast Collect amount CTA
   - [x] Moved the Collect amount CTA under the selected-seat Payment summary Total/Remaining lines
+- [x] **Mission Control Booking Detail Middle Panel Breakdown Prototype** (2026-05-02)
+  - [x] Prototyped splitting the large middle Seat Ledger surface into separate Seat Ledger, Seat Totals, Orders, Payment, and Payment Records panels
+  - [x] Preserved the accepted Collect placement inside the selected-seat Payment panel
+  - [x] Captured a review screenshot at `test-results/booking-detail-middle-panels-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the prototype
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow

@@ -91,13 +91,16 @@ test.describe('Mission Control booking detail', () => {
     await expect(page.getByText('Booking Command')).toBeVisible();
     await expect(page.getByText('Session')).toBeVisible();
     await expect(page.getByText('Seat Ledger')).toBeVisible();
+    await expect(page.getByText('Seat Totals', { exact: true })).toBeVisible();
+    await expect(page.getByText('Orders', { exact: true })).toBeVisible();
+    await expect(page.getByText('Payment', { exact: true })).toBeVisible();
     await expect(page.getByText('Settlement', { exact: true })).toBeVisible();
     await expect(page.getByText('Command Stack')).toBeVisible();
     await expect(page.getByText('Attention', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Tax' })).toHaveCount(0);
     const seatsPanel = page.locator('section').filter({ has: page.getByText('Seats', { exact: true }) });
     const settlementPanel = page.locator('section').filter({ has: page.getByText('Settlement', { exact: true }) });
-    const paymentSummary = page.locator('.mc-row').filter({ has: page.getByText('Payment', { exact: true }) }).first();
+    const paymentSummary = page.locator('section').filter({ has: page.getByText('Payment', { exact: true }) }).first();
     await expect(seatsPanel.getByRole('button', { name: /^Seat 1\b/ })).toHaveCount(1);
     await expect(settlementPanel.getByRole('button', { name: /^Seat \d+\b/ })).toHaveCount(0);
     await expect(settlementPanel.getByText('Active seat 1')).toBeVisible();
@@ -195,7 +198,7 @@ test.describe('Mission Control booking detail', () => {
     await page.getByRole('button', { name: /Pay \$.* by Card/ }).click();
     await expect(page.getByText('Payment Records')).toBeVisible();
 
-    const paymentRecords = page.locator('.mc-row').filter({ hasText: 'Payment Records' }).first();
+    const paymentRecords = page.locator('section').filter({ has: page.getByText('Payment Records', { exact: true }) }).first();
     const uploadReceipt = paymentRecords.getByRole('button', { name: /Upload Receipt|View Receipt/ }).first();
     const cancelPayment = paymentRecords.getByRole('button', { name: 'Cancel Payment' }).first();
 
