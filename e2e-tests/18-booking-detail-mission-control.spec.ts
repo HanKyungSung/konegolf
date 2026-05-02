@@ -95,6 +95,16 @@ test.describe('Mission Control booking detail', () => {
     await expect(page.getByText('Command Stack')).toBeVisible();
     await expect(page.getByText('Attention', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Tax' })).toHaveCount(0);
+    const seatsPanel = page.locator('section').filter({ has: page.getByText('Seats', { exact: true }) });
+    const settlementPanel = page.locator('section').filter({ has: page.getByText('Settlement', { exact: true }) });
+    const paymentSummary = page.locator('.mc-row').filter({ has: page.getByText('Payment', { exact: true }) }).first();
+    await expect(seatsPanel.getByRole('button', { name: /^Seat 1\b/ })).toHaveCount(1);
+    await expect(settlementPanel.getByRole('button', { name: /^Seat \d+\b/ })).toHaveCount(0);
+    await expect(settlementPanel.getByText('Active seat 1')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Print Seat Receipt$/ })).toHaveClass(/mc-ledger-action-secondary/);
+    await expect(settlementPanel.getByRole('button', { name: /^Collect \$.*$/ })).toHaveCount(0);
+    await expect(paymentSummary.getByRole('button', { name: /^Collect \$.*$/ })).toHaveClass(/mc-ledger-action-primary/);
+    await expect(page.getByRole('button', { name: /^Collect \$.*$/ })).toHaveCount(1);
 
     await page.getByRole('button', { name: /Add item/i }).first().click();
     await expect(page.getByText('Menu Command')).toBeVisible();
@@ -147,7 +157,7 @@ test.describe('Mission Control booking detail', () => {
 
     await page.goto(`/pos/booking/${bookingId}`);
 
-    await page.getByRole('button', { name: /^Collect$/ }).click();
+    await page.getByRole('button', { name: /^Collect \$.*$/ }).click();
     await expect(page.getByRole('heading', { name: 'Collect Payment' })).toBeVisible();
     await expect(page.getByText('Seat 1 balance')).toBeVisible();
     await expect(page.getByText('Payment Method', { exact: true })).toBeVisible();
@@ -180,7 +190,7 @@ test.describe('Mission Control booking detail', () => {
 
     await page.goto(`/pos/booking/${bookingId}`);
 
-    await page.getByRole('button', { name: /^Collect$/ }).click();
+    await page.getByRole('button', { name: /^Collect \$.*$/ }).click();
     await page.getByRole('button', { name: /^Card$/ }).click();
     await page.getByRole('button', { name: /Pay \$.* by Card/ }).click();
     await expect(page.getByText('Payment Records')).toBeVisible();

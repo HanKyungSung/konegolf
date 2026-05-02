@@ -1475,27 +1475,11 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   type="button"
                   onClick={() => handleOpenReceiptModal('seat', activeSeat)}
                   disabled={loadingReceipt || selectedSeatSummary.seatItems.length === 0}
-                  className="mc-chip disabled:opacity-40 disabled:pointer-events-none"
+                  className="mc-chip mc-ledger-action mc-ledger-action-secondary disabled:opacity-40 disabled:pointer-events-none"
                 >
-                  <Printer className="h-3.5 w-3.5" />
-                  Seat Receipt
+                  <Printer className="h-4 w-4" />
+                  Print Seat Receipt
                 </button>
-                {!selectedSeatSummary.isPaid && !isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentDialogSeat(activeSeat);
-                      setPaymentDialogAmount(selectedSeatSummary.remaining > 0 ? selectedSeatSummary.remaining.toFixed(2) : selectedSeatSummary.total.toFixed(2));
-                      setPaymentDialogMethod(null);
-                      setTipMethodBySeat(prev => ({ ...prev, [activeSeat]: 'CARD' }));
-                    }}
-                    disabled={selectedSeatSummary.subtotal === 0 && !selectedSeatSummary.hasCouponDiscount}
-                    className="mc-chip disabled:opacity-40 disabled:pointer-events-none"
-                  >
-                    <CreditCard className="h-3.5 w-3.5" />
-                    Collect
-                  </button>
-                )}
               </div>
             </div>
 
@@ -1644,6 +1628,22 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       {!selectedSeatSummary.isPaid && selectedSeatSummary.total > 0 && (
                         <div className="flex justify-between text-[color:var(--mc-amber)]"><span>Remaining</span><span>{formatMoney(selectedSeatSummary.remaining)}</span></div>
                       )}
+                      {!selectedSeatSummary.isPaid && !isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentDialogSeat(activeSeat);
+                            setPaymentDialogAmount(selectedSeatSummary.remaining > 0 ? selectedSeatSummary.remaining.toFixed(2) : selectedSeatSummary.total.toFixed(2));
+                            setPaymentDialogMethod(null);
+                            setTipMethodBySeat(prev => ({ ...prev, [activeSeat]: 'CARD' }));
+                          }}
+                          disabled={selectedSeatSummary.subtotal === 0 && !selectedSeatSummary.hasCouponDiscount}
+                          className="mc-chip mc-ledger-action mc-ledger-action-primary w-full justify-center disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          Collect {formatMoney(selectedSeatSummary.remaining > 0 ? selectedSeatSummary.remaining : selectedSeatSummary.total)}
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1714,23 +1714,29 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   <div className="mc-mono text-lg text-[color:var(--mc-amber)]">{formatMoney(totalDue)}</div>
                 </div>
               </div>
-              <div className="space-y-2">
-                {seatSummaries.map((summary) => (
-                  <button
-                    key={summary.seat}
-                    type="button"
-                    onClick={() => setSelectedSeat(summary.seat)}
-                    className={`mc-row w-full flex items-center justify-between gap-2 text-left py-2.5 ${summary.seat === activeSeat ? 'border-[color:var(--mc-cyan)]' : ''}`}
-                  >
-                    <span className="flex items-center gap-2 text-sm text-[color:var(--mc-text-primary)]">
-                      <span className={`h-2 w-2 rounded-full ${seatColors[summary.seat - 1]}`} />
-                      Seat {summary.seat}
-                    </span>
-                    <span className={`mc-mono text-xs ${getSettlementTone(summary)}`}>
-                      {getSettlementLabel(summary)}
-                    </span>
-                  </button>
-                ))}
+              <div className="mc-row space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-[color:var(--mc-text-primary)]">
+                    <span className={`h-2 w-2 rounded-full ${seatColors[activeSeat - 1]}`} />
+                    Active seat {activeSeat}
+                  </span>
+                  <span className={`mc-mono text-xs ${getSettlementTone(selectedSeatSummary)}`}>
+                    {getSettlementLabel(selectedSeatSummary)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-sm border border-[color:var(--mc-divider-soft)] p-2">
+                    <div className="mc-meta-dim">Seat total</div>
+                    <div className="mc-mono text-[color:var(--mc-text-hero)]">{formatMoney(selectedSeatSummary.total)}</div>
+                  </div>
+                  <div className="rounded-sm border border-[color:var(--mc-divider-soft)] p-2">
+                    <div className="mc-meta-dim">{selectedSeatSummary.isPaid ? 'Paid' : 'Remaining'}</div>
+                    <div className={`mc-mono ${selectedSeatSummary.isPaid ? 'text-[color:var(--mc-green)]' : 'text-[color:var(--mc-amber)]'}`}>
+                      {formatMoney(selectedSeatSummary.isPaid ? selectedSeatSummary.paidSoFar : selectedSeatSummary.remaining)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mc-meta-dim">Use the Seats panel to change the active ledger.</div>
               </div>
             </section>
 

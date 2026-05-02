@@ -387,6 +387,41 @@
   background: rgba(244, 122, 165, 0.08);
 }
 
+.mc-ledger-action {
+  min-height: 2.6rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  border-radius: 4px;
+  border-width: 1px;
+}
+
+.mc-ledger-action-secondary {
+  color: var(--mc-amber);
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.mc-ledger-action-secondary:hover {
+  color: var(--mc-amber);
+  border-color: var(--mc-amber);
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.mc-ledger-action-primary {
+  color: var(--mc-bg);
+  border-color: var(--mc-cyan);
+  background: linear-gradient(135deg, var(--mc-cyan), rgba(95, 214, 146, 0.94));
+  box-shadow: 0 0 0 1px rgba(29, 224, 197, 0.18), 0 12px 28px -16px rgba(29, 224, 197, 0.85);
+}
+
+.mc-ledger-action-primary:hover {
+  color: var(--mc-bg);
+  border-color: var(--mc-cyan);
+  background: linear-gradient(135deg, var(--mc-cyan), rgba(125, 239, 180, 0.98));
+  box-shadow: 0 0 0 1px rgba(29, 224, 197, 0.28), 0 16px 34px -16px rgba(29, 224, 197, 0.95);
+}
+
 .mc-payment-action {
   min-height: 2.5rem;
   width: 100%;
