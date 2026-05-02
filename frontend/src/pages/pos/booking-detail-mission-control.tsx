@@ -1394,7 +1394,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="mc-section-label">Seats</div>
-                  <div className="mc-meta">Adjust players and choose the active ledger.</div>
+                  <div className="mc-meta">Choose active seat.</div>
                 </div>
                 <div className="flex items-center gap-2">
                   {!isReadOnly && (
@@ -1465,31 +1465,11 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
           </aside>
 
           <div className="space-y-3">
-            <section className="mc-panel p-0 overflow-hidden">
-              <div className="mc-panel-header px-5 py-4">
-                <div>
-                  <div className="mc-section-label">Seat Ledger</div>
-                  <div className="mc-meta mt-1">Focused work surface for seat {activeSeat}</div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenReceiptModal('seat', activeSeat)}
-                    disabled={loadingReceipt || selectedSeatSummary.seatItems.length === 0}
-                    className="mc-chip mc-ledger-action mc-ledger-action-secondary disabled:opacity-40 disabled:pointer-events-none"
-                  >
-                    <Printer className="h-4 w-4" />
-                    Print Seat Receipt
-                  </button>
-                </div>
-              </div>
-            </section>
-
             <section className="mc-panel space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="mc-section-label">Seat Totals</div>
-                  <div className="mc-meta mt-1">Financial snapshot for seat {activeSeat}</div>
+                  <div className="mc-section-label">Seat Ledger</div>
+                  <div className="mc-meta mt-1">Seat {activeSeat} totals and active workflow.</div>
                 </div>
                 <div className={`mc-mono text-sm ${getSettlementTone(selectedSeatSummary)}`}>
                   {getSettlementLabel(selectedSeatSummary)}
@@ -1638,7 +1618,15 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         <div className="flex justify-between text-[color:var(--mc-green)]"><span>Paid</span><span>{formatMoney(selectedSeatSummary.paidSoFar)}</span></div>
                       )}
                       {!selectedSeatSummary.isPaid && selectedSeatSummary.total > 0 && (
-                        <div className="flex justify-between text-[color:var(--mc-amber)]"><span>Remaining</span><span>{formatMoney(selectedSeatSummary.remaining)}</span></div>
+                        <div className="rounded-sm border border-[rgba(248,199,88,0.35)] bg-[rgba(248,199,88,0.08)] p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="mc-meta-dim">Remaining</span>
+                            <span className="mc-meta-dim">Collect next</span>
+                          </div>
+                          <div className="mt-1 mc-mono text-2xl leading-none text-[color:var(--mc-amber)]">
+                            {formatMoney(selectedSeatSummary.remaining)}
+                          </div>
+                        </div>
                       )}
                       {!selectedSeatSummary.isPaid && !isReadOnly && (
                         <button
@@ -1792,7 +1780,10 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
             )}
 
             <section className="mc-panel space-y-3">
-              <div className="mc-section-label">Receipts</div>
+              <div>
+                <div className="mc-section-label">Receipts</div>
+                <div className="mc-meta mt-1">Print or preview booking and seat receipts.</div>
+              </div>
               <button
                 type="button"
                 onClick={() => handleOpenReceiptModal('full')}
@@ -1800,24 +1791,28 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                 className="mc-chip w-full justify-center disabled:opacity-40 disabled:pointer-events-none"
               >
                 <Printer className="h-3.5 w-3.5" />
-                Full receipt
+                Full booking receipt
               </button>
               <button
                 type="button"
                 onClick={() => handleOpenReceiptModal('seat', activeSeat)}
                 disabled={loadingReceipt || selectedSeatSummary.seatItems.length === 0}
-                className="mc-chip w-full justify-center disabled:opacity-40 disabled:pointer-events-none"
+                className="mc-chip mc-ledger-action mc-ledger-action-secondary w-full justify-center disabled:opacity-40 disabled:pointer-events-none"
               >
                 <ReceiptText className="h-3.5 w-3.5" />
                 Seat {activeSeat} receipt
               </button>
-              {!isReadOnly && booking.bookingStatus?.toUpperCase() !== 'COMPLETED' && (
+            </section>
+
+            {!isReadOnly && booking.bookingStatus?.toUpperCase() !== 'COMPLETED' && (
+              <section className="mc-panel space-y-2 border-[rgba(244,122,165,0.35)] bg-[rgba(244,122,165,0.03)] py-3">
+                <div className="mc-section-label">Booking Actions</div>
                 <button type="button" onClick={() => setCancelBookingOpen(true)} className="mc-chip mc-chip-alert w-full justify-center">
                   <X className="h-3.5 w-3.5" />
                   Cancel booking
                 </button>
-              )}
-            </section>
+              </section>
+            )}
           </aside>
         </div>
       </main>

@@ -91,7 +91,7 @@ test.describe('Mission Control booking detail', () => {
     await expect(page.getByText('Booking Command')).toBeVisible();
     await expect(page.getByText('Session')).toBeVisible();
     await expect(page.getByText('Seat Ledger')).toBeVisible();
-    await expect(page.getByText('Seat Totals', { exact: true })).toBeVisible();
+    await expect(page.getByText('Seat 1 totals and active workflow.')).toBeVisible();
     await expect(page.getByText('Orders', { exact: true })).toBeVisible();
     await expect(page.getByText('Payment', { exact: true })).toBeVisible();
     await expect(page.getByText('Settlement', { exact: true })).toBeVisible();
@@ -101,13 +101,19 @@ test.describe('Mission Control booking detail', () => {
     const seatsPanel = page.locator('section').filter({ has: page.getByText('Seats', { exact: true }) });
     const settlementPanel = page.locator('section').filter({ has: page.getByText('Settlement', { exact: true }) });
     const paymentSummary = page.locator('section').filter({ has: page.getByText('Payment', { exact: true }) }).first();
+    const receiptsPanel = page.locator('section').filter({ has: page.getByText('Receipts', { exact: true }) });
+    const bookingActionsPanel = page.locator('section').filter({ has: page.getByText('Booking Actions', { exact: true }) });
     await expect(seatsPanel.getByRole('button', { name: /^Seat 1\b/ })).toHaveCount(1);
     await expect(settlementPanel.getByRole('button', { name: /^Seat \d+\b/ })).toHaveCount(0);
     await expect(settlementPanel.getByText('Active seat 1')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Print Seat Receipt$/ })).toHaveClass(/mc-ledger-action-secondary/);
+    await expect(page.getByRole('button', { name: /^Print Seat Receipt$/ })).toHaveCount(0);
+    await expect(receiptsPanel.getByRole('button', { name: 'Full booking receipt' })).toHaveCount(1);
+    await expect(receiptsPanel.getByRole('button', { name: /^Seat 1 receipt$/ })).toHaveClass(/mc-ledger-action-secondary/);
     await expect(settlementPanel.getByRole('button', { name: /^Collect \$.*$/ })).toHaveCount(0);
     await expect(paymentSummary.getByRole('button', { name: /^Collect \$.*$/ })).toHaveClass(/mc-ledger-action-primary/);
     await expect(page.getByRole('button', { name: /^Collect \$.*$/ })).toHaveCount(1);
+    await expect(receiptsPanel.getByRole('button', { name: 'Cancel booking' })).toHaveCount(0);
+    await expect(bookingActionsPanel.getByRole('button', { name: 'Cancel booking' })).toHaveCount(1);
 
     await page.getByRole('button', { name: /Add item/i }).first().click();
     await expect(page.getByText('Menu Command')).toBeVisible();
