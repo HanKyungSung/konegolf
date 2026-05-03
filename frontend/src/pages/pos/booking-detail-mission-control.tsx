@@ -3193,114 +3193,142 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
       {/* Apply Coupon Dialog */}
       <Dialog open={showCouponDialog} onOpenChange={setShowCouponDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-amber-400" />
-              Apply Coupon
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Enter the coupon code to validate and apply to a seat
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Code Input */}
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g., KGOLF-A3X9"
-                value={couponCode}
-                onChange={(e) => {
-                  setCouponCode(e.target.value.toUpperCase());
+        <DialogContent className="mc-dialog-content max-w-[620px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-amber), var(--mc-green))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="flex items-center gap-2 text-[color:var(--mc-text-hero)]">
+                  <Ticket className="h-5 w-5 text-[color:var(--mc-amber)]" />
+                  Apply Coupon
+                </DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Validate a coupon code, then choose the seat to receive it.
+                </DialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCouponDialog(false);
+                  setCouponCode('');
                   setCouponData(null);
                 }}
-                onKeyDown={(e) => e.key === 'Enter' && handleValidateCoupon()}
-                className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 font-mono text-lg tracking-wider"
-                autoFocus
-              />
-              <Button
-                onClick={handleValidateCoupon}
-                disabled={couponValidating || !couponCode.trim()}
-                className="bg-amber-500 hover:bg-amber-600 text-black px-6"
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close coupon"
+                disabled={couponValidating || couponApplying}
               >
-                {couponValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Validate'}
-              </Button>
-            </div>
+                ×
+              </button>
+            </DialogHeader>
 
-            {/* Validation Result */}
-            {couponData && (
-              <div className={`p-4 rounded-lg border ${couponData.isValid
-                ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'bg-red-500/10 border-red-500/30'
-              }`}>
-                {couponData.isValid ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                      <span className="font-semibold text-emerald-400">Valid Coupon</span>
+            <div className="mc-dialog-body mc-section-stack">
+              <div className="space-y-2">
+                <Label htmlFor="couponCode" className="mc-kicker">Coupon code</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="couponCode"
+                    placeholder="e.g., KGOLF-A3X9"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponData(null);
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleValidateCoupon()}
+                    className="mc-input mc-mono text-base tracking-[0.16em]"
+                    autoFocus
+                  />
+                  <Button
+                    onClick={handleValidateCoupon}
+                    disabled={couponValidating || !couponCode.trim()}
+                    className="mc-action-btn mc-action-btn-primary mc-action-btn-fit sm:min-w-[120px]"
+                  >
+                    {couponValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Validate'}
+                  </Button>
+                </div>
+              </div>
+
+              {couponData ? (
+                couponData.isValid ? (
+                  <div className="mc-subpanel border-[rgba(95,214,146,0.35)] bg-[rgba(95,214,146,0.08)]">
+                    <div className="mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-[color:var(--mc-green)]" />
+                      <span className="font-semibold text-[color:var(--mc-green)]">Valid Coupon</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <span className="text-slate-400">Code:</span>{' '}
-                        <span className="text-white font-mono">{couponData.code}</span>
+                        <span className="mc-meta">Code</span>
+                        <div className="mc-mono text-[color:var(--mc-text-primary)]">{couponData.code}</div>
                       </div>
                       <div>
-                        <span className="text-slate-400">Type:</span>{' '}
-                        <span className="text-white">{couponData.couponType?.label}</span>
+                        <span className="mc-meta">Type</span>
+                        <div className="text-[color:var(--mc-text-primary)]">{couponData.couponType?.label || 'Coupon'}</div>
                       </div>
                       <div>
-                        <span className="text-slate-400">Value:</span>{' '}
-                        <span className="text-amber-400 font-bold">${Number(couponData.discountAmount).toFixed(2)}</span>
+                        <span className="mc-meta">Value</span>
+                        <div className="mc-mono font-bold text-[color:var(--mc-amber)]">{formatMoney(Number(couponData.discountAmount))}</div>
                       </div>
                       <div>
-                        <span className="text-slate-400">For:</span>{' '}
-                        <span className="text-white">{couponData.user?.name}</span>
+                        <span className="mc-meta">For</span>
+                        <div className="truncate text-[color:var(--mc-text-primary)]">{couponData.user?.name || 'Customer'}</div>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-300">{couponData.description}</p>
+                    {couponData.description && <p className="mc-meta mt-3">{couponData.description}</p>}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-400" />
-                    <span className="text-red-400">{couponData.error || 'Invalid coupon'}</span>
+                  <div className="mc-subpanel flex items-center gap-2 border-[rgba(244,122,165,0.35)] bg-[rgba(244,122,165,0.08)]">
+                    <AlertCircle className="h-5 w-5 text-[color:var(--mc-magenta)]" />
+                    <span className="text-[color:var(--mc-magenta)]">{couponData.error || 'Invalid coupon'}</span>
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* Seat Selection (only when valid) */}
-            {couponData?.isValid && (
-              <div className="space-y-2">
-                <Label className="text-white">Apply to Seat</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
-                    <Button
-                      key={seat}
-                      onClick={() => handleApplyCoupon(seat)}
-                      disabled={couponApplying}
-                      className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
-                    >
-                      {couponApplying ? <Loader2 className="h-5 w-5 animate-spin" /> : `Seat ${seat}`}
-                    </Button>
-                  ))}
+                )
+              ) : (
+                <div className="mc-subpanel mc-meta">
+                  Enter a coupon code and validate it to unlock seat selection.
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCouponDialog(false);
-                setCouponCode('');
-                setCouponData(null);
-              }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
+              {couponData?.isValid && (
+                <div className="space-y-2">
+                  <div className="mc-kicker">Apply to seat</div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                      <Button
+                        key={seat}
+                        onClick={() => handleApplyCoupon(seat)}
+                        disabled={couponApplying}
+                        className="mc-seat-choice"
+                        aria-label={`Apply coupon to Seat ${seat}`}
+                      >
+                        <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                        <span>
+                          <span className="mc-seat-choice-title">Seat {seat}</span>
+                          <span className="mc-seat-choice-meta block">{couponApplying ? 'Applying...' : 'Redeem coupon here'}</span>
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="mc-dialog-footer mc-dialog-footer-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCouponDialog(false);
+                  setCouponCode('');
+                  setCouponData(null);
+                }}
+                className="mc-action-btn mc-action-btn-fit"
+                disabled={couponValidating || couponApplying}
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

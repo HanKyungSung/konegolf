@@ -200,6 +200,46 @@ test.describe('Mission Control booking detail', () => {
     await discountDialog.getByRole('button', { name: 'Apply discount to Seat 2' }).click();
     await expect(page.getByRole('heading', { name: 'Add Discount' })).toBeHidden();
     await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('Modal Discount')).toBeVisible();
+
+    let couponRedeemPayload: { bookingId?: string; seatNumber?: number } | null = null;
+    await page.route(`${API_BASE}/api/coupons/validate/KGOLF-TEST`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          isValid: true,
+          coupon: {
+            code: 'KGOLF-TEST',
+            description: 'Mission Control modal test coupon',
+            discountAmount: 35,
+            couponType: { label: 'Birthday' },
+            user: { name: 'Mission Control Guest' },
+          },
+        }),
+      });
+    });
+    await page.route(`${API_BASE}/api/coupons/KGOLF-TEST/redeem`, async (route) => {
+      couponRedeemPayload = JSON.parse(route.request().postData() || '{}');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await originalLayout.getByRole('button', { name: 'Coupon' }).first().click();
+    const couponDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Apply Coupon' }) });
+    await expect(couponDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(couponDialog.getByText('Enter a coupon code and validate it to unlock seat selection.')).toBeVisible();
+    await couponDialog.getByLabel('Coupon code').fill('KGOLF-TEST');
+    await couponDialog.getByRole('button', { name: 'Validate' }).click();
+    await expect(couponDialog.getByText('Valid Coupon')).toBeVisible();
+    await expect(couponDialog.getByText('KGOLF-TEST')).toBeVisible();
+    await expect(couponDialog.getByText('$35.00')).toBeVisible();
+    await expect(couponDialog.getByRole('button', { name: 'Apply coupon to Seat 2' })).toBeVisible();
+    await couponDialog.getByRole('button', { name: 'Apply coupon to Seat 2' }).click();
+    await expect(page.getByRole('heading', { name: 'Apply Coupon' })).toBeHidden();
+    expect(couponRedeemPayload).toMatchObject({ bookingId, seatNumber: 2 });
   });
 
   test('hides edit menu actions for completed bookings', async ({ page }) => {

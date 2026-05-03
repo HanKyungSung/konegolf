@@ -219,6 +219,13 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Preserved the existing flat/percent discount behavior and form reset after a successful apply/cancel
   - [x] Added focused Playwright coverage for opening the modal, enabling seat actions, applying a flat discount, and verifying it appears on the destination seat
   - [x] Captured a review screenshot at `test-results/booking-detail-add-discount-modal-prototype.png`
+- [x] **Mission Control Booking Detail Apply Coupon Modal** (2026-05-03)
+  - [x] Restyled the Apply Coupon dialog with the shared MC dialog frame, header, body, footer, coupon code input, validation result panels, and close control
+  - [x] Reused the canonical Mission Control room/timeline seat color cycle for coupon redemption seat choices
+  - [x] Right-aligned the Apply Coupon dialog Cancel action with the reusable MC footer modifier
+  - [x] Preserved the existing coupon validation and redemption behavior, including code reset and validation-state reset on cancel
+  - [x] Added focused Playwright coverage for mocked coupon validation, coupon details display, seat redemption, and redeem payload
+  - [x] Captured a review screenshot at `test-results/booking-detail-apply-coupon-modal-prototype.png`
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow
