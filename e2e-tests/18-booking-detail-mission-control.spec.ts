@@ -174,9 +174,18 @@ test.describe('Mission Control booking detail', () => {
     await expect(page.getByRole('heading', { name: 'Split Item Cost' })).toBeHidden();
 
     await originalLayout.getByRole('button', { name: 'Custom' }).first().click();
-    await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeVisible();
-    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    const customItemDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Add Custom Item' }) });
+    await expect(customItemDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(customItemDialog.getByRole('button', { name: 'Add custom item to Seat 2' })).toBeDisabled();
+    await customItemDialog.getByLabel('Item name').fill('Custom Modal Test Item');
+    await customItemDialog.getByLabel('Price').fill('18.75');
+    await expect(customItemDialog.locator('.mc-subpanel').getByText('Custom Modal Test Item', { exact: true })).toBeVisible();
+    await expect(customItemDialog.locator('.mc-subpanel').getByText('$18.75')).toBeVisible();
+    await expect(customItemDialog.getByRole('button', { name: 'Add custom item to Seat 2' })).toBeEnabled();
+    await customItemDialog.getByRole('button', { name: 'Add custom item to Seat 2' }).click();
     await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeHidden();
+    await originalLayout.getByRole('button', { name: 'Seat 2 status' }).click();
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('Custom Modal Test Item')).toBeVisible();
   });
 
   test('hides edit menu actions for completed bookings', async ({ page }) => {

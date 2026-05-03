@@ -2925,90 +2925,118 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
       {/* Custom Item Dialog */}
       <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Add Custom Item</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Enter item name and price, then select which seat to add it to
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="mc-dialog-content max-w-[620px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-purple), var(--mc-cyan))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="text-[color:var(--mc-text-hero)]">Add Custom Item</DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Enter a one-off item, then choose the seat to receive it.
+                </DialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomItemDialog(false);
+                  setCustomItemName('');
+                  setCustomItemPrice('');
+                }}
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close custom item"
+                disabled={orderLoading}
+              >
+                ×
+              </button>
+            </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Item Name Input */}
-            <div className="space-y-2">
-              <Label htmlFor="customItemName" className="text-white">Item Name</Label>
-              <Input
-                id="customItemName"
-                placeholder="e.g., Special Event Package"
-                value={customItemName}
-                onChange={(e) => setCustomItemName(e.target.value)}
-                className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-                autoFocus
-              />
-            </div>
+            <div className="mc-dialog-body mc-section-stack">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+                <div className="space-y-2">
+                  <Label htmlFor="customItemName" className="mc-kicker">Item name</Label>
+                  <Input
+                    id="customItemName"
+                    placeholder="e.g., Special Event Package"
+                    value={customItemName}
+                    onChange={(e) => setCustomItemName(e.target.value)}
+                    className="mc-input"
+                    autoFocus
+                  />
+                </div>
 
-            {/* Price Input */}
-            <div className="space-y-2">
-              <Label htmlFor="customItemPrice" className="text-white">Price ($)</Label>
-              <Input
-                id="customItemPrice"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={customItemPrice}
-                onChange={(e) => setCustomItemPrice(e.target.value)}
-                className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-              />
-            </div>
-
-            {/* Preview */}
-            {customItemName && customItemPrice && parseFloat(customItemPrice) > 0 && (
-              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-semibold text-white">{customItemName}</div>
-                    <div className="text-xs text-slate-400">Custom Item</div>
-                  </div>
-                  <div className="text-purple-400 font-bold text-lg">
-                    ${parseFloat(customItemPrice).toFixed(2)}
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customItemPrice" className="mc-kicker">Price</Label>
+                  <Input
+                    id="customItemPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={customItemPrice}
+                    onChange={(e) => setCustomItemPrice(e.target.value)}
+                    className="mc-input mc-mono"
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Seat Selection */}
-            <div className="space-y-2">
-              <Label className="text-white">Select Seat</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
-                  <Button
-                    key={seat}
-                    onClick={() => handleAddCustomItem(seat)}
-                    disabled={orderLoading || !customItemName.trim() || !customItemPrice || parseFloat(customItemPrice) <= 0}
-                    className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
-                  >
-                    {orderLoading ? 'Adding...' : `Seat ${seat}`}
-                  </Button>
-                ))}
+              {customItemName.trim() && customItemPrice && parseFloat(customItemPrice) > 0 ? (
+                <div className="mc-subpanel flex items-center justify-between gap-3 border-[rgba(184,85,231,0.35)] bg-[rgba(184,85,231,0.08)]">
+                  <div className="min-w-0">
+                    <div className="mc-kicker">Preview</div>
+                    <div className="truncate font-semibold text-[color:var(--mc-text-primary)]">{customItemName.trim()}</div>
+                    <div className="mc-meta mt-1">Custom item · Qty 1</div>
+                  </div>
+                  <div className="mc-mono text-lg font-bold text-[color:var(--mc-purple)]">
+                    {formatMoney(parseFloat(customItemPrice))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mc-subpanel mc-meta">
+                  Enter a valid item name and price to enable seat actions.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="mc-kicker">Select seat</div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                    <Button
+                      key={seat}
+                      onClick={() => handleAddCustomItem(seat)}
+                      disabled={orderLoading || !customItemName.trim() || !customItemPrice || parseFloat(customItemPrice) <= 0}
+                      className="mc-seat-choice"
+                      aria-label={`Add custom item to Seat ${seat}`}
+                    >
+                      <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                      <span>
+                        <span className="mc-seat-choice-title">Seat {seat}</span>
+                        <span className="mc-seat-choice-meta block">{orderLoading ? 'Adding...' : 'Add custom item here'}</span>
+                      </span>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCustomItemDialog(false);
-                setCustomItemName('');
-                setCustomItemPrice('');
-              }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-              disabled={orderLoading}
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="mc-dialog-footer mc-dialog-footer-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCustomItemDialog(false);
+                  setCustomItemName('');
+                  setCustomItemPrice('');
+                }}
+                className="mc-action-btn mc-action-btn-fit"
+                disabled={orderLoading}
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
