@@ -622,6 +622,36 @@
   color: var(--mc-text-primary);
 }
 
+.mc-seat-choice-selected {
+  border-color: rgba(245, 158, 11, 0.64);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.mc-seat-choice-selected:hover {
+  border-color: var(--mc-amber);
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.mc-seat-choice-check {
+  margin-left: auto;
+  display: inline-flex;
+  height: 1.35rem;
+  width: 1.35rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mc-divider);
+  border-radius: 999px;
+  color: transparent;
+}
+
+.mc-seat-choice-selected .mc-seat-choice-check {
+  border-color: var(--mc-amber);
+  background: var(--mc-amber);
+  color: var(--mc-bg);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.42);
+}
+
 .mc-seat-tone-1 {
   --mc-seat-color: var(--mc-cyan);
   --mc-seat-border: rgba(29, 224, 197, 0.68);
@@ -695,6 +725,13 @@
 .mc-seat-choice-meta {
   color: var(--mc-text-meta);
   font-size: 0.75rem;
+}
+
+.mc-split-preview {
+  display: grid;
+  gap: 0.65rem;
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.08);
 }
 
 /* Compact utility chip — for top-of-page navigation/links */

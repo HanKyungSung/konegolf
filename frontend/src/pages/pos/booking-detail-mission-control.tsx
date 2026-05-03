@@ -2792,98 +2792,134 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
       </Dialog>
 
       <Dialog open={showSplitDialog} onOpenChange={setShowSplitDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
-          <DialogHeader>
-            <DialogTitle>Split Item Cost</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Select seats to split "{selectedOrderItem?.menuItem.name}" ($
-              {selectedOrderItem?.menuItem.price.toFixed(2)})
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-slate-300">
-              The cost will be divided evenly across selected seats. Each seat will receive the full quantity.
-            </p>
+        <DialogContent className="mc-dialog-content max-w-[560px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-amber), var(--mc-magenta))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="text-[color:var(--mc-text-hero)]">Split Item Cost</DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Select every seat that should share {selectedOrderItem?.menuItem.name ? `"${selectedOrderItem.menuItem.name}"` : 'this item'}.
+                </DialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSplitDialog(false);
+                  setSelectedOrderItem(null);
+                  setSelectedSeatsForSplit([]);
+                }}
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close split item"
+              >
+                ×
+              </button>
+            </DialogHeader>
 
-            {/* Seat selection */}
-            <div className="space-y-3">
-              {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
-                <div
-                  key={seat}
-                  onClick={() => toggleSeatForSplit(seat)}
-                  className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all ${
-                    selectedSeatsForSplit.includes(seat)
-                      ? 'bg-amber-500/20 border-2 border-amber-500'
-                      : 'bg-slate-900/50 border-2 border-slate-700 hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        selectedSeatsForSplit.includes(seat)
-                          ? 'bg-amber-500 border-amber-500'
-                          : 'border-slate-500'
-                      }`}
-                    >
-                      {selectedSeatsForSplit.includes(seat) && (
-                        <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
+            <div className="mc-dialog-body mc-section-stack">
+              {selectedOrderItem && (
+                <div className="mc-subpanel flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="mc-kicker">Selected item</div>
+                    <div className="truncate font-semibold text-[color:var(--mc-text-primary)]">{selectedOrderItem.menuItem.name}</div>
+                    <div className="mc-meta mt-1">
+                      Qty {selectedOrderItem.quantity} · divided evenly across selected seats
                     </div>
-                    <div className={`w-4 h-4 rounded-full ${getSeatToneClass(seat)}`} />
-                    <span className="text-white font-medium">Seat {seat}</span>
                   </div>
-                  {selectedSeatsForSplit.includes(seat) && selectedSeatsForSplit.length > 0 && selectedOrderItem && (
-                    <span className="text-amber-400 font-bold">
-                      ${(selectedOrderItem.menuItem.price / selectedSeatsForSplit.length).toFixed(2)}
-                    </span>
-                  )}
+                  <div className="mc-mono text-[color:var(--mc-cyan)]">
+                    {formatMoney(selectedOrderItem.menuItem.price)}
+                  </div>
                 </div>
-              ))}
+              )}
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => {
+                  const isSelected = selectedSeatsForSplit.includes(seat);
+                  const pricePerSeat = selectedOrderItem && selectedSeatsForSplit.length > 0
+                    ? selectedOrderItem.menuItem.price / selectedSeatsForSplit.length
+                    : null;
+
+                  return (
+                    <Button
+                      key={seat}
+                      type="button"
+                      onClick={() => toggleSeatForSplit(seat)}
+                      aria-pressed={isSelected}
+                      aria-label={`${isSelected ? 'Remove Seat' : 'Split to Seat'} ${seat}`}
+                      className={`mc-seat-choice ${isSelected ? 'mc-seat-choice-selected' : ''}`}
+                    >
+                      <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                      <span className="min-w-0">
+                        <span className="mc-seat-choice-title">Seat {seat}</span>
+                        <span className="mc-seat-choice-meta block">
+                          {isSelected && pricePerSeat !== null ? `${formatMoney(pricePerSeat)} each` : 'Tap to include'}
+                        </span>
+                      </span>
+                      <span className="mc-seat-choice-check" aria-hidden="true">
+                        {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
+                      </span>
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {selectedSeatsForSplit.length === 0 ? (
+                <div className="mc-subpanel mc-meta">
+                  Select at least one seat to preview the split.
+                </div>
+              ) : selectedOrderItem && (
+                <div className="mc-subpanel mc-split-preview">
+                  <div className="flex justify-between text-sm">
+                    <span className="mc-meta">Original price</span>
+                    <span className="mc-mono text-[color:var(--mc-text-primary)]">{formatMoney(selectedOrderItem.menuItem.price)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="mc-meta">Split between</span>
+                    <span className="mc-mono text-[color:var(--mc-text-primary)]">{selectedSeatsForSplit.length} seat{selectedSeatsForSplit.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <Separator className="bg-[color:var(--mc-divider)]" />
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-[color:var(--mc-amber)]">Price per seat</span>
+                    <span className="mc-mono text-lg font-bold text-[color:var(--mc-amber)]">
+                      {formatMoney(selectedOrderItem.menuItem.price / selectedSeatsForSplit.length)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Split preview */}
-            {selectedSeatsForSplit.length > 0 && selectedOrderItem && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">Original Price:</span>
-                  <span className="text-white font-medium">${selectedOrderItem.menuItem.price.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">Split Between:</span>
-                  <span className="text-white font-medium">{selectedSeatsForSplit.length} seat(s)</span>
-                </div>
-                <Separator className="bg-amber-500/30" />
-                <div className="flex justify-between">
-                  <span className="text-amber-400 font-medium">Price Per Seat:</span>
-                  <span className="text-amber-400 font-bold text-lg">
-                    ${(selectedOrderItem.menuItem.price / selectedSeatsForSplit.length).toFixed(2)}
-                  </span>
-                </div>
+            <DialogFooter className="mc-dialog-footer">
+              <div className="mc-meta">
+                {selectedSeatsForSplit.length === 0
+                  ? 'Select seats to enable split.'
+                  : `${selectedSeatsForSplit.length} seat${selectedSeatsForSplit.length === 1 ? '' : 's'} selected.`}
               </div>
-            )}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowSplitDialog(false);
+                    setSelectedOrderItem(null);
+                    setSelectedSeatsForSplit([]);
+                  }}
+                  className="mc-action-btn mc-action-btn-fit"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={splitItemAcrossSeats}
+                  disabled={selectedSeatsForSplit.length === 0}
+                  className="mc-action-btn mc-action-btn-primary mc-action-btn-fit"
+                >
+                  Split to {selectedSeatsForSplit.length} Seat{selectedSeatsForSplit.length === 1 ? '' : 's'}
+                </Button>
+              </div>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowSplitDialog(false);
-                setSelectedOrderItem(null);
-                setSelectedSeatsForSplit([]);
-              }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </Button>
-            <Button onClick={splitItemAcrossSeats} disabled={selectedSeatsForSplit.length === 0}>
-              Split to {selectedSeatsForSplit.length} Seat(s)
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

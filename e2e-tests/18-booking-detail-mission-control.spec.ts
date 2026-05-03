@@ -160,6 +160,19 @@ test.describe('Mission Control booking detail', () => {
     await moveItemDialog.getByRole('button', { name: 'Close move item' }).click();
     await expect(page.getByRole('heading', { name: 'Move Item' })).toBeHidden();
 
+    await originalLayout.locator('[data-testid="active-seat-detail"]').getByRole('button', { name: 'Split' }).click();
+    const splitItemDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Split Item Cost' }) });
+    await expect(splitItemDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(splitItemDialog.locator('.mc-subpanel').getByText('Payment Modal Test Item', { exact: true })).toBeVisible();
+    await expect(splitItemDialog.getByRole('button', { name: 'Split to Seat 1' })).toBeVisible();
+    await splitItemDialog.getByRole('button', { name: 'Split to Seat 1' }).click();
+    await splitItemDialog.getByRole('button', { name: 'Split to Seat 2' }).click();
+    await expect(splitItemDialog.locator('.mc-seat-choice-selected')).toHaveCount(2);
+    await expect(splitItemDialog.locator('.mc-split-preview').getByText('$12.50')).toBeVisible();
+    await expect(splitItemDialog.getByRole('button', { name: 'Split to 2 Seats' })).toBeEnabled();
+    await splitItemDialog.getByRole('button', { name: 'Close split item' }).click();
+    await expect(page.getByRole('heading', { name: 'Split Item Cost' })).toBeHidden();
+
     await originalLayout.getByRole('button', { name: 'Custom' }).first().click();
     await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeVisible();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();

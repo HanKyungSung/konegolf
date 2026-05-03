@@ -198,6 +198,13 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Preserved the existing `moveItemToSeat` behavior and selected-order cleanup
   - [x] Added focused Playwright coverage for opening the Move Item modal from an order row
   - [x] Captured a review screenshot at `test-results/booking-detail-move-item-modal-prototype.png`
+- [x] **Mission Control Booking Detail Split Item Cost Modal** (2026-05-03)
+  - [x] Restyled the Split Item Cost dialog with the shared MC dialog frame, header, body, footer, selected-item summary, and close control
+  - [x] Reused the canonical Mission Control room/timeline seat color cycle for split-seat choices
+  - [x] Added selected-seat card states with MC check indicators and an amber split-preview panel
+  - [x] Preserved the existing split behavior, including selected-seat reset on cancel/close
+  - [x] Added focused Playwright coverage for opening the Split Item Cost modal, selecting two seats, and verifying the per-seat preview
+  - [x] Captured a review screenshot at `test-results/booking-detail-split-item-modal-prototype.png`
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow
