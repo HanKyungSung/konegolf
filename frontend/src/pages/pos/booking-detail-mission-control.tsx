@@ -1,18 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2, Camera, ArrowLeft, Phone, ReceiptText } from 'lucide-react';
 import Receipt from '../../components/Receipt';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { MCPanelHeader } from '@/components/mc';
 import { VENUE_TIMEZONE } from '@/lib/timezone';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -142,7 +141,6 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   const [showTaxEditDialog, setShowTaxEditDialog] = useState(false);
   const [taxRateInput, setTaxRateInput] = useState<string>('');
   const [printingSeat, setPrintingSeat] = useState<number | null>(null);
-  const [expandedSeats, setExpandedSeats] = useState<string[]>([]);
 
   // Payment state
   const [tipAmountBySeat, setTipAmountBySeat] = useState<Record<number, string>>({});
@@ -176,8 +174,6 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   const [emailAddress, setEmailAddress] = useState<string>('');
   const [sendingEmail, setSendingEmail] = useState(false);
 
-  const seatsInitialized = React.useRef(false);
-  const seatRefs = React.useRef<Record<number, HTMLDivElement | null>>({});
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
 
   // Load data on mount
@@ -249,12 +245,6 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
       // Set number of seats from booking
       if (bookingData.players) {
         setNumberOfSeats(bookingData.players);
-
-        // Only auto-expand seats on initial load
-        if (!seatsInitialized.current) {
-          setExpandedSeats(Array.from({ length: bookingData.players }, (_, i) => `seat-${i + 1}`));
-          seatsInitialized.current = true;
-        }
       }
 
       // Load payment status from invoices
@@ -1002,7 +992,23 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
     try {
       await apiUpdateBookingPlayers(booking.id, newSeatCount);
-      setNumberOfSeats(Math.max(1, newSeatCount));
+      const clampedSeatCount = Math.max(1, newSeatCount);
+      setNumberOfSeats(clampedSeatCount);
+      setSelectedSeat(prev => Math.min(prev, clampedSeatCount));
+    } catch (err) {
+      alert(`Failed to update seats: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleIncreaseSeats = async () => {
+    if (!booking) return;
+
+    const newCount = Math.min(MAX_SEATS, numberOfSeats + 1);
+
+    try {
+      await apiUpdateBookingPlayers(booking.id, newCount);
+      setNumberOfSeats(newCount);
+      setSelectedSeat(newCount);
     } catch (err) {
       alert(`Failed to update seats: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
@@ -1291,7 +1297,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
         <div className="print-separator" />
       </div>
 
-      <main className="no-print flex-1 w-full max-w-[1900px] mx-auto px-3 sm:px-5 py-4 space-y-3">
+      <main className="hidden no-print flex-1 w-full max-w-[1900px] mx-auto px-3 sm:px-5 py-4 space-y-3">
         <div className="mc-panel py-3 px-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3 min-w-0">
             <button
@@ -1304,7 +1310,6 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
               Dashboard
             </button>
             <div className="min-w-0">
-              <div className="mc-section-label">Booking Command</div>
               <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-[color:var(--mc-text-hero)] truncate">
                 {booking.customerName}
               </h1>
@@ -1894,133 +1899,214 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
         </div>
       )}
 
-      <main className="hidden flex-1 px-3 sm:px-6 py-4 sm:py-8 space-y-6 max-w-[1800px] mx-auto w-full">
+      <main className="no-print mc-original-layout flex-1 px-3 sm:px-6 py-4 sm:py-8 space-y-6 max-w-[1800px] mx-auto w-full">
         {/* Header */}
-        <div className="flex items-center justify-between no-print">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">
-              Booking Details
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">ID: {booking.id}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge className={`${statusStyles[booking.bookingStatus?.toLowerCase() || 'booked']} uppercase text-sm px-3 py-1.5`}>
-              {booking.bookingStatus || 'BOOKED'}
-            </Badge>
-            {booking.paymentStatus && (
-              <Badge className={`${paymentStatusStyles[booking.paymentStatus]} uppercase text-sm px-3 py-1.5`}>
-                {booking.paymentStatus}
+        <div className="mc-panel mc-booking-command-compact no-print">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="text-2xl font-bold tracking-[-0.03em] text-[color:var(--mc-text-hero)]">
+                Booking Details
+              </h1>
+              <span className="mc-meta truncate">ID: {booking.id}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={`${statusStyles[booking.bookingStatus?.toLowerCase() || 'booked']} uppercase text-sm px-3 py-1.5`}>
+                {booking.bookingStatus || 'BOOKED'}
               </Badge>
-            )}
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="bg-slate-700 hover:bg-slate-600 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-1"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {booking.paymentStatus && (
+                <Badge className={`${paymentStatusStyles[booking.paymentStatus]} uppercase text-sm px-3 py-1.5`}>
+                  {booking.paymentStatus}
+                </Badge>
+              )}
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="mc-chip"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mc-booking-meta-line">
+            <div className="mc-booking-meta-item">
+              <span className="text-amber-400">Room:</span>
+              <span className="flex min-w-0 items-center gap-2 text-[color:var(--mc-text-primary)]">
+                <span className={`h-2.5 w-2.5 rounded-full ${roomColors[booking.roomId]}`} />
+                <span className="truncate">{roomColor}</span>
+              </span>
+            </div>
+            <div className="mc-booking-meta-item">
+              <span className="text-amber-400">Customer:</span>
+              <span className="truncate text-[color:var(--mc-text-primary)]">{booking.customerName}</span>
+            </div>
+            <div className="mc-booking-meta-item">
+              <span className="text-amber-400">Session:</span>
+              <span className="text-[color:var(--mc-text-primary)]">{booking.date} · {booking.time}</span>
+            </div>
+            <div className="mc-booking-meta-item">
+              <span className="text-amber-400">End:</span>
+              <span className="text-[color:var(--mc-text-primary)]">{endTimeLabel}</span>
+            </div>
+            <div className="mc-booking-meta-item">
+              <span className="text-amber-400">Players:</span>
+              <span className="text-[color:var(--mc-text-primary)]">
+                {booking.players} player{booking.players === 1 ? '' : 's'}
+              </span>
+            </div>
+            <div className="mc-booking-meta-item">
+              <span className="text-amber-400">Phone:</span>
+              <span className="truncate text-[color:var(--mc-text-primary)]">{booking.customerPhone}</span>
+            </div>
+            <div className="mc-booking-meta-item">
+              <span className="text-amber-400">DOB:</span>
+              <span className="text-[color:var(--mc-text-primary)]">{booking.user?.dateOfBirth || 'N/A'}</span>
+            </div>
+            {booking.customerEmail && (
+              <div className="mc-booking-meta-item">
+                <span className="text-amber-400">Email:</span>
+                <span className="truncate text-[color:var(--mc-text-primary)]">{booking.customerEmail}</span>
+              </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Left Column - Order Management */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Room Card */}
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white text-2xl flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${roomColors[booking.roomId]}`} />
-                  {roomColor}
-                </CardTitle>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span className="text-amber-400">Name:</span>
-                    <span>{booking.customerName}</span>
+          <div className="space-y-4 lg:col-span-2">
+            {/* Payment Summary */}
+            <section className="mc-panel mc-payment-summary-compact">
+              <MCPanelHeader
+                label="Payment Summary"
+                meta={`${getPaidSeatsCount()} of ${numberOfSeats} seat${numberOfSeats === 1 ? '' : 's'} paid`}
+                border
+                tight
+              />
+              <div className="grid gap-3 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.45fr)] lg:items-stretch">
+                <div className={`mc-row mc-payment-total-compact ${totalDue > 0 ? 'border-amber-500/40 bg-amber-500/10' : 'border-green-500/40 bg-green-500/10'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-wide text-slate-400">{totalDue > 0 ? 'Total Due' : 'Collected'}</div>
+                      <div className={`mt-0.5 font-mono text-2xl font-bold leading-none ${totalDue > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                        {formatMoney(totalDue > 0 ? totalDue : totalCollected)}
+                      </div>
+                    </div>
+                    <div className="text-right text-xs text-slate-400">
+                      <div className="font-mono text-base font-semibold text-[color:var(--mc-text-primary)]">{Math.round(getPaymentProgress())}%</div>
+                      <div className="uppercase tracking-wide">settled</div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span className="text-amber-400">Phone:</span>
-                    <span>{booking.customerPhone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span className="text-amber-400">Booking Date:</span>
-                    <span>{booking.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span className="text-amber-400">Start Time:</span>
-                    <span>
-                      {booking.time} ({booking.duration}h)
+                  <div className="mt-2 flex justify-between text-xs text-slate-300">
+                    <span>Seats Paid</span>
+                    <span className="font-semibold">
+                      {getPaidSeatsCount()} / {numberOfSeats}
                     </span>
                   </div>
-                  {booking.customerEmail && (
-                    <div className="flex items-center gap-2 text-slate-300 col-span-2">
-                      <span className="text-amber-400">Email:</span>
-                      <span className="truncate">{booking.customerEmail}</span>
+                  <Progress value={getPaymentProgress()} className="mt-1 h-1.5 bg-slate-700">
+                    <div
+                      className="h-full bg-green-500 rounded-full transition-all"
+                      style={{ width: `${getPaymentProgress()}%` }}
+                    />
+                  </Progress>
+                  <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-xs">
+                    <div className="mc-payment-compact-metric">
+                      <span>Collected</span>
+                      <strong>{formatMoney(totalCollected)}</strong>
                     </div>
-                  )}
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span className="text-amber-400">Players:</span>
-                    <span>{booking.players} players</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span className="text-amber-400">Date of Birth:</span>
-                    <span>{booking.user?.dateOfBirth || 'N/A'}</span>
+                    <div className="mc-payment-compact-metric">
+                      <span>Open due</span>
+                      <strong>{formatMoney(totalDue)}</strong>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
-            </Card>
 
-            {/* Seat Management Card */}
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Users className="h-5 w-5 text-amber-400" />
-                  Seat Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg">
-                  <span className="text-white font-medium">Number of Seats</span>
-                  <div className="flex items-center gap-3">
-                    {!isReadOnly && (
-                    <Button
-                      size="sm"
-                      onClick={handleReduceSeats}
-                      disabled={!canReduceSeats()}
-                      className="h-10 w-10 p-0 bg-slate-700 hover:bg-slate-600 text-white"
-                    >
-                      <Minus className="h-5 w-5" />
-                    </Button>
+                {/* Per-Seat Status */}
+                <div className="mc-payment-seat-compact">
+                  <MCPanelHeader
+                    label="Seat Status"
+                    meta={(
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-amber-400" />
+                        <span>Seat Management</span>
+                        <span className="text-slate-600">·</span>
+                        <span className="text-slate-500">Number of Seats</span>
+                      </span>
                     )}
-                    <span className="text-2xl font-bold text-amber-400 w-12 text-center">{numberOfSeats}</span>
-                    {!isReadOnly && (
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        const newCount = Math.min(MAX_SEATS, numberOfSeats + 1);
-                        if (booking) {
-                          try {
-                            await apiUpdateBookingPlayers(booking.id, newCount);
-                            setNumberOfSeats(newCount);
-                          } catch (err) {
-                            alert(`Failed to update seats: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                          }
-                        }
-                      }}
-                      disabled={numberOfSeats >= MAX_SEATS}
-                      className="h-10 w-10 p-0 bg-slate-700 hover:bg-slate-600 text-white"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </Button>
+                    tight
+                    right={(
+                    <div className="mc-seat-count-control" aria-label="Number of Seats">
+                      {!isReadOnly && (
+                        <Button
+                          size="sm"
+                          onClick={handleReduceSeats}
+                          disabled={!canReduceSeats()}
+                          className="h-8 w-8 p-0 bg-slate-700 hover:bg-slate-600 text-white"
+                          aria-label="Reduce seats"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <div className="min-w-[3.5rem] text-center">
+                        <div className="text-[10px] uppercase tracking-wide text-slate-500">Seats</div>
+                        <div className="font-mono text-lg font-bold text-amber-400">{numberOfSeats}</div>
+                      </div>
+                      {!isReadOnly && (
+                        <Button
+                          size="sm"
+                          onClick={handleIncreaseSeats}
+                          disabled={numberOfSeats >= MAX_SEATS}
+                          className="h-8 w-8 p-0 bg-slate-700 hover:bg-slate-600 text-white"
+                          aria-label="Add seat"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     )}
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[118px] overflow-y-auto mc-scroll-thin pr-1">
+                    {seatSummaries.map((summary) => {
+                      const isActiveSummary = summary.seat === activeSeat;
+                      return (
+                        <button
+                          key={summary.seat}
+                          type="button"
+                          onClick={() => setSelectedSeat(summary.seat)}
+                          aria-label={`Seat ${summary.seat} status`}
+                          aria-pressed={isActiveSummary}
+                          className={`mc-payment-seat-status ${isActiveSummary ? 'mc-payment-seat-status-active' : ''}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${seatColors[summary.seat - 1]}`} />
+                            <span className="text-sm text-white">Seat {summary.seat}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {summary.isPaid ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 text-green-400" />
+                                <span className="text-xs text-green-400 font-semibold">PAID</span>
+                                <span className="text-xs text-slate-400 font-mono">{formatMoney(summary.total)}</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="h-4 w-4 text-amber-400" />
+                                <span className="text-xs text-amber-400 font-semibold">UNPAID</span>
+                                <span className="text-xs text-slate-400 font-mono">{formatMoney(summary.remaining || summary.total)}</span>
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            {/* Seat Panels with Order Items and Invoices */}
-            <Accordion type="multiple" value={expandedSeats} onValueChange={setExpandedSeats} className="space-y-4">
-              {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => {
+            {/* Active Seat Detail with Order Items and Invoices */}
+            <div className="space-y-4">
+              {Array.from({ length: numberOfSeats }, (_, i) => i + 1).filter((seat) => seat === activeSeat).map((seat) => {
                 // Always define isPaid at the top of each seat panel
                 const isPaid = isSeatPaid(seat);
                 const seatItems = getItemsForSeat(seat);
@@ -2035,24 +2121,24 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   ? payment?.tip || 0
                   : parseFloat(tipAmountBySeat[seat] || '0') || 0;
                 const total = subtotal + tax + tipAmount;
+                const seatPaidSoFar = payment?.payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+                const seatRemaining = Math.max(0, Math.round((total - seatPaidSoFar) * 100) / 100);
 
                 return (
-                  <div
+                  <section
                     key={seat}
-                    ref={(el) => {
-                      seatRefs.current[seat] = el;
-                    }}
+                    data-testid="active-seat-detail"
+                    className="mc-panel overflow-hidden"
+                    style={{ padding: 0 }}
                   >
-                    <AccordionItem
-                      value={`seat-${seat}`}
-                      className="border border-slate-700 rounded-lg bg-slate-800/50 overflow-hidden"
-                    >
-                    <AccordionTrigger className="px-3 sm:px-6 py-3 sm:py-4 hover:no-underline hover:bg-slate-800/80">
-                      <div className="flex flex-wrap items-center justify-between w-full pr-4 gap-2">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className={`w-4 h-4 rounded-full ${seatColors[seat - 1]}`} />
-                          <span className="font-bold text-white text-base sm:text-lg">Seat {seat}</span>
-                          <Badge variant="outline" className="text-slate-300 border-slate-600 text-xs">
+                    <div className="px-3 sm:px-6 py-3 sm:py-4" style={{ borderBottom: '1px solid var(--mc-divider-soft)' }}>
+                      <MCPanelHeader
+                        as="div"
+                        label={(
+                          <span className="flex items-center gap-2 sm:gap-3">
+                            <span className={`w-4 h-4 rounded-full ${seatColors[seat - 1]}`} />
+                            <span className="font-bold text-white text-base sm:text-lg">Seat {seat} Detail</span>
+                            <Badge variant="outline" className="text-slate-300 border-slate-600 text-xs">
                             {regularItems.length} items
                           </Badge>
                           {discountItems.length > 0 && (
@@ -2060,24 +2146,28 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                               {discountItems.length} discount{discountItems.length > 1 ? 's' : ''}
                             </Badge>
                           )}
-                        </div>
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenReceiptModal('seat', seat);
-                            }}
+                            <Badge className={`${isPaid ? 'bg-green-500/20 text-green-300 border-green-500/50' : 'bg-amber-500/20 text-amber-300 border-amber-500/50'} text-xs`}>
+                              {isPaid ? `${formatMoney(total)} paid` : `${formatMoney(seatRemaining)} due`}
+                            </Badge>
+                          </span>
+                        )}
+                        flush
+                        right={(
+                          <>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReceiptModal('seat', seat)}
+                            disabled={loadingReceipt || seatItems.length === 0}
                             className={`inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                               loadingReceipt || seatItems.length === 0
                                 ? 'opacity-50 pointer-events-none'
                                 : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/50 cursor-pointer'
                             }`}
+                            aria-label={`Print Seat ${seat} receipt`}
                           >
                             <Printer className="h-4 w-4 mr-1" />
                             Print
-                          </div>
+                          </button>
                           {isPaid ? (
                             <Badge className="bg-green-500 text-white flex items-center gap-1">
                               <CheckCircle2 className="h-3 w-3" />
@@ -2089,10 +2179,11 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                               UNPAID
                             </Badge>
                           )}
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-3 sm:px-6 pb-4 sm:pb-6">
+                          </>
+                        )}
+                      />
+                    </div>
+                    <div className="px-3 sm:px-6 pb-4 sm:pb-6">
                       <div className="space-y-4 pt-2">
                         {/* Order Items */}
                         {regularItems.length === 0 && discountItems.length === 0 ? (
@@ -2380,225 +2471,153 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           </div>
                         )}
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                  </div>
+                    </div>
+                  </section>
                 );
               })}
-            </Accordion>
+            </div>
           </div>
 
-          {/* Right Column - Info & Menu */}
-          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-            {/* Quick Actions */}
+          {/* Right Column - Settlement & Lifecycle */}
+          <div className="space-y-4 lg:col-span-1 lg:self-start">
             {!isReadOnly && (
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white text-lg">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {booking.bookingStatus?.toUpperCase() === 'COMPLETED' ? (
-                  <Button
-                    onClick={handleReopenBooking}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Reopen Booking
-                  </Button>
-                ) : (
-                  <>
+              <div className="space-y-4">
+                <section className="mc-panel space-y-2">
+                  <MCPanelHeader label="Quick Actions" border tight />
+                  {booking.bookingStatus?.toUpperCase() === 'COMPLETED' ? (
                     <Button
-                      onClick={handleCompleteBooking}
-                      className="w-full bg-green-500 hover:bg-green-600 text-white"
+                      onClick={handleReopenBooking}
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Complete Booking
+                      Reopen Booking
                     </Button>
-                    <Button
-                      onClick={() => setCancelBookingOpen(true)}
-                      variant="outline"
-                      className="w-full border-red-500 text-red-400 hover:bg-red-500/10"
-                    >
-                      Cancel Booking
-                    </Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-            )}
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      <Button
+                        onClick={handleCompleteBooking}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Complete Booking
+                      </Button>
+                      <Button
+                        onClick={() => setCancelBookingOpen(true)}
+                        variant="outline"
+                        className="w-full border-red-500 text-red-400 hover:bg-red-500/10"
+                      >
+                        Cancel Booking
+                      </Button>
+                    </div>
+                  )}
+                </section>
 
-            {/* Payment Summary */}
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white text-lg">Payment Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-slate-300">
-                    <span>Seats Paid</span>
-                    <span className="font-semibold">
-                      {getPaidSeatsCount()} / {numberOfSeats}
-                    </span>
-                  </div>
-                  <Progress value={getPaymentProgress()} className="h-2 bg-slate-700">
-                    <div
-                      className="h-full bg-green-500 rounded-full transition-all"
-                      style={{ width: `${getPaymentProgress()}%` }}
+                {isBookingCompleted && (
+                  <section className="mc-panel">
+                    <MCPanelHeader
+                      label="Menu"
+                      meta="Reopen booking to use edit commands."
+                      flush
                     />
-                  </Progress>
-                </div>
-
-                <Separator className="bg-slate-700" />
-
-                {/* Per-Seat Status */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-slate-300 mb-2">Seat Status</h4>
-                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => {
-                    const isPaid = isSeatPaid(seat);
-                    const payment = getSeatPayment(seat);
-                    return (
-                      <div key={seat} className="flex items-center justify-between p-2 bg-slate-900/50 rounded">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${seatColors[seat - 1]}`} />
-                          <span className="text-sm text-white">Seat {seat}</span>
+                  </section>
+                )}
+                {!isBookingCompleted && (
+                  <section className="mc-panel space-y-4">
+                    <MCPanelHeader
+                      label="Menu"
+                      meta="Order-entry commands stay under Quick Actions."
+                      border
+                    />
+                    {menu.length === 0 ? (
+                      <div className="text-center py-8 text-slate-400">
+                        <p className="text-sm">Menu not available</p>
+                      </div>
+                    ) : (
+                      <Tabs defaultValue="hours" className="space-y-4">
+                        <div className="overflow-x-auto -mx-2 px-2">
+                          <TabsList className="inline-flex w-auto min-w-full sm:grid sm:grid-cols-5 bg-slate-900/50">
+                            <TabsTrigger value="hours">Hours</TabsTrigger>
+                            <TabsTrigger value="food">Food</TabsTrigger>
+                            <TabsTrigger value="drinks">Drinks</TabsTrigger>
+                            <TabsTrigger value="appetizers">Appetizers</TabsTrigger>
+                            <TabsTrigger value="desserts">Desserts</TabsTrigger>
+                          </TabsList>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {isPaid ? (
-                            <>
-                              <CheckCircle2 className="h-4 w-4 text-green-400" />
-                              <span className="text-xs text-green-400 font-semibold">PAID</span>
-                              <span className="text-xs text-slate-400 font-mono">${(parseFloat(String(payment?.total || 0)) || 0).toFixed(2)}</span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="h-4 w-4 text-amber-400" />
-                              <span className="text-xs text-amber-400 font-semibold">UNPAID</span>
-                              <span className="text-xs text-slate-400 font-mono">
-                                ${(calculateSeatTotal(seat) + (parseFloat(tipAmountBySeat[seat] || '0') || 0)).toFixed(2)}
-                              </span>
-                            </>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            onClick={() => setShowCustomItemDialog(true)}
+                            className="mc-menu-tool"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Custom</span>
+                          </Button>
+                          <Button
+                            onClick={() => setShowDiscountDialog(true)}
+                            className="mc-menu-tool"
+                          >
+                            <Minus className="w-4 h-4" />
+                            <span>Discount</span>
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setCouponCode('');
+                              setCouponData(null);
+                              setShowCouponDialog(true);
+                            }}
+                            className="mc-menu-tool"
+                          >
+                            <Ticket className="w-4 h-4" />
+                            <span>Coupon</span>
+                          </Button>
+                          {booking.bookingSource !== 'QUICK_SALE' && (
+                            <Button
+                              onClick={handleExtendBooking}
+                              className="mc-menu-tool"
+                            >
+                              <Clock className="w-4 h-4" />
+                              <span>+30m</span>
+                            </Button>
+                          )}
+                          {booking.bookingSource === 'QUICK_SALE' && (
+                            <Button
+                              onClick={() => {
+                                setGiftCardAmount('');
+                                setShowGiftCardDialog(true);
+                              }}
+                              className="mc-menu-tool"
+                            >
+                              <Gift className="w-4 h-4" />
+                              <span>Gift Card</span>
+                            </Button>
                           )}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
 
-                <Separator className="bg-slate-700" />
-
-                {/* Totals */}
-                <div className="space-y-2 font-mono text-sm">
-                  <div className="flex justify-between text-white font-bold text-base">
-                    <span>Total Collected</span>
-                    <span className="text-green-400">${getTotalPaid().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-300 text-xs">
-                    <span>Total Due</span>
-                    <span>${getTotalDue().toFixed(2)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Menu */}
-            {!isReadOnly && (
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white">Menu</CardTitle>
-                <CardDescription className="text-slate-400">Click items to add to order</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {menu.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
-                    <p className="text-sm">Menu not available</p>
-                  </div>
-                ) : (
-                  <Tabs defaultValue="hours" className="space-y-4">
-                    <div className="overflow-x-auto -mx-2 px-2">
-                      <TabsList className="inline-flex w-auto min-w-full sm:grid sm:grid-cols-5 bg-slate-900/50">
-                        <TabsTrigger value="hours">Hours</TabsTrigger>
-                        <TabsTrigger value="food">Food</TabsTrigger>
-                        <TabsTrigger value="drinks">Drinks</TabsTrigger>
-                        <TabsTrigger value="appetizers">Appetizers</TabsTrigger>
-                        <TabsTrigger value="desserts">Desserts</TabsTrigger>
-                      </TabsList>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-4 gap-2 mt-4">
-                      <Button
-                        onClick={() => setShowCustomItemDialog(true)}
-                        className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold h-auto p-2"
-                      >
-                        <Plus className="w-5 h-5 mb-1" />
-                        <span className="text-xs leading-tight">Custom</span>
-                      </Button>
-                      <Button
-                        onClick={() => setShowDiscountDialog(true)}
-                        className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold h-auto p-2"
-                      >
-                        <Minus className="w-5 h-5 mb-1" />
-                        <span className="text-xs leading-tight">Discount</span>
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setCouponCode('');
-                          setCouponData(null);
-                          setShowCouponDialog(true);
-                        }}
-                        className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold h-auto p-2"
-                      >
-                        <Ticket className="w-5 h-5 mb-1" />
-                        <span className="text-xs leading-tight">Coupon</span>
-                      </Button>
-                      {booking.bookingSource !== 'QUICK_SALE' && (
-                        <Button
-                          onClick={handleExtendBooking}
-                          className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-semibold h-auto p-2"
-                        >
-                          <Clock className="w-5 h-5 mb-1" />
-                          <span className="text-xs leading-tight">+30m</span>
-                        </Button>
-                      )}
-                      {booking.bookingSource === 'QUICK_SALE' && (
-                        <Button
-                          onClick={() => {
-                            setGiftCardAmount('');
-                            setShowGiftCardDialog(true);
-                          }}
-                          className="flex flex-col items-center justify-center aspect-square bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold h-auto p-2"
-                        >
-                          <Gift className="w-5 h-5 mb-1" />
-                          <span className="text-xs leading-tight">Gift Card</span>
-                        </Button>
-                      )}
-                    </div>
-
-                    {(['hours', 'food', 'drinks', 'appetizers', 'desserts'] as const).map((category) => (
-                      <TabsContent key={category} value={category}>
-                        <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                          {getItemsByCategory(category).map((item) => (
-                            <button
-                              key={item.id}
-                              onClick={() => handleMenuItemClick(item)}
-                              className="w-full flex flex-col items-start p-4 border-2 border-slate-700 rounded-lg hover:bg-amber-500/10 hover:border-amber-500 bg-slate-800/80 transition-all text-left group"
-                            >
-                              <h4 className="font-bold text-white text-base mb-1 group-hover:text-amber-400 transition-colors">
-                                {item.name}
-                              </h4>
-                              <p className="text-xs text-slate-400 mb-2 line-clamp-2">{item.description}</p>
-                              <p className="text-amber-400 font-bold text-lg">${item.price.toFixed(2)}</p>
-                            </button>
-                          ))}
-                        </div>
-                      </TabsContent>
-                    ))}
-                  </Tabs>
+                        {(['hours', 'food', 'drinks', 'appetizers', 'desserts'] as const).map((category) => (
+                          <TabsContent key={category} value={category}>
+                            <div className="grid grid-cols-1 gap-2 max-h-[360px] overflow-y-auto mc-scroll-thin pr-1">
+                              {getItemsByCategory(category).map((item) => (
+                                <button
+                                  key={item.id}
+                                  onClick={() => handleMenuItemClick(item)}
+                                  className="mc-menu-item group"
+                                >
+                                  <h4 className="font-semibold text-white text-sm mb-1 group-hover:text-amber-400 transition-colors">
+                                    {item.name}
+                                  </h4>
+                                  <p className="text-xs text-slate-400 mb-1 line-clamp-1">{item.description}</p>
+                                  <p className="text-amber-400 font-semibold text-sm">${item.price.toFixed(2)}</p>
+                                </button>
+                              ))}
+                            </div>
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    )}
+                  </section>
                 )}
-              </CardContent>
-            </Card>
+              </div>
             )}
-
 
           </div>
         </div>

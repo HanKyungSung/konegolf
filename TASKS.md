@@ -84,6 +84,87 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Moved Cancel booking out of Receipts into a compact Booking Actions panel
   - [x] Captured a review screenshot at `test-results/booking-detail-button-placement-prototype.png`
   - [x] Verified focused booking-detail Playwright coverage against the cleanup
+- [x] **Mission Control Booking Detail Original Layout Theme Prototype** (2026-05-02)
+  - [x] Committed the accepted action-layout cleanup before starting the next design pass
+  - [x] Surfaced the original two-column booking detail layout as the active New UI prototype
+  - [x] Rethemed the original layout with Mission Control surfaces, dividers, and accent colors
+  - [x] Preserved completed-booking edit safety by hiding menu commands until reopen
+  - [x] Captured a review screenshot at `test-results/booking-detail-original-layout-theme-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the prototype
+- [x] **Mission Control Booking Detail Original Layout Polish Prototype** (2026-05-02)
+  - [x] Compactly merged room context and seat management into one booking setup panel
+  - [x] Moved Payment Summary above Quick Actions and emphasized the current Total Due/Collected amount
+  - [x] Added due/paid amounts to seat headers for faster multi-seat scanning
+  - [x] Reduced menu dominance with denser secondary adjustment buttons and menu rows
+  - [x] Captured a review screenshot at `test-results/booking-detail-original-layout-polish-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the prototype
+- [x] **Mission Control Booking Detail Seat Status Selector Prototype** (2026-05-02)
+  - [x] Removed the added left-column Seat Status selector panel
+  - [x] Reused the existing Seat Status rows under Payment Summary for selecting the active seat
+  - [x] Removed the per-seat accordion collapse behavior from the active detail panel
+  - [x] Restored the selected-seat Print action in the active detail header
+  - [x] Kept new seats selected immediately after increasing the seat count
+  - [x] Captured a review screenshot at `test-results/booking-detail-payment-summary-seat-status-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the prototype
+- [x] **Mission Control Booking Detail Seat Management Placement** (2026-05-02)
+  - [x] Moved Seat Management out of the booking context header
+  - [x] Placed seat count controls inside the existing Payment Summary Seat Status section
+  - [x] Reused the compact Add/Reduce seat controls with new seats becoming active immediately
+  - [x] Captured a review screenshot at `test-results/booking-detail-seat-management-payment-summary-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the placement change
+- [x] **Mission Control Booking Detail Dashboard Design Alignment** (2026-05-02)
+  - [x] Reworked the active booking-detail shell to use dashboard primitives: `mc-panel`, `MCPanelHeader`, `mc-row`, `mc-chip`, and shared MC typography
+  - [x] Converted Booking Context, active seat detail, Payment Summary, Quick Actions, and Menu surfaces away from the separate rounded Card style
+  - [x] Kept Seat Management inside Payment Summary Seat Status using the dashboard-style panel header/action layout
+  - [x] Captured a review screenshot at `test-results/booking-detail-dashboard-style-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the dashboard-style prototype
+- [x] **Mission Control Booking Detail Merged Command Panel Prototype** (2026-05-02)
+  - [x] Merged the room, customer, session, contact, player, and DOB information into the top Booking Details / ID command panel
+  - [x] Removed the standalone Booking Context panel so the selected-seat work surface starts higher in the left column
+  - [x] Preserved the Payment Summary Seat Status selector and Seat Management placement
+  - [x] Captured a review screenshot at `test-results/booking-detail-merged-command-panel-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the rearranged prototype
+- [x] **Mission Control Booking Detail Regular Info Text Prototype** (2026-05-02)
+  - [x] Changed the merged Booking Details command-panel information from boxed `mc-row` tiles back to regular inline label/value text
+  - [x] Kept the information merged into the Booking Details / ID panel and preserved the rearranged selected-seat layout
+  - [x] Captured a review screenshot at `test-results/booking-detail-regular-info-text-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the text-only info prototype
+- [x] **Mission Control Booking Detail Compact Command Panel Prototype** (2026-05-02)
+  - [x] Compressed the merged Booking Details / ID panel into a thinner command strip
+  - [x] Kept booking metadata as regular inline text while reducing title size, padding, and vertical separators
+  - [x] Preserved selected-seat, Payment Summary, and Seat Management panel placement for the next rearrangement pass
+  - [x] Captured a review screenshot at `test-results/booking-detail-compact-command-panel-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the compact command strip
+- [x] **Mission Control Booking Detail Header Label Cleanup** (2026-05-02)
+  - [x] Replaced the unclear `Booking Command` label with `Booking Summary`
+  - [x] Verified focused booking-detail Playwright coverage against the label cleanup
+- [x] **Mission Control Booking Detail Header Label Removal** (2026-05-02)
+  - [x] Removed the `Booking Summary` section label from the compact booking header
+  - [x] Verified focused booking-detail Playwright coverage against the label removal
+- [x] **Mission Control Booking Detail Side Panel Rearrangement Prototype** (2026-05-02)
+  - [x] Combined Quick Actions into the Payment Summary rail so the right side is shorter
+  - [x] Moved Menu into the wider left workspace under the selected-seat detail panel
+  - [x] Changed the menu item list to a wider two-column scroll area for review
+  - [x] Captured a review screenshot at `test-results/booking-detail-rearranged-panels-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the rearranged panel prototype
+- [x] **Mission Control Booking Detail Top Payment/Actions Layout Prototype** (2026-05-02)
+  - [x] Moved Payment Summary into the top-left grid area
+  - [x] Split Quick Actions back into its own top-right panel
+  - [x] Kept Menu in the left workspace under the selected-seat workflow
+  - [x] Captured a review screenshot at `test-results/booking-detail-top-left-payment-actions-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the top payment/actions layout
+- [x] **Mission Control Booking Detail Menu Under Actions Prototype** (2026-05-02)
+  - [x] Moved Menu into the right-side stack directly under Quick Actions
+  - [x] Kept Payment Summary in the top-left grid area and the selected-seat workflow below it
+  - [x] Tightened the Menu item list back to a single-column rail layout for the narrower right panel
+  - [x] Captured a review screenshot at `test-results/booking-detail-menu-under-quick-actions-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage against the Menu-under-actions placement
+- [x] **Mission Control Booking Detail Compact Payment Summary Prototype** (2026-05-02)
+  - [x] Changed the main booking-detail grid to independent left/right columns so the Menu rail no longer pushes Seat Detail below the fold
+  - [x] Compacted Payment Summary into a short total/progress card beside Seat Status and Seat Management
+  - [x] Merged collected/open-due metrics into the compact summary card and shortened the seat status rows
+  - [x] Captured a review screenshot at `test-results/booking-detail-compact-payment-summary-prototype.png`
+  - [x] Verified focused booking-detail Playwright coverage, including that Seat Detail starts inside the first viewport
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow

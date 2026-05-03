@@ -82,47 +82,59 @@ test.describe('Mission Control booking detail', () => {
     });
   });
 
-  test('renders the page-first command workspace and menu drawer', async ({ page }) => {
+  test('renders the themed original booking detail layout', async ({ page }) => {
     const bookingId = await createQuickSaleBooking(page);
+    await addCustomOrder(page, bookingId);
 
     await page.goto(`/pos/booking/${bookingId}`);
 
     await expect(page.locator('.mc-root')).toHaveCount(1, { timeout: 10000 });
-    await expect(page.getByText('Booking Command')).toBeVisible();
-    await expect(page.getByText('Session')).toBeVisible();
-    await expect(page.getByText('Seat Ledger')).toBeVisible();
-    await expect(page.getByText('Seat 1 totals and active workflow.')).toBeVisible();
-    await expect(page.getByText('Orders', { exact: true })).toBeVisible();
-    await expect(page.getByText('Payment', { exact: true })).toBeVisible();
-    await expect(page.getByText('Settlement', { exact: true })).toBeVisible();
-    await expect(page.getByText('Command Stack')).toBeVisible();
-    await expect(page.getByText('Attention', { exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Tax' })).toHaveCount(0);
-    const seatsPanel = page.locator('section').filter({ has: page.getByText('Seats', { exact: true }) });
-    const settlementPanel = page.locator('section').filter({ has: page.getByText('Settlement', { exact: true }) });
-    const paymentSummary = page.locator('section').filter({ has: page.getByText('Payment', { exact: true }) }).first();
-    const receiptsPanel = page.locator('section').filter({ has: page.getByText('Receipts', { exact: true }) });
-    const bookingActionsPanel = page.locator('section').filter({ has: page.getByText('Booking Actions', { exact: true }) });
-    await expect(seatsPanel.getByRole('button', { name: /^Seat 1\b/ })).toHaveCount(1);
-    await expect(settlementPanel.getByRole('button', { name: /^Seat \d+\b/ })).toHaveCount(0);
-    await expect(settlementPanel.getByText('Active seat 1')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Print Seat Receipt$/ })).toHaveCount(0);
-    await expect(receiptsPanel.getByRole('button', { name: 'Full booking receipt' })).toHaveCount(1);
-    await expect(receiptsPanel.getByRole('button', { name: /^Seat 1 receipt$/ })).toHaveClass(/mc-ledger-action-secondary/);
-    await expect(settlementPanel.getByRole('button', { name: /^Collect \$.*$/ })).toHaveCount(0);
-    await expect(paymentSummary.getByRole('button', { name: /^Collect \$.*$/ })).toHaveClass(/mc-ledger-action-primary/);
-    await expect(page.getByRole('button', { name: /^Collect \$.*$/ })).toHaveCount(1);
-    await expect(receiptsPanel.getByRole('button', { name: 'Cancel booking' })).toHaveCount(0);
-    await expect(bookingActionsPanel.getByRole('button', { name: 'Cancel booking' })).toHaveCount(1);
+    const originalLayout = page.locator('.mc-original-layout');
+    await expect(originalLayout).toBeVisible();
+    await expect(originalLayout.getByRole('heading', { name: 'Booking Details' })).toBeVisible();
+    await expect(originalLayout.getByText('Seat Management', { exact: true })).toBeVisible();
+    await expect(originalLayout.getByText('Number of Seats')).toBeVisible();
+    await expect(originalLayout.getByText('Seat 1', { exact: true }).first()).toBeVisible();
+    await expect(originalLayout.getByText('Seat Status', { exact: true }).first()).toBeVisible();
+    await expect(originalLayout.getByText('Payment Summary', { exact: true })).toBeVisible();
+    await expect(originalLayout.getByText('Quick Actions', { exact: true })).toBeVisible();
+    await expect(originalLayout.getByText('Menu', { exact: true })).toBeVisible();
+    await expect(originalLayout.getByText(/\$\d+\.\d{2} due/).first()).toBeVisible();
+    await expect(originalLayout.getByRole('button', { name: 'Tax' })).toHaveCount(0);
+    await expect(originalLayout.getByRole('button', { name: 'Print Seat 1 receipt' })).toBeVisible();
+    await expect(originalLayout.getByRole('button', { name: 'Seat 1 status' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]')).toHaveCount(1);
 
-    await page.getByRole('button', { name: /Add item/i }).first().click();
-    await expect(page.getByText('Menu Command')).toBeVisible();
+    await originalLayout.getByRole('button', { name: 'Add seat' }).click();
+    await expect(originalLayout.getByRole('button', { name: 'Seat 2 status' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]')).toHaveCount(1);
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('No items ordered yet')).toBeVisible();
 
-    await page.getByRole('button', { name: /^Close$/ }).first().click();
-    await expect(page.getByText('Menu Command')).toBeHidden();
+    await originalLayout.getByRole('button', { name: 'Seat 1 status' }).click();
+    await expect(originalLayout.getByRole('button', { name: 'Seat 1 status' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('Payment Modal Test Item')).toBeVisible();
+
+    const paymentSummaryBox = await originalLayout.getByText('Payment Summary', { exact: true }).boundingBox();
+    const quickActionsBox = await originalLayout.getByText('Quick Actions', { exact: true }).boundingBox();
+    const menuBox = await originalLayout.getByText('Menu', { exact: true }).boundingBox();
+    expect(paymentSummaryBox).not.toBeNull();
+    expect(quickActionsBox).not.toBeNull();
+    expect(menuBox).not.toBeNull();
+    expect(paymentSummaryBox!.x).toBeLessThan(quickActionsBox!.x);
+    expect(Math.abs(paymentSummaryBox!.y - quickActionsBox!.y)).toBeLessThanOrEqual(80);
+    expect(menuBox!.y).toBeGreaterThan(quickActionsBox!.y);
+    expect(Math.abs(menuBox!.x - quickActionsBox!.x)).toBeLessThanOrEqual(24);
+    const activeSeatBox = await originalLayout.locator('[data-testid="active-seat-detail"]').boundingBox();
+    expect(activeSeatBox).not.toBeNull();
+    expect(activeSeatBox!.y).toBeLessThan(page.viewportSize()?.height ?? 720);
+
+    await originalLayout.getByRole('button', { name: 'Custom' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeHidden();
   });
 
-  test('disables command stack actions for completed bookings', async ({ page }) => {
+  test('hides edit menu actions for completed bookings', async ({ page }) => {
     const bookingId = await createQuickSaleBooking(page);
 
     await page.route(`${API_BASE}/api/bookings/${bookingId}`, async (route) => {
@@ -151,13 +163,13 @@ test.describe('Mission Control booking detail', () => {
 
     await page.goto(`/pos/booking/${bookingId}`);
 
-    const commandStack = page.locator('section').filter({ hasText: 'Command Stack' });
-    await expect(commandStack.getByText('Reopen booking to use edit commands.')).toBeVisible();
-    await expect(commandStack.getByRole('button', { name: 'Item' })).toBeDisabled();
-    await expect(commandStack.getByRole('button', { name: 'Custom' })).toBeDisabled();
-    await expect(commandStack.getByRole('button', { name: 'Discount' })).toBeDisabled();
-    await expect(commandStack.getByRole('button', { name: 'Coupon' })).toBeDisabled();
-    await expect(commandStack.getByRole('button', { name: 'Gift Card' })).toBeDisabled();
+    const originalLayout = page.locator('.mc-original-layout');
+    await expect(originalLayout.getByRole('button', { name: 'Reopen Booking' })).toBeVisible();
+    await expect(originalLayout.getByText('Reopen booking to use edit commands.')).toBeVisible();
+    await expect(originalLayout.getByRole('button', { name: 'Custom' })).toHaveCount(0);
+    await expect(originalLayout.getByRole('button', { name: 'Discount' })).toHaveCount(0);
+    await expect(originalLayout.getByRole('button', { name: 'Coupon' })).toHaveCount(0);
+    await expect(originalLayout.getByRole('button', { name: 'Gift Card' })).toHaveCount(0);
   });
 
   test('opens the Mission Control collect payment modal', async ({ page }) => {
@@ -166,7 +178,7 @@ test.describe('Mission Control booking detail', () => {
 
     await page.goto(`/pos/booking/${bookingId}`);
 
-    await page.getByRole('button', { name: /^Collect \$.*$/ }).click();
+    await page.getByRole('button', { name: /Collect Payment|Add Payment/ }).first().click();
     await expect(page.getByRole('heading', { name: 'Collect Payment' })).toBeVisible();
     await expect(page.getByText('Seat 1 balance')).toBeVisible();
     await expect(page.getByText('Payment Method', { exact: true })).toBeVisible();
@@ -199,14 +211,16 @@ test.describe('Mission Control booking detail', () => {
 
     await page.goto(`/pos/booking/${bookingId}`);
 
-    await page.getByRole('button', { name: /^Collect \$.*$/ }).click();
+    await page.getByRole('button', { name: /Collect Payment|Add Payment/ }).first().click();
     await page.getByRole('button', { name: /^Card$/ }).click();
     await page.getByRole('button', { name: /Pay \$.* by Card/ }).click();
-    await expect(page.getByText('Payment Records')).toBeVisible();
+    const originalLayout = page.locator('.mc-original-layout');
+    await expect(originalLayout.getByText('PAID').first()).toBeVisible();
 
-    const paymentRecords = page.locator('section').filter({ has: page.getByText('Payment Records', { exact: true }) }).first();
-    const uploadReceipt = paymentRecords.getByRole('button', { name: /Upload Receipt|View Receipt/ }).first();
-    const cancelPayment = paymentRecords.getByRole('button', { name: 'Cancel Payment' }).first();
+    const uploadReceipt = originalLayout.getByRole('button', { name: /Upload Receipt|View Receipt/ }).first();
+    const cancelPayment = originalLayout.getByRole('button', { name: 'Cancel Payment' }).first();
+    await expect(uploadReceipt).toBeVisible();
+    await expect(cancelPayment).toBeVisible();
 
     const uploadBox = await uploadReceipt.boundingBox();
     const cancelBox = await cancelPayment.boundingBox();
