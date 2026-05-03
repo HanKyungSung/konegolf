@@ -56,15 +56,15 @@ const Split = ({ className = '' }: { className?: string }) => (
 );
 
 const statusStyles: Record<string, string> = {
-  booked: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  completed: 'bg-green-500/20 text-green-300 border-green-500/30',
-  cancelled: 'bg-red-500/20 text-red-300 border-red-500/30'
+  booked: 'mc-status-badge mc-status-info',
+  completed: 'mc-status-badge mc-status-success',
+  cancelled: 'mc-status-badge mc-status-danger'
 };
 
 const paymentStatusStyles: Record<string, string> = {
-  UNPAID: 'bg-red-500/20 text-red-300 border-red-500/30',
-  BILLED: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  PAID: 'bg-green-500/20 text-green-300 border-green-500/30'
+  UNPAID: 'mc-status-badge mc-status-danger',
+  BILLED: 'mc-status-badge mc-status-warning',
+  PAID: 'mc-status-badge mc-status-success'
 };
 
 interface OrderItem {
@@ -1899,9 +1899,9 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
         </div>
       )}
 
-      <main className="no-print mc-original-layout flex-1 px-3 sm:px-6 py-4 sm:py-8 space-y-6 max-w-[1800px] mx-auto w-full">
+      <main className="no-print mc-original-layout mc-booking-shell flex-1 space-y-6">
         {/* Header */}
-        <div className="mc-panel mc-booking-command-compact no-print">
+        <div className="mc-panel mc-panel-compact mc-booking-command-compact no-print">
           <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
               <h1 className="text-2xl font-bold tracking-[-0.03em] text-[color:var(--mc-text-hero)]">
@@ -1931,52 +1931,52 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
           <div className="mc-booking-meta-line">
             <div className="mc-booking-meta-item">
-              <span className="text-amber-400">Room:</span>
-              <span className="flex min-w-0 items-center gap-2 text-[color:var(--mc-text-primary)]">
-                <span className={`h-2.5 w-2.5 rounded-full ${roomColors[booking.roomId]}`} />
+              <span className="mc-field-label">Room:</span>
+              <span className="flex min-w-0 items-center gap-2 mc-meta-value">
+                <span className={`mc-status-dot h-2.5 w-2.5 ${roomColors[booking.roomId]}`} />
                 <span className="truncate">{roomColor}</span>
               </span>
             </div>
             <div className="mc-booking-meta-item">
-              <span className="text-amber-400">Customer:</span>
-              <span className="truncate text-[color:var(--mc-text-primary)]">{booking.customerName}</span>
+              <span className="mc-field-label">Customer:</span>
+              <span className="truncate mc-meta-value">{booking.customerName}</span>
             </div>
             <div className="mc-booking-meta-item">
-              <span className="text-amber-400">Session:</span>
-              <span className="text-[color:var(--mc-text-primary)]">{booking.date} · {booking.time}</span>
+              <span className="mc-field-label">Session:</span>
+              <span className="mc-meta-value">{booking.date} · {booking.time}</span>
             </div>
             <div className="mc-booking-meta-item">
-              <span className="text-amber-400">End:</span>
-              <span className="text-[color:var(--mc-text-primary)]">{endTimeLabel}</span>
+              <span className="mc-field-label">End:</span>
+              <span className="mc-meta-value">{endTimeLabel}</span>
             </div>
             <div className="mc-booking-meta-item">
-              <span className="text-amber-400">Players:</span>
-              <span className="text-[color:var(--mc-text-primary)]">
+              <span className="mc-field-label">Players:</span>
+              <span className="mc-meta-value">
                 {booking.players} player{booking.players === 1 ? '' : 's'}
               </span>
             </div>
             <div className="mc-booking-meta-item">
-              <span className="text-amber-400">Phone:</span>
-              <span className="truncate text-[color:var(--mc-text-primary)]">{booking.customerPhone}</span>
+              <span className="mc-field-label">Phone:</span>
+              <span className="truncate mc-meta-value">{booking.customerPhone}</span>
             </div>
             <div className="mc-booking-meta-item">
-              <span className="text-amber-400">DOB:</span>
-              <span className="text-[color:var(--mc-text-primary)]">{booking.user?.dateOfBirth || 'N/A'}</span>
+              <span className="mc-field-label">DOB:</span>
+              <span className="mc-meta-value">{booking.user?.dateOfBirth || 'N/A'}</span>
             </div>
             {booking.customerEmail && (
               <div className="mc-booking-meta-item">
-                <span className="text-amber-400">Email:</span>
-                <span className="truncate text-[color:var(--mc-text-primary)]">{booking.customerEmail}</span>
+                <span className="mc-field-label">Email:</span>
+                <span className="truncate mc-meta-value">{booking.customerEmail}</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="mc-booking-layout">
           {/* Left Column - Order Management */}
-          <div className="space-y-4 lg:col-span-2">
+          <div className="mc-booking-main">
             {/* Payment Summary */}
-            <section className="mc-panel mc-payment-summary-compact">
+            <section className="mc-panel mc-panel-compact mc-payment-summary-compact">
               <MCPanelHeader
                 label="Payment Summary"
                 meta={`${getPaidSeatsCount()} of ${numberOfSeats} seat${numberOfSeats === 1 ? '' : 's'} paid`}
@@ -1984,17 +1984,17 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                 tight
               />
               <div className="grid gap-3 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.45fr)] lg:items-stretch">
-                <div className={`mc-row mc-payment-total-compact ${totalDue > 0 ? 'border-amber-500/40 bg-amber-500/10' : 'border-green-500/40 bg-green-500/10'}`}>
+                <div className={`mc-row mc-payment-total-compact ${totalDue > 0 ? 'mc-subpanel-warning' : 'mc-subpanel-success'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-wide text-slate-400">{totalDue > 0 ? 'Total Due' : 'Collected'}</div>
-                      <div className={`mt-0.5 font-mono text-2xl font-bold leading-none ${totalDue > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                      <div className="mc-kicker">{totalDue > 0 ? 'Total Due' : 'Collected'}</div>
+                      <div className={`mt-0.5 font-mono text-2xl font-bold leading-none ${totalDue > 0 ? 'mc-tone-warning' : 'mc-tone-success'}`}>
                         {formatMoney(totalDue > 0 ? totalDue : totalCollected)}
                       </div>
                     </div>
                     <div className="text-right text-xs text-slate-400">
                       <div className="font-mono text-base font-semibold text-[color:var(--mc-text-primary)]">{Math.round(getPaymentProgress())}%</div>
-                      <div className="uppercase tracking-wide">settled</div>
+                      <div className="mc-kicker">settled</div>
                     </div>
                   </div>
                   <div className="mt-2 flex justify-between text-xs text-slate-300">
@@ -2010,11 +2010,11 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     />
                   </Progress>
                   <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-xs">
-                    <div className="mc-payment-compact-metric">
+                    <div className="mc-metric-tile">
                       <span>Collected</span>
                       <strong>{formatMoney(totalCollected)}</strong>
                     </div>
-                    <div className="mc-payment-compact-metric">
+                    <div className="mc-metric-tile">
                       <span>Open due</span>
                       <strong>{formatMoney(totalDue)}</strong>
                     </div>
@@ -2027,7 +2027,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     label="Seat Status"
                     meta={(
                       <span className="flex flex-wrap items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-amber-400" />
+                        <Users className="h-3.5 w-3.5 mc-tone-accent" />
                         <span>Seat Management</span>
                         <span className="text-slate-600">·</span>
                         <span className="text-slate-500">Number of Seats</span>
@@ -2041,22 +2041,22 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           size="sm"
                           onClick={handleReduceSeats}
                           disabled={!canReduceSeats()}
-                          className="h-8 w-8 p-0 bg-slate-700 hover:bg-slate-600 text-white"
+                          className="mc-mini-action mc-mini-action-neutral mc-mini-action-icon"
                           aria-label="Reduce seats"
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
                       )}
                       <div className="min-w-[3.5rem] text-center">
-                        <div className="text-[10px] uppercase tracking-wide text-slate-500">Seats</div>
-                        <div className="font-mono text-lg font-bold text-amber-400">{numberOfSeats}</div>
+                        <div className="mc-kicker">Seats</div>
+                        <div className="font-mono text-lg font-bold mc-tone-accent">{numberOfSeats}</div>
                       </div>
                       {!isReadOnly && (
                         <Button
                           size="sm"
                           onClick={handleIncreaseSeats}
                           disabled={numberOfSeats >= MAX_SEATS}
-                          className="h-8 w-8 p-0 bg-slate-700 hover:bg-slate-600 text-white"
+                          className="mc-mini-action mc-mini-action-neutral mc-mini-action-icon"
                           aria-label="Add seat"
                         >
                           <Plus className="h-4 w-4" />
@@ -2078,21 +2078,21 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           className={`mc-payment-seat-status ${isActiveSummary ? 'mc-payment-seat-status-active' : ''}`}
                         >
                           <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${seatColors[summary.seat - 1]}`} />
+                            <div className={`mc-status-dot w-3 h-3 ${seatColors[summary.seat - 1]}`} />
                             <span className="text-sm text-white">Seat {summary.seat}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             {summary.isPaid ? (
                               <>
-                                <CheckCircle2 className="h-4 w-4 text-green-400" />
-                                <span className="text-xs text-green-400 font-semibold">PAID</span>
-                                <span className="text-xs text-slate-400 font-mono">{formatMoney(summary.total)}</span>
+                                <CheckCircle2 className="h-4 w-4 mc-tone-success" />
+                                <span className="text-xs mc-tone-success font-semibold">PAID</span>
+                                <span className="text-xs mc-meta font-mono">{formatMoney(summary.total)}</span>
                               </>
                             ) : (
                               <>
-                                <AlertCircle className="h-4 w-4 text-amber-400" />
-                                <span className="text-xs text-amber-400 font-semibold">UNPAID</span>
-                                <span className="text-xs text-slate-400 font-mono">{formatMoney(summary.remaining || summary.total)}</span>
+                                <AlertCircle className="h-4 w-4 mc-tone-warning" />
+                                <span className="text-xs mc-tone-warning font-semibold">UNPAID</span>
+                                <span className="text-xs mc-meta font-mono">{formatMoney(summary.remaining || summary.total)}</span>
                               </>
                             )}
                           </div>
@@ -2128,15 +2128,14 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   <section
                     key={seat}
                     data-testid="active-seat-detail"
-                    className="mc-panel overflow-hidden"
-                    style={{ padding: 0 }}
+                    className="mc-panel mc-seat-detail-panel"
                   >
-                    <div className="px-3 sm:px-6 py-3 sm:py-4" style={{ borderBottom: '1px solid var(--mc-divider-soft)' }}>
+                    <div className="mc-seat-detail-header">
                       <MCPanelHeader
                         as="div"
                         label={(
                           <span className="flex items-center gap-2 sm:gap-3">
-                            <span className={`w-4 h-4 rounded-full ${seatColors[seat - 1]}`} />
+                            <span className={`mc-status-dot w-4 h-4 ${seatColors[seat - 1]}`} />
                             <span className="font-bold text-white text-base sm:text-lg">Seat {seat} Detail</span>
                             <Badge variant="outline" className="text-slate-300 border-slate-600 text-xs">
                             {regularItems.length} items
@@ -2158,10 +2157,10 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                             type="button"
                             onClick={() => handleOpenReceiptModal('seat', seat)}
                             disabled={loadingReceipt || seatItems.length === 0}
-                            className={`inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                            className={`mc-action-btn mc-action-btn-accent mc-action-btn-compact mc-action-btn-fit ${
                               loadingReceipt || seatItems.length === 0
                                 ? 'opacity-50 pointer-events-none'
-                                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/50 cursor-pointer'
+                                : ''
                             }`}
                             aria-label={`Print Seat ${seat} receipt`}
                           >
@@ -2183,11 +2182,11 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         )}
                       />
                     </div>
-                    <div className="px-3 sm:px-6 pb-4 sm:pb-6">
-                      <div className="space-y-4 pt-2">
+                    <div className="mc-seat-detail-body">
+                      <div className="mc-section-stack">
                         {/* Order Items */}
                         {regularItems.length === 0 && discountItems.length === 0 ? (
-                          <div className="text-center py-8 text-slate-400 bg-slate-900/30 rounded-lg">
+                          <div className="mc-empty-state">
                             <p>No items ordered yet</p>
                             <p className="text-sm mt-1">Add items from the menu</p>
                           </div>
@@ -2197,7 +2196,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                             {regularItems.map((item) => (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700"
+                                className="mc-subpanel flex items-center justify-between gap-3"
                               >
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
@@ -2231,7 +2230,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                         size="sm"
                                         variant="outline"
                                         onClick={() => handleMoveItem(item)}
-                                        className="h-8 px-2 bg-blue-500/20 border-blue-500/50 hover:bg-blue-500/30 text-blue-400 hidden sm:inline-flex"
+                                        className="mc-mini-action mc-mini-action-info hidden sm:inline-flex"
                                         title="Move to another seat"
                                       >
                                         Move
@@ -2240,7 +2239,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                         size="sm"
                                         variant="outline"
                                         onClick={() => handleMoveItem(item)}
-                                        className="h-8 w-8 p-0 bg-blue-500/20 border-blue-500/50 hover:bg-blue-500/30 text-blue-400 sm:hidden"
+                                        className="mc-mini-action mc-mini-action-info mc-mini-action-icon sm:hidden"
                                         title="Move to another seat"
                                       >
                                         <MoveRight className="h-3 w-3" />
@@ -2249,7 +2248,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                         size="sm"
                                         variant="outline"
                                         onClick={() => handleSplitItem(item)}
-                                        className="h-8 px-2 bg-purple-500/20 border-purple-500/50 hover:bg-purple-500/30 text-purple-400 hidden sm:inline-flex"
+                                        className="mc-mini-action mc-mini-action-accent hidden sm:inline-flex"
                                         title="Split to multiple seats"
                                       >
                                         Split
@@ -2258,7 +2257,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                         size="sm"
                                         variant="outline"
                                         onClick={() => handleSplitItem(item)}
-                                        className="h-8 w-8 p-0 bg-purple-500/20 border-purple-500/50 hover:bg-purple-500/30 text-purple-400 sm:hidden"
+                                        className="mc-mini-action mc-mini-action-accent mc-mini-action-icon sm:hidden"
                                         title="Split to multiple seats"
                                       >
                                         <Split className="h-3 w-3" />
@@ -2267,25 +2266,25 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                         size="sm"
                                         variant="outline"
                                         onClick={() => updateItemQuantity(item.id, -1)}
-                                        className="h-8 w-8 p-0 bg-slate-700 border-slate-600 hover:bg-slate-600"
+                                        className="mc-mini-action mc-mini-action-neutral mc-mini-action-icon"
                                       >
-                                        <Minus className="h-3 w-3 text-white" />
+                                        <Minus className="h-3 w-3" />
                                       </Button>
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         onClick={() => updateItemQuantity(item.id, 1)}
-                                        className="h-8 w-8 p-0 bg-slate-700 border-slate-600 hover:bg-slate-600"
+                                        className="mc-mini-action mc-mini-action-neutral mc-mini-action-icon"
                                       >
-                                        <Plus className="h-3 w-3 text-white" />
+                                        <Plus className="h-3 w-3" />
                                       </Button>
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         onClick={() => { setRemoveOrderId(item.id); setRemoveOrderName(item.menuItem?.name || 'this item'); }}
-                                        className="h-8 w-8 p-0 bg-red-500/20 border-red-500/50 hover:bg-red-500/30"
+                                        className="mc-mini-action mc-mini-action-danger mc-mini-action-icon"
                                       >
-                                      <Trash2 className="h-3 w-3 text-red-400" />
+                                      <Trash2 className="h-3 w-3" />
                                       </Button>
                                     </div>
                                   )}
@@ -2298,7 +2297,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         <Separator className="bg-slate-700" />
 
                         {/* Invoice */}
-                        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 space-y-3">
+                        <div className="mc-subpanel mc-section-stack">
                           <h4 className="text-sm font-semibold text-white mb-3">Invoice</h4>
                           <div className="space-y-2 font-mono text-sm">
                             <div className="flex justify-between text-slate-300">
@@ -2318,9 +2317,9 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                       size="sm"
                                       variant="outline"
                                       onClick={() => { setRemoveOrderId(item.id); setRemoveOrderName(item.menuItem?.name || 'this discount'); }}
-                                      className="h-6 w-6 p-0 bg-red-500/20 border-red-500/50 hover:bg-red-500/30"
+                                      className="mc-mini-action mc-mini-action-danger mc-mini-action-icon"
                                     >
-                                      <Trash2 className="h-3 w-3 text-red-400" />
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   )}
                                 </div>
@@ -2346,7 +2345,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
                         {/* Payment Section */}
                         {isPaid ? (
-                          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 space-y-3">
+                          <div className="mc-subpanel mc-subpanel-success mc-section-stack">
                             <div className="flex items-center gap-2 text-green-400 mb-2">
                               <CheckCircle2 className="h-5 w-5" />
                               <span className="font-semibold">PAID</span>
@@ -2356,7 +2355,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                 <>
                                   {payment.payments.length > 1 && <p className="font-medium text-slate-200">Payment History:</p>}
                                   {payment.payments.map((p, idx) => (
-                                    <div key={idx} className="bg-slate-800/60 rounded-lg overflow-hidden border border-slate-700/70">
+                                    <div key={idx} className="mc-subpanel mc-subpanel-flush overflow-hidden">
                                       <div className="flex items-center justify-between p-3">
                                         <span className="inline-flex items-center gap-1.5 font-medium">
                                           {p.method === 'CARD' ? <CreditCard className="h-4 w-4" /> : p.method === 'GIFT_CARD' ? <Gift className="h-4 w-4" /> : <Banknote className="h-4 w-4" />}
@@ -2369,7 +2368,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                           {receiptPhotos[p.id] ? (
                                             <button
                                               onClick={() => { setCaptureMode('view'); setCapturePaymentId(p.id); }}
-                                              className="flex mc-payment-action items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-md text-emerald-400 hover:bg-emerald-500/25 transition-colors text-xs font-medium"
+                                              className="mc-payment-action mc-payment-action-success"
                                             >
                                               <CheckCircle2 className="h-3.5 w-3.5" />
                                               View Receipt
@@ -2377,7 +2376,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                           ) : (
                                             <button
                                               onClick={() => { setCaptureMode('upload'); setCapturePaymentId(p.id); }}
-                                              className="flex mc-payment-action items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-md text-amber-400 hover:bg-amber-500/25 transition-colors text-xs font-medium"
+                                              className="mc-payment-action mc-payment-action-accent"
                                             >
                                               <Camera className="h-3.5 w-3.5" />
                                               Upload Receipt
@@ -2407,14 +2406,14 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                               onClick={() => setCancelPaymentSeat(seat)}
                               disabled={processingPayment === seat}
                               variant="outline"
-                              className="mc-payment-action bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                              className="mc-payment-action mc-payment-action-danger"
                             >
                               {processingPayment === seat ? 'Processing...' : 'Cancel Payment'}
                             </Button>
                             )}
                           </div>
                         ) : (
-                          <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+                          <div className="mc-subpanel mc-section-stack">
                             {/* Show existing partial payments if any */}
                             {(() => {
                               const invoice = invoices.find((inv) => inv.seatIndex === seat);
@@ -2430,7 +2429,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                     <div className="space-y-2">
                                       <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Payments Received</h4>
                                       {existingPayments.map((p, idx) => (
-                                        <div key={idx} className="flex items-center justify-between text-sm bg-slate-800/70 rounded-md px-3 py-2">
+                                        <div key={idx} className="mc-subpanel flex items-center justify-between text-sm">
                                           <span className="inline-flex items-center gap-1.5 text-slate-300">
                                             {p.method === 'COUPON' ? <Ticket className="h-3.5 w-3.5" /> : p.method === 'CARD' ? <CreditCard className="h-3.5 w-3.5" /> : p.method === 'GIFT_CARD' ? <Gift className="h-3.5 w-3.5" /> : <Banknote className="h-3.5 w-3.5" />}
                                             {p.method === 'COUPON' ? 'Coupon' : p.method === 'GIFT_CARD' ? 'Gift Card' : p.method === 'CARD' ? 'Card' : 'Cash'}
@@ -2454,7 +2453,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                                       setTipMethodBySeat(prev => ({ ...prev, [seat]: 'CARD' }));
                                     }}
                                     disabled={subtotal === 0 && !hasCouponDiscount}
-                                    className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold h-12"
+                                    className="mc-action-btn mc-action-btn-success"
                                   >
                                     {seatTotal <= 0 && hasCouponDiscount ? (
                                       <><Ticket className="h-4 w-4 mr-2" /> Collect Payment — Coupon Applied</>
@@ -2479,15 +2478,15 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
           </div>
 
           {/* Right Column - Settlement & Lifecycle */}
-          <div className="space-y-4 lg:col-span-1 lg:self-start">
+          <div className="mc-booking-side">
             {!isReadOnly && (
-              <div className="space-y-4">
-                <section className="mc-panel space-y-2">
+              <div className="mc-section-stack">
+                <section className="mc-panel mc-panel-compact mc-section-stack">
                   <MCPanelHeader label="Quick Actions" border tight />
                   {booking.bookingStatus?.toUpperCase() === 'COMPLETED' ? (
                     <Button
                       onClick={handleReopenBooking}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                      className="mc-action-btn mc-action-btn-info"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       Reopen Booking
@@ -2496,7 +2495,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     <div className="grid grid-cols-1 gap-2">
                       <Button
                         onClick={handleCompleteBooking}
-                        className="w-full bg-green-500 hover:bg-green-600 text-white"
+                        className="mc-action-btn mc-action-btn-success"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
                         Complete Booking
@@ -2504,7 +2503,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       <Button
                         onClick={() => setCancelBookingOpen(true)}
                         variant="outline"
-                        className="w-full border-red-500 text-red-400 hover:bg-red-500/10"
+                        className="mc-action-btn mc-action-btn-danger"
                       >
                         Cancel Booking
                       </Button>
@@ -2513,7 +2512,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                 </section>
 
                 {isBookingCompleted && (
-                  <section className="mc-panel">
+                  <section className="mc-panel mc-panel-compact">
                     <MCPanelHeader
                       label="Menu"
                       meta="Reopen booking to use edit commands."
@@ -2522,18 +2521,18 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   </section>
                 )}
                 {!isBookingCompleted && (
-                  <section className="mc-panel space-y-4">
+                  <section className="mc-panel mc-panel-compact mc-section-stack">
                     <MCPanelHeader
                       label="Menu"
                       meta="Order-entry commands stay under Quick Actions."
                       border
                     />
                     {menu.length === 0 ? (
-                      <div className="text-center py-8 text-slate-400">
+                      <div className="mc-empty-state">
                         <p className="text-sm">Menu not available</p>
                       </div>
                     ) : (
-                      <Tabs defaultValue="hours" className="space-y-4">
+                      <Tabs defaultValue="hours" className="mc-section-stack">
                         <div className="overflow-x-auto -mx-2 px-2">
                           <TabsList className="inline-flex w-auto min-w-full sm:grid sm:grid-cols-5 bg-slate-900/50">
                             <TabsTrigger value="hours">Hours</TabsTrigger>

@@ -165,6 +165,13 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Merged collected/open-due metrics into the compact summary card and shortened the seat status rows
   - [x] Captured a review screenshot at `test-results/booking-detail-compact-payment-summary-prototype.png`
   - [x] Verified focused booking-detail Playwright coverage, including that Seat Detail starts inside the first viewport
+- [x] **Mission Control Booking Detail Design System Cleanup Trial** (2026-05-02)
+  - [x] Committed the accepted compact Payment Summary / Menu-under-actions prototype as `0a0ce0f`
+  - [x] Added reusable Mission Control utilities for compact panels, subpanels, metric tiles, tones, action buttons, mini buttons, status badges, and booking-detail layout columns
+  - [x] Migrated the active booking-detail header, Payment Summary, Seat Detail, invoice/payment records, Quick Actions, and Menu rail toward those shared utilities
+  - [x] Added a flush subpanel modifier so receipt upload and cancel payment actions keep matching widths after the style cleanup
+  - [x] Captured a review screenshot at `test-results/booking-detail-design-system-cleanup-prototype.png`
+  - [x] Verified frontend build and focused booking-detail Playwright coverage against the cleanup trial
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow
