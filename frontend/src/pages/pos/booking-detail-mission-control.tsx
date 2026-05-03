@@ -2711,36 +2711,83 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
       </Dialog>
 
       <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Move Item</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Move "{selectedOrderItem?.menuItem.name}" to a different seat
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-4">
-            {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
-              <Button
-                key={seat}
-                onClick={() => moveItemToSeat(selectedOrderItem!.id, seat)}
-                className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold`}
+        <DialogContent className="mc-dialog-content max-w-[520px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-magenta), var(--mc-cyan))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="text-[color:var(--mc-text-hero)]">Move Item</DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Choose the destination seat for {selectedOrderItem?.menuItem.name ? `"${selectedOrderItem.menuItem.name}"` : 'this item'}.
+                </DialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMoveDialog(false);
+                  setSelectedOrderItem(null);
+                }}
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close move item"
               >
-                Seat {seat}
+                ×
+              </button>
+            </DialogHeader>
+
+            <div className="mc-dialog-body mc-section-stack">
+              {selectedOrderItem && (
+                <div className="mc-subpanel flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="mc-kicker">Selected item</div>
+                    <div className="truncate font-semibold text-[color:var(--mc-text-primary)]">{selectedOrderItem.menuItem.name}</div>
+                    <div className="mc-meta mt-1">
+                      From seat {selectedOrderItem.seat || 'unassigned'} · Qty {selectedOrderItem.quantity}
+                    </div>
+                  </div>
+                  <div className="mc-mono text-[color:var(--mc-cyan)]">
+                    {formatMoney((selectedOrderItem.splitPrice || selectedOrderItem.menuItem.price) * selectedOrderItem.quantity)}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                  <Button
+                    key={seat}
+                    onClick={() => selectedOrderItem && moveItemToSeat(selectedOrderItem.id, seat)}
+                    disabled={!selectedOrderItem || orderLoading}
+                    className="mc-seat-choice"
+                    aria-label={`Move to Seat ${seat}`}
+                  >
+                    <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                    <span>
+                      <span className="mc-seat-choice-title">Seat {seat}</span>
+                      <span className="mc-seat-choice-meta block">
+                        {selectedOrderItem?.seat === seat ? 'Current seat' : 'Move item here'}
+                      </span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <DialogFooter className="mc-dialog-footer mc-dialog-footer-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowMoveDialog(false);
+                  setSelectedOrderItem(null);
+                }}
+                className="mc-action-btn mc-action-btn-fit"
+              >
+                Cancel
               </Button>
-            ))}
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowMoveDialog(false);
-                setSelectedOrderItem(null);
-              }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

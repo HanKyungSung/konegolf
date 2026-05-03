@@ -150,6 +150,16 @@ test.describe('Mission Control booking detail', () => {
     await addToSeatDialog.getByRole('button', { name: 'Close add to seat' }).click();
     await expect(page.getByRole('heading', { name: 'Add to Seat' })).toBeHidden();
 
+    await originalLayout.locator('[data-testid="active-seat-detail"]').getByRole('button', { name: 'Move' }).click();
+    const moveItemDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Move Item' }) });
+    await expect(moveItemDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(moveItemDialog.locator('.mc-subpanel').getByText('Payment Modal Test Item', { exact: true })).toBeVisible();
+    await expect(moveItemDialog.getByRole('button', { name: 'Move to Seat 2' })).toBeVisible();
+    await expect(moveItemDialog.locator('.mc-seat-choice-index.mc-seat-tone-2')).toHaveText('2');
+    await expect(moveItemDialog.locator('.mc-seat-choice-index.mc-seat-tone-2')).toHaveCSS('background-color', 'rgb(244, 122, 165)');
+    await moveItemDialog.getByRole('button', { name: 'Close move item' }).click();
+    await expect(page.getByRole('heading', { name: 'Move Item' })).toBeHidden();
+
     await originalLayout.getByRole('button', { name: 'Custom' }).first().click();
     await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeVisible();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();

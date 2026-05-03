@@ -191,6 +191,13 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Captured the exact shared tone screenshot at `test-results/booking-detail-add-to-seat-exact-seat-colors.png`
   - [x] Captured the canonical room-palette screenshot at `test-results/booking-detail-add-to-seat-room-palette.png`
   - [x] Captured the right-aligned Cancel screenshot at `test-results/booking-detail-add-to-seat-cancel-right.png`
+- [x] **Mission Control Booking Detail Move Item Modal** (2026-05-03)
+  - [x] Restyled the Move Item dialog with the shared MC dialog frame, header, body, footer, selected-item summary, and close control
+  - [x] Reused the canonical Mission Control room/timeline seat color cycle for destination-seat choices
+  - [x] Right-aligned the Move Item dialog Cancel action with the reusable MC footer modifier
+  - [x] Preserved the existing `moveItemToSeat` behavior and selected-order cleanup
+  - [x] Added focused Playwright coverage for opening the Move Item modal from an order row
+  - [x] Captured a review screenshot at `test-results/booking-detail-move-item-modal-prototype.png`
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow
