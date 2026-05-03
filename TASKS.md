@@ -172,6 +172,25 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Added a flush subpanel modifier so receipt upload and cancel payment actions keep matching widths after the style cleanup
   - [x] Captured a review screenshot at `test-results/booking-detail-design-system-cleanup-prototype.png`
   - [x] Verified frontend build and focused booking-detail Playwright coverage against the cleanup trial
+- [x] **Mission Control Booking Detail Modal Inventory Prep** (2026-05-02)
+  - [x] Committed the reusable style cleanup trial as `92bcb37`
+  - [x] Updated `THEME_MIGRATION.md` so the booking-detail page list reflects the accepted compact layout, reusable MC utility cleanup, and next modal pass
+  - [x] Listed the booking-detail page-local dialogs, receipt-capture modal, and confirmation dialogs before starting any modal UI changes
+- [x] **Mission Control Booking Detail Add to Seat Modal** (2026-05-02)
+  - [x] Restyled the Add to Seat dialog with the shared MC dialog frame, header, body, footer, selected-item summary, and close control
+  - [x] Added reusable `mc-seat-choice` styles for seat-selection modal buttons
+  - [x] Added explicit `mc-seat-tone-*` classes so Add to Seat number badges exactly match the rendered Seat Detail dot colors
+  - [x] Replaced the temporary Tailwind seat palette with the canonical Mission Control room/timeline palette: cyan, magenta, purple, green
+  - [x] Reused the same four-tone cycle across Seat Detail dots, Add to Seat number badges, and booking-detail seat picker buttons
+  - [x] Right-aligned the Add to Seat dialog Cancel action with a reusable MC footer modifier
+  - [x] Added focused Playwright coverage for opening the Add to Seat modal from a menu item
+  - [x] Added focused Playwright assertions for the resolved canonical cyan and magenta seat colors
+  - [x] Added focused Playwright coverage that the Add to Seat Cancel action is positioned on the right side of the dialog
+  - [x] Captured a review screenshot at `test-results/booking-detail-add-to-seat-modal-prototype.png`
+  - [x] Captured the seat-color match screenshot at `test-results/booking-detail-add-to-seat-modal-seat-colors.png`
+  - [x] Captured the exact shared tone screenshot at `test-results/booking-detail-add-to-seat-exact-seat-colors.png`
+  - [x] Captured the canonical room-palette screenshot at `test-results/booking-detail-add-to-seat-room-palette.png`
+  - [x] Captured the right-aligned Cancel screenshot at `test-results/booking-detail-add-to-seat-cancel-right.png`
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow

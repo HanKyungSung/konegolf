@@ -128,6 +128,28 @@ test.describe('Mission Control booking detail', () => {
     expect(activeSeatBox).not.toBeNull();
     expect(activeSeatBox!.y).toBeLessThan(page.viewportSize()?.height ?? 720);
 
+    await originalLayout.locator('.mc-menu-item').first().click();
+    const addToSeatDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Add to Seat' }) });
+    await expect(addToSeatDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(addToSeatDialog.getByRole('button', { name: 'Add to Seat 1' })).toBeVisible();
+    const activeSeatMarker = originalLayout.locator('[data-testid="active-seat-detail"] .mc-seat-marker.mc-seat-tone-1');
+    const addToSeatOneIndex = addToSeatDialog.locator('.mc-seat-choice-index.mc-seat-tone-1');
+    const addToSeatTwoIndex = addToSeatDialog.locator('.mc-seat-choice-index.mc-seat-tone-2');
+    await expect(activeSeatMarker).toBeVisible();
+    await expect(activeSeatMarker).toHaveCSS('background-color', 'rgb(29, 224, 197)');
+    await expect(addToSeatOneIndex).toHaveText('1');
+    await expect(addToSeatOneIndex).toHaveCSS('background-color', 'rgb(29, 224, 197)');
+    await expect(addToSeatTwoIndex).toHaveText('2');
+    await expect(addToSeatTwoIndex).toHaveCSS('background-color', 'rgb(244, 122, 165)');
+    const cancelButton = addToSeatDialog.getByRole('button', { name: 'Cancel' });
+    const dialogBox = await addToSeatDialog.boundingBox();
+    const cancelBox = await cancelButton.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    expect(cancelBox).not.toBeNull();
+    expect(cancelBox!.x + cancelBox!.width / 2).toBeGreaterThan(dialogBox!.x + dialogBox!.width / 2);
+    await addToSeatDialog.getByRole('button', { name: 'Close add to seat' }).click();
+    await expect(page.getByRole('heading', { name: 'Add to Seat' })).toBeHidden();
+
     await originalLayout.getByRole('button', { name: 'Custom' }).first().click();
     await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeVisible();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();

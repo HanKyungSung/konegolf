@@ -75,17 +75,15 @@ interface OrderItem {
   splitPrice?: number;
 }
 
-const seatColors = [
-  'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500',
-  'bg-cyan-500', 'bg-yellow-500', 'bg-red-500', 'bg-indigo-500', 'bg-teal-500'
+const seatToneClasses = [
+  'mc-seat-tone-1',
+  'mc-seat-tone-2',
+  'mc-seat-tone-3',
+  'mc-seat-tone-4',
 ];
 
-const roomColors: Record<string, string> = {
-  '1': 'bg-blue-500',
-  '2': 'bg-green-500',
-  '3': 'bg-purple-500',
-  '4': 'bg-orange-500',
-};
+const getToneClassByIndex = (index: number) => seatToneClasses[index % seatToneClasses.length] || seatToneClasses[0];
+const getSeatToneClass = (seat: number) => getToneClassByIndex(seat - 1);
 
 const MAX_SEATS = 10;
 
@@ -345,6 +343,14 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
       return room?.name || 'Unknown Room';
     },
     [rooms, booking]
+  );
+
+  const bookingRoomToneClass = useMemo(
+    () => {
+      const roomIndex = rooms.findIndex((r) => r.id === booking?.roomId);
+      return getToneClassByIndex(roomIndex >= 0 ? roomIndex : 0);
+    },
+    [rooms, booking?.roomId]
   );
 
   // Order management functions
@@ -1356,7 +1362,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
               <div>
                 <div className="mc-section-label">Session</div>
                 <div className="mt-1 flex items-center gap-2 text-[color:var(--mc-text-hero)]">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-[color:var(--mc-cyan)] shadow-[0_0_16px_rgba(29,224,197,0.45)]" />
+                  <span className={`mc-seat-marker inline-block h-2.5 w-2.5 rounded-full ${bookingRoomToneClass}`} />
                   <span className="font-semibold">{roomColor}</span>
                 </div>
               </div>
@@ -1449,7 +1455,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 font-semibold text-[color:var(--mc-text-hero)]">
-                        <span className={`h-2.5 w-2.5 rounded-full ${seatColors[summary.seat - 1]}`} />
+                        <span className={`h-2.5 w-2.5 rounded-full ${getSeatToneClass(summary.seat)}`} />
                         Seat {summary.seat}
                       </div>
                       <div className="mt-1 mc-meta-dim">{summary.regularItems.length} item{summary.regularItems.length === 1 ? '' : 's'} · {summary.isPaid ? 'paid' : 'open'}</div>
@@ -1721,7 +1727,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
               <div className="mc-row space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-sm font-semibold text-[color:var(--mc-text-primary)]">
-                    <span className={`h-2 w-2 rounded-full ${seatColors[activeSeat - 1]}`} />
+                    <span className={`h-2 w-2 rounded-full ${getSeatToneClass(activeSeat)}`} />
                     Active seat {activeSeat}
                   </span>
                   <span className={`mc-mono text-xs ${getSettlementTone(selectedSeatSummary)}`}>
@@ -1933,7 +1939,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
             <div className="mc-booking-meta-item">
               <span className="mc-field-label">Room:</span>
               <span className="flex min-w-0 items-center gap-2 mc-meta-value">
-                <span className={`mc-status-dot h-2.5 w-2.5 ${roomColors[booking.roomId]}`} />
+                <span className={`mc-status-dot h-2.5 w-2.5 ${bookingRoomToneClass}`} />
                 <span className="truncate">{roomColor}</span>
               </span>
             </div>
@@ -2078,7 +2084,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           className={`mc-payment-seat-status ${isActiveSummary ? 'mc-payment-seat-status-active' : ''}`}
                         >
                           <div className="flex items-center gap-2">
-                            <div className={`mc-status-dot w-3 h-3 ${seatColors[summary.seat - 1]}`} />
+                            <div className={`mc-seat-marker mc-status-dot w-3 h-3 ${getSeatToneClass(summary.seat)}`} />
                             <span className="text-sm text-white">Seat {summary.seat}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -2135,7 +2141,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         as="div"
                         label={(
                           <span className="flex items-center gap-2 sm:gap-3">
-                            <span className={`mc-status-dot w-4 h-4 ${seatColors[seat - 1]}`} />
+                            <span className={`mc-seat-marker mc-status-dot w-4 h-4 ${getSeatToneClass(seat)}`} />
                             <span className="font-bold text-white text-base sm:text-lg">Seat {seat} Detail</span>
                             <Badge variant="outline" className="text-slate-300 border-slate-600 text-xs">
                             {regularItems.length} items
@@ -2632,36 +2638,75 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
       {/* Dialogs */}
       <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Add to Seat</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Select which seat to add "{selectedMenuItem?.name}"
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-4">
-            {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
-              <Button
-                key={seat}
-                onClick={() => addItemFromDialog(seat)}
-                className={`h-16 ${seatColors[seat - 1]} hover:opacity-90 text-white text-lg font-semibold`}
+        <DialogContent className="mc-dialog-content max-w-[520px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-cyan), var(--mc-purple))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="text-[color:var(--mc-text-hero)]">Add to Seat</DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Choose where to add {selectedMenuItem?.name ? `"${selectedMenuItem.name}"` : 'this item'}.
+                </DialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddItemDialog(false);
+                  setSelectedMenuItem(null);
+                }}
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close add to seat"
               >
-                Seat {seat}
+                ×
+              </button>
+            </DialogHeader>
+
+            <div className="mc-dialog-body mc-section-stack">
+              {selectedMenuItem && (
+                <div className="mc-subpanel flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="mc-kicker">Selected item</div>
+                    <div className="truncate font-semibold text-[color:var(--mc-text-primary)]">{selectedMenuItem.name}</div>
+                  </div>
+                  <div className="mc-mono text-[color:var(--mc-cyan)]">{formatMoney(selectedMenuItem.price)}</div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                  <Button
+                    key={seat}
+                    onClick={() => addItemFromDialog(seat)}
+                    className="mc-seat-choice"
+                    aria-label={`Add to Seat ${seat}`}
+                  >
+                    <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                    <span>
+                      <span className="mc-seat-choice-title">Seat {seat}</span>
+                      <span className="mc-seat-choice-meta block">Add item to this seat</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <DialogFooter className="mc-dialog-footer mc-dialog-footer-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddItemDialog(false);
+                  setSelectedMenuItem(null);
+                }}
+                className="mc-action-btn mc-action-btn-fit"
+              >
+                Cancel
               </Button>
-            ))}
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowAddItemDialog(false);
-                setSelectedMenuItem(null);
-              }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -2678,7 +2723,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
               <Button
                 key={seat}
                 onClick={() => moveItemToSeat(selectedOrderItem!.id, seat)}
-                className={`h-16 ${seatColors[seat - 1]} hover:opacity-90 text-white text-lg font-semibold`}
+                className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold`}
               >
                 Seat {seat}
               </Button>
@@ -2743,7 +2788,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                         </svg>
                       )}
                     </div>
-                    <div className={`w-4 h-4 rounded-full ${seatColors[seat - 1]}`} />
+                    <div className={`w-4 h-4 rounded-full ${getSeatToneClass(seat)}`} />
                     <span className="text-white font-medium">Seat {seat}</span>
                   </div>
                   {selectedSeatsForSplit.includes(seat) && selectedSeatsForSplit.length > 0 && selectedOrderItem && (
@@ -2858,7 +2903,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     key={seat}
                     onClick={() => handleAddCustomItem(seat)}
                     disabled={orderLoading || !customItemName.trim() || !customItemPrice || parseFloat(customItemPrice) <= 0}
-                    className={`h-16 ${seatColors[seat - 1]} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
+                    className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
                   >
                     {orderLoading ? 'Adding...' : `Seat ${seat}`}
                   </Button>
@@ -2984,7 +3029,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                     key={seat}
                     onClick={() => handleAddDiscount(seat)}
                     disabled={orderLoading || !discountName.trim() || !discountAmount || parseFloat(discountAmount) <= 0}
-                    className={`h-16 ${seatColors[seat - 1]} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
+                    className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
                   >
                     {orderLoading ? 'Applying...' : `Seat ${seat}`}
                   </Button>
@@ -3098,7 +3143,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       key={seat}
                       onClick={() => handleApplyCoupon(seat)}
                       disabled={couponApplying}
-                      className={`h-16 ${seatColors[seat - 1]} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
+                      className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
                     >
                       {couponApplying ? <Loader2 className="h-5 w-5 animate-spin" /> : `Seat ${seat}`}
                     </Button>
@@ -3170,7 +3215,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                       key={seat}
                       onClick={() => handleAddGiftCard(seat)}
                       disabled={orderLoading}
-                      className={`h-16 ${seatColors[seat - 1]} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
+                      className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
                     >
                       {orderLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : `Seat ${seat}`}
                     </Button>

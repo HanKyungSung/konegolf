@@ -42,7 +42,7 @@ The switch foundation is now in place:
 - `frontend/src/pages/pos/dashboard-mission-control.tsx` — new Mission Control dashboard layout; booking detail opens as a dedicated page instead of the old full-workflow modal.
 - `frontend/src/pages/pos/booking-detail.tsx` — route-level Old/New wrapper for booking detail.
 - `frontend/src/pages/pos/booking-detail-old.tsx` — old booking detail workflow copied from `main`.
-- `frontend/src/pages/pos/booking-detail-mission-control.tsx` — new booking detail workflow target with the first page-first MC redesign slice in place.
+- `frontend/src/pages/pos/booking-detail-mission-control.tsx` — new booking detail workflow target with the accepted compact Payment Summary/Menu-under-actions layout and reusable MC utility cleanup in place; page-local modals are the next pass.
 
 Use these utility classes during migration:
 
@@ -161,16 +161,16 @@ Model key:
 | 42 | `frontend/components/mc/MCTaxDialog.tsx` | MC dialog component | Done | Done | MC Component | Unified with shared MC dialog/input styles. |
 | 43 | `frontend/components/mc/MCRoomRail.tsx` | MC rail + popover | Done | Done | MC Component | Unified room-status popover and rail scroll behavior. |
 | 44 | `frontend/components/mc/MCSection.tsx` / `MCPanelHeader` | Shared MC primitive | Done | Done | MC Shell | Shared header primitive for label, meta, and right-side actions. |
-| 45 | `frontend/src/styles/mission-control.css` | Shared style primitives | Done | Done | MC Shell | Shared panel, dialog, popover, input, code-block, and scrollbar classes. |
+| 45 | `frontend/src/styles/mission-control.css` | Shared style primitives | Done | Done | MC Shell | Shared panel, compact panel, subpanel, dialog, popover, input, action button, metric tile, status, code-block, and scrollbar classes. |
 | 46 | `frontend/hooks/use-ui-theme.ts` | Theme state hook | Done | Done | MC Shell | Persists `classic` / `mission-control` and syncs the root dataset. |
 | 47 | `frontend/components/UiThemeToggle.tsx` | Theme toggle button | Done | Done | MC Shell | Shared Old/New switch used by `AdminHeader`, legacy `/admin`, and Manager Panel. |
 | 48 | `frontend/components/AdminHeader.tsx` | Staff/admin chrome | Done | Done | MC Shell | Shows the theme toggle for ADMIN and STAFF users. |
-| 49 | `frontend/src/pages/pos/booking-detail-mission-control.tsx` | POS booking detail new variant | P0 | Done | Full MC | First MC redesign slice is in place: command header, session rail, selected-seat ledger, sticky settlement rail, and menu command drawer while preserving existing business handlers. |
+| 49 | `frontend/src/pages/pos/booking-detail-mission-control.tsx` | POS booking detail new variant | P0 | Done | Full MC | Accepted compact layout is in place: booking header, Payment Summary above Seat Detail, Quick Actions/Menu right rail, reusable MC spacing/color/action utilities, and unchanged business handlers. Next pass: page-local dialogs/modals. |
 
 ## Suggested sequence
 
-1. Standardize shared shells: `ConfirmDialog`, `BookingDetailModal`, and core form/dialog helpers.
-2. Migrate `pos/booking-detail-mission-control.tsx`.
+1. Standardize booking-detail page-local dialogs/modals now that the page shell is accepted.
+2. Standardize shared shells: `ConfirmDialog`, `BookingDetailModal`, and core form/dialog helpers.
 3. Migrate `admin/customers.tsx`.
 4. Migrate the three manual POS modals: booking, clock, receipt capture.
 5. Migrate remaining POS/admin operational pages.
