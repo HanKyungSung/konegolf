@@ -186,6 +186,20 @@ test.describe('Mission Control booking detail', () => {
     await expect(page.getByRole('heading', { name: 'Add Custom Item' })).toBeHidden();
     await originalLayout.getByRole('button', { name: 'Seat 2 status' }).click();
     await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('Custom Modal Test Item')).toBeVisible();
+
+    await originalLayout.getByRole('button', { name: 'Discount' }).first().click();
+    const discountDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Add Discount' }) });
+    await expect(discountDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(discountDialog.getByRole('button', { name: 'Apply discount to Seat 2' })).toBeDisabled();
+    await discountDialog.getByLabel('Discount name').fill('Modal Discount');
+    await discountDialog.getByLabel('Amount').fill('5');
+    await expect(discountDialog.getByRole('button', { name: '$ Flat' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(discountDialog.locator('.mc-subpanel').getByText('Modal Discount', { exact: true })).toBeVisible();
+    await expect(discountDialog.locator('.mc-subpanel').getByText('-$5.00')).toBeVisible();
+    await expect(discountDialog.getByRole('button', { name: 'Apply discount to Seat 2' })).toBeEnabled();
+    await discountDialog.getByRole('button', { name: 'Apply discount to Seat 2' }).click();
+    await expect(page.getByRole('heading', { name: 'Add Discount' })).toBeHidden();
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('Modal Discount')).toBeVisible();
   });
 
   test('hides edit menu actions for completed bookings', async ({ page }) => {

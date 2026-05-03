@@ -3042,128 +3042,152 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
       {/* Discount Dialog */}
       <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Add Discount</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Enter discount details, then select which seat to apply it to
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Discount Name Input */}
-            <div className="space-y-2">
-              <Label htmlFor="discountName" className="text-white">Discount Name</Label>
-              <Input
-                id="discountName"
-                placeholder="e.g., Senior Discount, Loyalty Reward"
-                value={discountName}
-                onChange={(e) => setDiscountName(e.target.value)}
-                className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-                autoFocus
-              />
-            </div>
-
-            {/* Discount Type Toggle */}
-            <div className="space-y-2">
-              <Label className="text-white">Discount Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  onClick={() => setDiscountType('FLAT')}
-                  className={`h-12 text-lg font-semibold ${
-                    discountType === 'FLAT'
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-                  }`}
-                >
-                  $ Flat
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setDiscountType('PERCENT')}
-                  className={`h-12 text-lg font-semibold ${
-                    discountType === 'PERCENT'
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-                  }`}
-                >
-                  % Percent
-                </Button>
+        <DialogContent className="mc-dialog-content max-w-[620px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-green), var(--mc-cyan))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="text-[color:var(--mc-text-hero)]">Add Discount</DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Configure a discount, then choose the seat to receive it.
+                </DialogDescription>
               </div>
-            </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDiscountDialog(false);
+                  setDiscountName('');
+                  setDiscountAmount('');
+                  setDiscountType('FLAT');
+                }}
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close discount"
+                disabled={orderLoading}
+              >
+                ×
+              </button>
+            </DialogHeader>
 
-            {/* Amount Input */}
-            <div className="space-y-2">
-              <Label htmlFor="discountAmount" className="text-white">
-                {discountType === 'FLAT' ? 'Amount ($)' : 'Percentage (%)'}
-              </Label>
-              <Input
-                id="discountAmount"
-                type="number"
-                step={discountType === 'FLAT' ? '0.01' : '1'}
-                min="0"
-                max={discountType === 'PERCENT' ? '100' : undefined}
-                placeholder={discountType === 'FLAT' ? '0.00' : '0'}
-                value={discountAmount}
-                onChange={(e) => setDiscountAmount(e.target.value)}
-                className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
-              />
-            </div>
+            <div className="mc-dialog-body mc-section-stack">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+                <div className="space-y-2">
+                  <Label htmlFor="discountName" className="mc-kicker">Discount name</Label>
+                  <Input
+                    id="discountName"
+                    placeholder="e.g., Senior Discount, Loyalty Reward"
+                    value={discountName}
+                    onChange={(e) => setDiscountName(e.target.value)}
+                    className="mc-input"
+                    autoFocus
+                  />
+                </div>
 
-            {/* Preview */}
-            {discountName && discountAmount && parseFloat(discountAmount) > 0 && (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-semibold text-white">
-                      {discountName}
+                <div className="space-y-2">
+                  <Label htmlFor="discountAmount" className="mc-kicker">
+                    {discountType === 'FLAT' ? 'Amount' : 'Percentage'}
+                  </Label>
+                  <Input
+                    id="discountAmount"
+                    type="number"
+                    step={discountType === 'FLAT' ? '0.01' : '1'}
+                    min="0"
+                    max={discountType === 'PERCENT' ? '100' : undefined}
+                    placeholder={discountType === 'FLAT' ? '0.00' : '0'}
+                    value={discountAmount}
+                    onChange={(e) => setDiscountAmount(e.target.value)}
+                    className="mc-input mc-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="mc-kicker">Discount type</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => setDiscountType('FLAT')}
+                    aria-pressed={discountType === 'FLAT'}
+                    className={`mc-action-btn ${discountType === 'FLAT' ? 'mc-action-btn-primary' : ''}`}
+                  >
+                    $ Flat
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setDiscountType('PERCENT')}
+                    aria-pressed={discountType === 'PERCENT'}
+                    className={`mc-action-btn ${discountType === 'PERCENT' ? 'mc-action-btn-primary' : ''}`}
+                  >
+                    % Percent
+                  </Button>
+                </div>
+              </div>
+
+              {discountName.trim() && discountAmount && parseFloat(discountAmount) > 0 ? (
+                <div className="mc-subpanel flex items-center justify-between gap-3 border-[rgba(95,214,146,0.35)] bg-[rgba(95,214,146,0.08)]">
+                  <div className="min-w-0">
+                    <div className="mc-kicker">Preview</div>
+                    <div className="truncate font-semibold text-[color:var(--mc-text-primary)]">
+                      {discountName.trim()}
                       {discountType === 'PERCENT' && ` (${discountAmount}%)`}
                     </div>
-                    <div className="text-xs text-slate-400">Discount • {discountType === 'FLAT' ? 'Flat Amount' : 'Percentage'}</div>
+                    <div className="mc-meta mt-1">
+                      Discount · {discountType === 'FLAT' ? 'Flat amount' : 'Percentage'}
+                    </div>
                   </div>
-                  <div className="text-emerald-400 font-bold text-lg">
+                  <div className="mc-mono text-lg font-bold text-[color:var(--mc-green)]">
                     {discountType === 'FLAT'
-                      ? `-$${parseFloat(discountAmount).toFixed(2)}`
+                      ? `-${formatMoney(parseFloat(discountAmount))}`
                       : `-${discountAmount}%`}
                   </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="mc-subpanel mc-meta">
+                  Enter a valid discount name and value to enable seat actions.
+                </div>
+              )}
 
-            {/* Seat Selection */}
-            <div className="space-y-2">
-              <Label className="text-white">Select Seat</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
-                  <Button
-                    key={seat}
-                    onClick={() => handleAddDiscount(seat)}
-                    disabled={orderLoading || !discountName.trim() || !discountAmount || parseFloat(discountAmount) <= 0}
-                    className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
-                  >
-                    {orderLoading ? 'Applying...' : `Seat ${seat}`}
-                  </Button>
-                ))}
+              <div className="space-y-2">
+                <div className="mc-kicker">Select seat</div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                    <Button
+                      key={seat}
+                      onClick={() => handleAddDiscount(seat)}
+                      disabled={orderLoading || !discountName.trim() || !discountAmount || parseFloat(discountAmount) <= 0}
+                      className="mc-seat-choice"
+                      aria-label={`Apply discount to Seat ${seat}`}
+                    >
+                      <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                      <span>
+                        <span className="mc-seat-choice-title">Seat {seat}</span>
+                        <span className="mc-seat-choice-meta block">{orderLoading ? 'Applying...' : 'Apply discount here'}</span>
+                      </span>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowDiscountDialog(false);
-                setDiscountName('');
-                setDiscountAmount('');
-                setDiscountType('FLAT');
-              }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-              disabled={orderLoading}
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="mc-dialog-footer mc-dialog-footer-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDiscountDialog(false);
+                  setDiscountName('');
+                  setDiscountAmount('');
+                  setDiscountType('FLAT');
+                }}
+                className="mc-action-btn mc-action-btn-fit"
+                disabled={orderLoading}
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
