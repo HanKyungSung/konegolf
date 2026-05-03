@@ -3334,71 +3334,124 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
       {/* Gift Card Dialog */}
       <Dialog open={showGiftCardDialog} onOpenChange={setShowGiftCardDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Gift Card Sale</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Gift cards are tax-exempt. Select a preset amount or enter a custom value.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-3 gap-2">
-              {[25, 50, 100].map((preset) => (
-                <Button
-                  key={preset}
-                  onClick={() => setGiftCardAmount(String(preset))}
-                  variant={giftCardAmount === String(preset) ? 'default' : 'outline'}
-                  className={giftCardAmount === String(preset)
-                    ? 'bg-rose-600 hover:bg-rose-700 text-white h-12 text-lg font-bold'
-                    : 'border-slate-600 text-slate-300 hover:bg-slate-700 h-12 text-lg font-bold'
-                  }
-                >
-                  ${preset}
-                </Button>
-              ))}
-            </div>
-            <div>
-              <Label className="text-white">Custom Amount</Label>
-              <Input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={giftCardAmount}
-                onChange={(e) => setGiftCardAmount(e.target.value)}
-                placeholder="Enter amount..."
-                className="bg-slate-700 border-slate-600 text-white mt-1"
-              />
-            </div>
-            {giftCardAmount && parseFloat(giftCardAmount) > 0 && (
+        <DialogContent className="mc-dialog-content max-w-[620px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-magenta), var(--mc-purple))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="flex items-center gap-2 text-[color:var(--mc-text-hero)]">
+                  <Gift className="h-5 w-5 text-[color:var(--mc-magenta)]" />
+                  Gift Card Sale
+                </DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Gift cards are tax-exempt. Pick a preset or enter a custom amount.
+                </DialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGiftCardDialog(false);
+                  setGiftCardAmount('');
+                }}
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close gift card"
+                disabled={orderLoading}
+              >
+                ×
+              </button>
+            </DialogHeader>
+
+            <div className="mc-dialog-body mc-section-stack">
               <div className="space-y-2">
-                <Label className="text-white">Add to Seat</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                <div className="mc-kicker">Preset amount</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[25, 50, 100].map((preset) => (
                     <Button
-                      key={seat}
-                      onClick={() => handleAddGiftCard(seat)}
-                      disabled={orderLoading}
-                      className={`h-16 ${getSeatToneClass(seat)} hover:opacity-90 text-white text-lg font-semibold disabled:opacity-50`}
+                      key={preset}
+                      type="button"
+                      onClick={() => setGiftCardAmount(String(preset))}
+                      aria-pressed={giftCardAmount === String(preset)}
+                      className={`mc-action-btn ${giftCardAmount === String(preset) ? 'mc-action-btn-primary' : ''}`}
                     >
-                      {orderLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : `Seat ${seat}`}
+                      ${preset}
                     </Button>
                   ))}
                 </div>
               </div>
-            )}
+
+              <div className="space-y-2">
+                <Label htmlFor="giftCardAmount" className="mc-kicker">Custom amount</Label>
+                <Input
+                  id="giftCardAmount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={giftCardAmount}
+                  onChange={(e) => setGiftCardAmount(e.target.value)}
+                  placeholder="Enter amount..."
+                  className="mc-input mc-mono"
+                />
+              </div>
+
+              {giftCardAmount && parseFloat(giftCardAmount) > 0 ? (
+                <div className="mc-subpanel flex items-center justify-between gap-3 border-[rgba(244,122,165,0.35)] bg-[rgba(244,122,165,0.08)]">
+                  <div className="min-w-0">
+                    <div className="mc-kicker">Preview</div>
+                    <div className="truncate font-semibold text-[color:var(--mc-text-primary)]">
+                      Gift Card ({formatMoney(parseFloat(giftCardAmount))})
+                    </div>
+                    <div className="mc-meta mt-1">Tax-exempt sale · Qty 1</div>
+                  </div>
+                  <div className="mc-mono text-lg font-bold text-[color:var(--mc-magenta)]">
+                    {formatMoney(parseFloat(giftCardAmount))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mc-subpanel mc-meta">
+                  Enter a valid gift card amount to enable seat actions.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="mc-kicker">Add to seat</div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => (
+                    <Button
+                      key={seat}
+                      onClick={() => handleAddGiftCard(seat)}
+                      disabled={orderLoading || !giftCardAmount || parseFloat(giftCardAmount) <= 0}
+                      className="mc-seat-choice"
+                      aria-label={`Add gift card to Seat ${seat}`}
+                    >
+                      <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                      <span>
+                        <span className="mc-seat-choice-title">Seat {seat}</span>
+                        <span className="mc-seat-choice-meta block">{orderLoading ? 'Adding...' : 'Add gift card here'}</span>
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="mc-dialog-footer mc-dialog-footer-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowGiftCardDialog(false);
+                  setGiftCardAmount('');
+                }}
+                className="mc-action-btn mc-action-btn-fit"
+                disabled={orderLoading}
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowGiftCardDialog(false);
-                setGiftCardAmount('');
-              }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

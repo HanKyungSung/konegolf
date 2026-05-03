@@ -240,6 +240,18 @@ test.describe('Mission Control booking detail', () => {
     await couponDialog.getByRole('button', { name: 'Apply coupon to Seat 2' }).click();
     await expect(page.getByRole('heading', { name: 'Apply Coupon' })).toBeHidden();
     expect(couponRedeemPayload).toMatchObject({ bookingId, seatNumber: 2 });
+
+    await originalLayout.getByRole('button', { name: 'Gift Card' }).first().click();
+    const giftCardDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Gift Card Sale' }) });
+    await expect(giftCardDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(giftCardDialog.getByRole('button', { name: 'Add gift card to Seat 2' })).toBeDisabled();
+    await giftCardDialog.getByRole('button', { name: '$50' }).click();
+    await expect(giftCardDialog.getByRole('button', { name: '$50' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(giftCardDialog.locator('.mc-subpanel').getByText('Gift Card ($50.00)', { exact: true })).toBeVisible();
+    await expect(giftCardDialog.getByRole('button', { name: 'Add gift card to Seat 2' })).toBeEnabled();
+    await giftCardDialog.getByRole('button', { name: 'Add gift card to Seat 2' }).click();
+    await expect(page.getByRole('heading', { name: 'Gift Card Sale' })).toBeHidden();
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('Gift Card ($50.00)')).toBeVisible();
   });
 
   test('hides edit menu actions for completed bookings', async ({ page }) => {
