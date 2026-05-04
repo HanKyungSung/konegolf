@@ -248,6 +248,12 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Matched Upload Receipt and Cancel Payment action sizing in paid seat payment records
   - [x] Preserved existing payment submission behavior, partial-payment handling, coupon $0 flow, and tip method logic
   - [x] Added focused Playwright coverage for opening the modal and selecting Card tender
+- [x] **Mission Control Booking Detail Send Receipt Modal** (2026-05-03)
+  - [x] Reworked the Send Receipt dialog back to the old preview-first layout while applying the shared MC dialog frame, custom close control, themed receipt preview, delivery method section, printer type section, and footer actions
+  - [x] Preserved existing full/seat receipt loading, print, email, thermal-printer, and browser-print behavior
+  - [x] Fixed the receipt dialog layer so the MC surface renders above the overlay and kept the dialog height contained with internal scrolling
+  - [x] Added focused Playwright coverage for opening the modal from the visible Seat receipt action, verifying the old-layout themed preview and delivery controls, switching to email mode, and checking footer action alignment
+  - [x] Captured a review screenshot at `test-results/booking-detail-send-receipt-modal-prototype.png`
 - [x] **Mission Control Dashboard Quick Sales Surface** (2026-04-30)
   - [x] Added a same-day Quick Sales queue to the New dashboard for POS operators
   - [x] Moved Quick Sales out of the Actions/Tools column into its own dedicated panel above Attention

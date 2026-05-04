@@ -332,6 +332,42 @@ test.describe('Mission Control booking detail', () => {
     await expect(originalLayout.getByRole('button', { name: 'Gift Card' })).toHaveCount(0);
   });
 
+  test('opens the Mission Control send receipt modal', async ({ page }) => {
+    const bookingId = await createQuickSaleBooking(page);
+    await addCustomOrder(page, bookingId);
+
+    await page.goto(`/pos/booking/${bookingId}`);
+
+    const originalLayout = page.locator('.mc-original-layout');
+    await expect(originalLayout).toBeVisible();
+    await originalLayout.getByRole('button', { name: 'Print Seat 1 receipt' }).click();
+
+    const receiptDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Send Receipt' }) });
+    await expect(receiptDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(receiptDialog.getByText('Seat 1 receipt')).toBeVisible();
+    await expect(receiptDialog.getByText('Receipt preview')).toBeVisible();
+    await expect(receiptDialog.getByText('Delivery Method')).toBeVisible();
+    await expect(receiptDialog.getByText('Printer Type')).toBeVisible();
+    await expect(receiptDialog.locator('.receipt')).toBeVisible();
+    await expect(receiptDialog.getByRole('radio', { name: 'Print', exact: true })).toBeChecked();
+
+    const printReceiptButton = receiptDialog.getByRole('button', { name: 'Print', exact: true });
+    const closeButton = receiptDialog.getByRole('button', { name: 'Close', exact: true });
+    const printReceiptBox = await printReceiptButton.boundingBox();
+    const closeBox = await closeButton.boundingBox();
+    expect(printReceiptBox).not.toBeNull();
+    expect(closeBox).not.toBeNull();
+    expect(Math.abs(printReceiptBox!.y - closeBox!.y)).toBeLessThanOrEqual(6);
+    expect(closeBox!.x).toBeLessThan(printReceiptBox!.x);
+
+    await receiptDialog.locator('label[for="receipt-delivery-email"]').click();
+    await expect(receiptDialog.getByLabel('Email address')).toBeVisible();
+    await expect(receiptDialog.getByText('Printer Type')).toBeHidden();
+    await expect(receiptDialog.getByRole('button', { name: 'Send Email' })).toBeVisible();
+    await receiptDialog.getByRole('button', { name: 'Close receipt' }).click();
+    await expect(page.getByRole('heading', { name: 'Send Receipt' })).toBeHidden();
+  });
+
   test('opens the Mission Control collect payment modal', async ({ page }) => {
     const bookingId = await createQuickSaleBooking(page);
     await addCustomOrder(page, bookingId);

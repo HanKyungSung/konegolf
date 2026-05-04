@@ -4013,117 +4013,172 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
       </Dialog>
 
       {/* Receipt Preview Modal */}
-      <Dialog open={showReceiptModal} onOpenChange={setShowReceiptModal}>
-        <DialogContent className="max-w-md bg-slate-800 text-white border-slate-700">
-          <DialogHeader>
-            <DialogTitle>Send Receipt</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Choose how to send the receipt
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-[50vh] overflow-y-auto border border-slate-700 rounded">
-            {receiptData && (
-              <Receipt
-                data={receiptData}
-                printMode={receiptMode}
-                printingSeatIndex={receiptSeatIndex}
-              />
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-slate-300">Delivery Method</Label>
-              <RadioGroup value={deliveryMethod} onValueChange={(value) => setDeliveryMethod(value as 'print' | 'email')}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="print" id="print" />
-                  <Label htmlFor="print" className="text-slate-300 cursor-pointer flex items-center gap-2">
-                    <Printer className="h-4 w-4" />
-                    Print
-                  </Label>
+      <Dialog open={showReceiptModal} onOpenChange={(open) => { if (!open) handleCloseReceiptModal(); }}>
+        <DialogContent className="mc-dialog-content z-[60] max-h-[calc(100dvh-2rem)] max-w-[500px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame flex max-h-[calc(100dvh-2rem)] flex-col">
+            <div className="mc-dialog-frame-accent bg-[linear-gradient(90deg,var(--mc-green),transparent)]" />
+            <DialogHeader className="mc-dialog-header">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span className="mc-seat-marker mc-seat-tone-4 shrink-0">
+                  <ReceiptText className="h-3.5 w-3.5 text-black" />
+                </span>
+                <div className="min-w-0">
+                  <DialogTitle className="text-base font-semibold text-[color:var(--mc-text-primary)]">Send Receipt</DialogTitle>
+                  <DialogDescription className="mc-meta">
+                    Choose how to send the receipt
+                  </DialogDescription>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="email" id="email" />
-                  <Label htmlFor="email" className="text-slate-300 cursor-pointer flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {deliveryMethod === 'print' && (
-              <div className="space-y-2">
-                <Label className="text-slate-300">Printer Type</Label>
-                <RadioGroup value={printerType} onValueChange={(value) => setPrinterType(value as 'thermal' | 'regular')}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="thermal" id="thermal" />
-                    <Label htmlFor="thermal" className="text-slate-300 cursor-pointer">
-                      Thermal Printer (Default)
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="regular" id="regular" />
-                    <Label htmlFor="regular" className="text-slate-300 cursor-pointer">
-                      Regular Printer
-                    </Label>
-                  </div>
-                </RadioGroup>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={handleCloseReceiptModal}
+                className="mc-chip h-8 w-8 justify-center p-0"
+                aria-label="Close receipt"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </DialogHeader>
 
-            {deliveryMethod === 'email' && (
-              <div className="space-y-2">
-                <Label htmlFor="email-input" className="text-slate-300">Email Address</Label>
-                <Input
-                  id="email-input"
-                  type="email"
-                  placeholder="customer@example.com"
-                  value={emailAddress}
-                  onChange={(e) => setEmailAddress(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white"
-                />
-                {booking?.customerEmail && emailAddress !== booking.customerEmail && (
-                  <button
-                    onClick={() => setEmailAddress(booking.customerEmail || '')}
-                    className="text-xs text-amber-400 hover:text-amber-300"
+            <div className="mc-dialog-body overflow-y-auto">
+              <div className="mc-section-stack">
+                <section className="mc-panel p-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="mc-kicker">Receipt preview</div>
+                      <div className="mc-meta mt-1">
+                        {receiptMode === 'seat' && receiptSeatIndex ? `Seat ${receiptSeatIndex} receipt` : 'Full booking receipt'}
+                      </div>
+                    </div>
+                    {receiptData && (
+                      <Badge className="mc-status-badge border-[rgba(95,214,146,0.45)] bg-[rgba(95,214,146,0.12)] text-[color:var(--mc-green)]">
+                        ${receiptData.totals.grandTotal}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="max-h-[44vh] overflow-y-auto rounded border border-[color:var(--mc-divider)] bg-white/95 p-2">
+                    {receiptData && (
+                      <Receipt
+                        data={receiptData}
+                        printMode={receiptMode}
+                        printingSeatIndex={receiptSeatIndex}
+                      />
+                    )}
+                  </div>
+                </section>
+
+                <section className="mc-subpanel">
+                  <div className="mb-2">
+                    <div className="mc-kicker">Delivery Method</div>
+                  </div>
+                  <RadioGroup
+                    value={deliveryMethod}
+                    onValueChange={(value) => setDeliveryMethod(value as 'print' | 'email')}
+                    className="space-y-2"
                   >
-                    Use booking email: {booking.customerEmail}
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="print" id="receipt-delivery-print" />
+                      <Label htmlFor="receipt-delivery-print" className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--mc-text-primary)]">
+                        <Printer className="h-4 w-4 text-[color:var(--mc-cyan)]" />
+                        Print
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="email" id="receipt-delivery-email" />
+                      <Label htmlFor="receipt-delivery-email" className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--mc-text-primary)]">
+                        <Mail className="h-4 w-4 text-[color:var(--mc-magenta)]" />
+                        Email
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </section>
+
+                {deliveryMethod === 'print' && (
+                  <section className="mc-subpanel">
+                    <div className="mb-2">
+                      <div className="mc-kicker">Printer Type</div>
+                    </div>
+                    <RadioGroup
+                      value={printerType}
+                      onValueChange={(value) => setPrinterType(value as 'thermal' | 'regular')}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="thermal" id="receipt-printer-thermal" />
+                        <Label htmlFor="receipt-printer-thermal" className="cursor-pointer text-sm text-[color:var(--mc-text-primary)]">
+                          Thermal Printer (Default)
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="regular" id="receipt-printer-regular" />
+                        <Label htmlFor="receipt-printer-regular" className="cursor-pointer text-sm text-[color:var(--mc-text-primary)]">
+                          Regular Printer
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </section>
+                )}
+
+                {deliveryMethod === 'email' && (
+                  <section className="mc-subpanel">
+                    <div className="mb-2">
+                      <Label htmlFor="email-input" className="mc-kicker">Email Address</Label>
+                    </div>
+                    <Input
+                      id="email-input"
+                      type="email"
+                      placeholder="customer@example.com"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                      className="mc-input"
+                    />
+                    {booking?.customerEmail && emailAddress !== booking.customerEmail && (
+                      <button
+                        type="button"
+                        onClick={() => setEmailAddress(booking.customerEmail || '')}
+                        className="mc-chip mt-3"
+                      >
+                        Use booking email: {booking.customerEmail}
+                      </button>
+                    )}
+                  </section>
                 )}
               </div>
-            )}
-          </div>
+            </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCloseReceiptModal}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              Close
-            </Button>
-            <Button
-              onClick={handlePrintFromModal}
-              disabled={sendingEmail || (deliveryMethod === 'email' && !emailAddress)}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              {sendingEmail ? (
-                <>Processing...</>
-              ) : deliveryMethod === 'email' ? (
-                <>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Email
-                </>
-              ) : (
-                <>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="mc-dialog-footer mc-dialog-footer-end">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseReceiptModal}
+                  className="mc-action-btn mc-action-btn-fit"
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={handlePrintFromModal}
+                  disabled={sendingEmail || (deliveryMethod === 'email' && !emailAddress)}
+                  className="mc-action-btn mc-action-btn-primary mc-action-btn-fit"
+                >
+                  {sendingEmail ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : deliveryMethod === 'email' ? (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      Send Email
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="h-4 w-4" />
+                      Print
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
