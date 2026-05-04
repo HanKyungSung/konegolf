@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2, Camera, ArrowLeft, Phone, ReceiptText } from 'lucide-react';
+import { Users, Plus, Minus, Trash2, Printer, Edit, CheckCircle2, AlertCircle, CreditCard, Banknote, Gift, User, Clock, Calendar, Mail, X, Ticket, Loader2, Camera, ArrowLeft, Phone, ReceiptText, Percent } from 'lucide-react';
 import Receipt from '../../components/Receipt';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MCPanelHeader } from '@/components/mc';
@@ -96,7 +96,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   const [rooms, setRooms] = useState<Room[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [globalTaxRate, setGlobalTaxRate] = useState(8);
-  const [bookingTaxRate, setBookingTaxRate] = useState<number | null>(null);
+  const [seatTaxRates, setSeatTaxRates] = useState<Record<number, number>>({});
 
   // Invoice and order data from backend
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -137,6 +137,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   const [selectedOrderItem, setSelectedOrderItem] = useState<OrderItem | null>(null);
   const [selectedSeatsForSplit, setSelectedSeatsForSplit] = useState<number[]>([]);
   const [showTaxEditDialog, setShowTaxEditDialog] = useState(false);
+  const [taxEditSeat, setTaxEditSeat] = useState<number>(1);
   const [taxRateInput, setTaxRateInput] = useState<string>('');
   const [printingSeat, setPrintingSeat] = useState<number | null>(null);
 
@@ -196,15 +197,29 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   // Keep only UI preferences in localStorage (like expanded seats, custom tax rate)
   useEffect(() => {
     if (!bookingId) return;
-    const savedTaxRate = localStorage.getItem(`booking-${bookingId}-taxRate`);
+    const savedSeatTaxRates = localStorage.getItem(`booking-${bookingId}-seatTaxRates`);
+    const legacyBookingTaxRate = localStorage.getItem(`booking-${bookingId}-taxRate`);
+    let nextSeatTaxRates: Record<number, number> = {};
 
-    if (savedTaxRate) {
+    if (savedSeatTaxRates) {
       try {
-        setBookingTaxRate(parseFloat(savedTaxRate));
+        const parsed = JSON.parse(savedSeatTaxRates) as Record<string, number>;
+        nextSeatTaxRates = Object.fromEntries(
+          Object.entries(parsed)
+            .map(([seat, rate]) => [Number(seat), Number(rate)])
+            .filter(([seat, rate]) => Number.isInteger(seat) && Number.isFinite(rate) && rate >= 0 && rate <= 100)
+        ) as Record<number, number>;
       } catch (e) {
-        console.error('[BookingDetail] Failed to load saved tax rate:', e);
+        console.error('[BookingDetail] Failed to load saved seat tax rates:', e);
+      }
+    } else if (legacyBookingTaxRate) {
+      const legacyRate = parseFloat(legacyBookingTaxRate);
+      if (Number.isFinite(legacyRate) && legacyRate >= 0 && legacyRate <= 100) {
+        nextSeatTaxRates = { 1: legacyRate };
       }
     }
+
+    setSeatTaxRates(nextSeatTaxRates);
   }, [bookingId]);
 
   async function loadData() {
@@ -709,6 +724,34 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
     }
   };
 
+  const persistSeatTaxRates = (nextRates: Record<number, number>) => {
+    if (!bookingId) return;
+
+    const normalizedRates = Object.fromEntries(
+      Object.entries(nextRates)
+        .map(([seat, rate]) => [String(seat), rate])
+        .filter(([, rate]) => Number.isFinite(rate) && rate >= 0 && rate <= 100)
+    );
+
+    if (Object.keys(normalizedRates).length === 0) {
+      localStorage.removeItem(`booking-${bookingId}-seatTaxRates`);
+    } else {
+      localStorage.setItem(`booking-${bookingId}-seatTaxRates`, JSON.stringify(normalizedRates));
+    }
+
+    localStorage.removeItem(`booking-${bookingId}-taxRate`);
+  };
+
+  const getSeatTaxRate = (seat: number): number => seatTaxRates[seat] ?? globalTaxRate;
+  const hasSeatTaxOverride = (seat: number): boolean => seatTaxRates[seat] !== undefined;
+
+  const openTaxEditDialog = () => {
+    const targetSeat = Math.min(Math.max(selectedSeat, 1), numberOfSeats);
+    setTaxEditSeat(targetSeat);
+    setTaxRateInput(getSeatTaxRate(targetSeat).toString());
+    setShowTaxEditDialog(true);
+  };
+
   const addItemFromDialog = (seat: number) => {
     if (selectedMenuItem) {
       addItemToSeat(selectedMenuItem, seat);
@@ -1021,8 +1064,6 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   };
 
   // Calculation functions
-  const effectiveTaxRate = bookingTaxRate !== null ? bookingTaxRate : globalTaxRate;
-
   const getItemsByCategory = (category: string) => {
     return menu.filter((item: MenuItem) => item.category === category && item.available);
   };
@@ -1045,17 +1086,27 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   };
 
   const calculateSeatTax = (seat: number): number => {
+    const subtotal = calculateSeatSubtotal(seat);
+    const seatTaxRate = seatTaxRates[seat];
+    if (seatTaxRate !== undefined) {
+      return Math.round(subtotal * (seatTaxRate / 100) * 100) / 100;
+    }
+
     // Use backend-calculated tax (single source of truth with largest remainder distribution)
     const invoice = invoices.find(inv => inv.seatIndex === seat);
     if (invoice) {
       return parseFloat(String(invoice.tax)) || 0;
     }
+
     // Fallback to local calculation only when no invoice exists yet
-    const subtotal = calculateSeatSubtotal(seat);
-    return subtotal * (effectiveTaxRate / 100);
+    return Math.round(subtotal * (globalTaxRate / 100) * 100) / 100;
   };
 
   const calculateSeatTotal = (seat: number): number => {
+    if (seatTaxRates[seat] !== undefined) {
+      return calculateSeatSubtotal(seat) + calculateSeatTax(seat);
+    }
+
     const invoice = invoices.find(inv => inv.seatIndex === seat);
     if (invoice) {
       return parseFloat(String(invoice.totalAmount)) || 0;
@@ -1070,7 +1121,8 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
   };
 
   const calculateTax = () => {
-    return calculateSubtotal() * (effectiveTaxRate / 100);
+    return Array.from({ length: numberOfSeats }, (_, i) => i + 1)
+      .reduce((sum, seat) => sum + calculateSeatTax(seat), 0);
   };
 
   const calculateTotal = () => {
@@ -1619,7 +1671,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           <span>-{formatMoney(Math.abs((item.splitPrice || item.menuItem.price) * item.quantity))}</span>
                         </div>
                       ))}
-                      <div className="flex justify-between text-[color:var(--mc-text-primary)]"><span>Tax ({effectiveTaxRate}%)</span><span>{formatMoney(selectedSeatSummary.tax)}</span></div>
+                      <div className="flex justify-between text-[color:var(--mc-text-primary)]"><span>Tax ({getSeatTaxRate(selectedSeatSummary.seat)}%)</span><span>{formatMoney(selectedSeatSummary.tax)}</span></div>
                       {selectedSeatSummary.tipAmount > 0 && (
                         <div className="flex justify-between text-[color:var(--mc-text-primary)]"><span>Tip</span><span>{formatMoney(selectedSeatSummary.tipAmount)}</span></div>
                       )}
@@ -1774,6 +1826,10 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                   <button type="button" onClick={() => { setCouponCode(''); setCouponData(null); setShowCouponDialog(true); }} disabled={isBookingCompleted} className={commandButtonClass}>
                     <Ticket className="h-4 w-4" />
                     Coupon
+                  </button>
+                  <button type="button" onClick={openTaxEditDialog} disabled={isBookingCompleted} className={commandButtonClass}>
+                    <Percent className="h-4 w-4" />
+                    Tax
                   </button>
                   {booking.bookingSource !== 'QUICK_SALE' ? (
                     <button type="button" onClick={handleExtendBooking} disabled={isBookingCompleted} className={commandButtonClass}>
@@ -2332,7 +2388,7 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                               </div>
                             ))}
                             <div className="flex justify-between text-slate-300">
-                              <span>Tax ({effectiveTaxRate}%)</span>
+                              <span>Tax ({getSeatTaxRate(seat)}%)</span>
                               <span>${tax.toFixed(2)}</span>
                             </div>
                             {tipAmount > 0 && (
@@ -2574,6 +2630,13 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
                           >
                             <Ticket className="w-4 h-4" />
                             <span>Coupon</span>
+                          </Button>
+                          <Button
+                            onClick={openTaxEditDialog}
+                            className="mc-menu-tool"
+                          >
+                            <Percent className="w-4 h-4" />
+                            <span>Tax</span>
                           </Button>
                           {booking.bookingSource !== 'QUICK_SALE' && (
                             <Button
@@ -3457,84 +3520,170 @@ export default function POSBookingDetail({ bookingId, onBack }: POSBookingDetail
 
       {/* Tax Rate Edit Dialog */}
       <Dialog open={showTaxEditDialog} onOpenChange={setShowTaxEditDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Edit Tax Rate for This Booking</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Set a custom tax rate for this booking, or reset to use the global default ({globalTaxRate}%).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Current: {bookingTaxRate !== null ? `${bookingTaxRate}% (Custom)` : `${globalTaxRate}% (Global Default)`}
-              </label>
-              <div className="flex gap-3">
-                <input
+        <DialogContent className="mc-dialog-content max-w-[560px] p-0 overflow-hidden" showCloseButton={false}>
+          <div className="mc-dialog-frame">
+            <div
+              aria-hidden
+              className="mc-dialog-frame-accent"
+              style={{ background: 'linear-gradient(90deg, var(--mc-amber), var(--mc-cyan))' }}
+            />
+            <DialogHeader className="mc-dialog-header">
+              <div className="min-w-0">
+                <DialogTitle className="flex items-center gap-2 text-[color:var(--mc-text-hero)]">
+                  <Percent className="h-5 w-5 text-[color:var(--mc-amber)]" />
+                  Edit Tax Rate
+                </DialogTitle>
+                <DialogDescription className="mc-meta mt-1">
+                  Set a custom tax rate for one seat. Other seats stay on their own rate.
+                </DialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTaxEditDialog(false)}
+                className="mc-chip ml-auto h-8 w-8 justify-center p-0 mc-mono text-xs font-bold"
+                aria-label="Close tax rate"
+              >
+                ×
+              </button>
+            </DialogHeader>
+
+            <div className="mc-dialog-body mc-section-stack">
+              <div className="space-y-2">
+                <div className="mc-kicker">Target seat</div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {Array.from({ length: numberOfSeats }, (_, i) => i + 1).map((seat) => {
+                    const isTargetSeat = taxEditSeat === seat;
+                    const hasOverride = hasSeatTaxOverride(seat);
+
+                    return (
+                      <Button
+                        key={seat}
+                        type="button"
+                        onClick={() => {
+                          setTaxEditSeat(seat);
+                          setTaxRateInput(getSeatTaxRate(seat).toString());
+                        }}
+                        aria-pressed={isTargetSeat}
+                        aria-label={`Edit tax for Seat ${seat}`}
+                        className={`mc-seat-choice ${isTargetSeat ? 'mc-seat-choice-selected' : ''}`}
+                      >
+                        <span className={`mc-seat-choice-index ${getSeatToneClass(seat)}`}>{seat}</span>
+                        <span>
+                          <span className="mc-seat-choice-title">Seat {seat}</span>
+                          <span className="mc-seat-choice-meta block">
+                            {hasOverride ? `Custom ${getSeatTaxRate(seat)}%` : `Global ${globalTaxRate}%`}
+                          </span>
+                        </span>
+                        <span className="mc-seat-choice-check" aria-hidden="true">
+                          {isTargetSeat && <CheckCircle2 className="h-3.5 w-3.5" />}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="mc-subpanel">
+                  <div className="mc-kicker">Current source</div>
+                  <div className="mt-1 font-semibold text-[color:var(--mc-text-primary)]">
+                    {hasSeatTaxOverride(taxEditSeat) ? `Seat ${taxEditSeat} custom rate` : 'Global default'}
+                  </div>
+                  <div className="mc-meta mt-1">
+                    Seat {taxEditSeat} active rate: {getSeatTaxRate(taxEditSeat)}%
+                  </div>
+                </div>
+                <div className="mc-subpanel">
+                  <div className="mc-kicker">Global default</div>
+                  <div className="mt-1 mc-mono text-lg font-bold text-[color:var(--mc-cyan)]">
+                    {globalTaxRate}%
+                  </div>
+                  <div className="mc-meta mt-1">Venue setting</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="taxRateInput" className="mc-kicker">Tax rate</Label>
+                <Input
+                  id="taxRateInput"
                   type="number"
                   min="0"
                   max="100"
                   step="0.1"
                   value={taxRateInput}
                   onChange={(e) => setTaxRateInput(e.target.value)}
-                  className="flex-1 bg-slate-700/50 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="mc-input mc-mono"
                   placeholder="Enter tax rate (0-100)"
                 />
+                <p className="mc-meta">Enter a value between 0 and 100. Decimals are supported, e.g. 8.5.</p>
               </div>
-              <p className="text-xs text-slate-500 mt-2">Enter a value between 0 and 100. Decimals are supported (e.g., 8.5 for 8.5%)</p>
+
+              <div className="space-y-2">
+                <div className="mc-kicker">Quick select</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[0, 5, 8, 10, 13, 15, 20, 25].map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      onClick={() => setTaxRateInput(rate.toString())}
+                      aria-label={`Set tax rate to ${rate}%`}
+                      className={`mc-chip justify-center ${taxRateInput === rate.toString() ? 'border-[color:var(--mc-amber)] text-[color:var(--mc-amber)] bg-[rgba(245,158,11,0.08)]' : ''}`}
+                    >
+                      {rate}%
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="border-t border-slate-700 pt-4">
-              <h4 className="text-sm font-medium text-slate-300 mb-2">Quick Select</h4>
-              <div className="grid grid-cols-4 gap-2">
-                {[0, 5, 8, 10, 13, 15, 20, 25].map((rate) => (
-                  <button
-                    key={rate}
-                    onClick={() => setTaxRateInput(rate.toString())}
-                    className="px-3 py-2 rounded-md bg-slate-700/50 border border-slate-600 text-slate-200 text-sm hover:bg-slate-600/60 hover:border-amber-500/30 transition-colors"
-                  >
-                    {rate}%
-                  </button>
-                ))}
+            <DialogFooter className="mc-dialog-footer">
+              <div className="mc-meta">
+                {hasSeatTaxOverride(taxEditSeat) ? `Seat ${taxEditSeat} custom rate saved: ${getSeatTaxRate(taxEditSeat)}%` : `Seat ${taxEditSeat} uses global default: ${globalTaxRate}%`}
               </div>
-            </div>
+              <div className="flex w-full flex-col items-end gap-2">
+                {hasSeatTaxOverride(taxEditSeat) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const nextRates = { ...seatTaxRates };
+                      delete nextRates[taxEditSeat];
+                      setSeatTaxRates(nextRates);
+                      persistSeatTaxRates(nextRates);
+                      setShowTaxEditDialog(false);
+                    }}
+                    className="mc-action-btn mc-action-btn-danger mc-action-btn-fit"
+                  >
+                    Reset Seat {taxEditSeat} to Global ({globalTaxRate}%)
+                  </Button>
+                )}
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    onClick={() => {
+                      const rate = parseFloat(taxRateInput);
+                      if (isNaN(rate) || rate < 0 || rate > 100) {
+                        alert('Please enter a valid tax rate between 0 and 100');
+                        return;
+                      }
+                      const nextRates = { ...seatTaxRates, [taxEditSeat]: rate };
+                      setSeatTaxRates(nextRates);
+                      persistSeatTaxRates(nextRates);
+                      setShowTaxEditDialog(false);
+                    }}
+                    className="mc-action-btn mc-action-btn-primary mc-action-btn-fit"
+                  >
+                    Save Tax Rate
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTaxEditDialog(false)}
+                    className="mc-action-btn mc-action-btn-fit"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            {bookingTaxRate !== null && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setBookingTaxRate(null);
-                  localStorage.removeItem(`booking-${bookingId}-taxRate`);
-                  setShowTaxEditDialog(false);
-                }}
-                className="border-red-500/30 text-red-300 hover:bg-red-500/10"
-              >
-                Reset to Global ({globalTaxRate}%)
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => setShowTaxEditDialog(false)}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                const rate = parseFloat(taxRateInput);
-                if (isNaN(rate) || rate < 0 || rate > 100) {
-                  alert('Please enter a valid tax rate between 0 and 100');
-                  return;
-                }
-                setBookingTaxRate(rate);
-                localStorage.setItem(`booking-${bookingId}-taxRate`, rate.toString());
-                setShowTaxEditDialog(false);
-              }}
-            >
-              Save Tax Rate
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

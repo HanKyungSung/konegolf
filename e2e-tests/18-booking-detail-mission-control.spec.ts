@@ -100,7 +100,7 @@ test.describe('Mission Control booking detail', () => {
     await expect(originalLayout.getByText('Quick Actions', { exact: true })).toBeVisible();
     await expect(originalLayout.getByText('Menu', { exact: true })).toBeVisible();
     await expect(originalLayout.getByText(/\$\d+\.\d{2} due/).first()).toBeVisible();
-    await expect(originalLayout.getByRole('button', { name: 'Tax' })).toHaveCount(0);
+    await expect(originalLayout.getByRole('button', { name: 'Tax' })).toBeVisible();
     await expect(originalLayout.getByRole('button', { name: 'Print Seat 1 receipt' })).toBeVisible();
     await expect(originalLayout.getByRole('button', { name: 'Seat 1 status' })).toHaveAttribute('aria-pressed', 'true');
     await expect(originalLayout.locator('[data-testid="active-seat-detail"]')).toHaveCount(1);
@@ -127,6 +127,46 @@ test.describe('Mission Control booking detail', () => {
     const activeSeatBox = await originalLayout.locator('[data-testid="active-seat-detail"]').boundingBox();
     expect(activeSeatBox).not.toBeNull();
     expect(activeSeatBox!.y).toBeLessThan(page.viewportSize()?.height ?? 720);
+
+    await originalLayout.getByRole('button', { name: 'Tax' }).click();
+    const taxDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Edit Tax Rate' }) });
+    await expect(taxDialog.locator('.mc-dialog-frame')).toBeVisible();
+    await expect(taxDialog.getByRole('button', { name: 'Edit tax for Seat 1' })).toHaveAttribute('aria-pressed', 'true');
+    const taxRateInput = taxDialog.getByRole('spinbutton', { name: 'Tax rate' });
+    await expect(taxRateInput).toHaveValue(/\d/);
+    await taxDialog.getByRole('button', { name: 'Set tax rate to 13%' }).click();
+    await expect(taxRateInput).toHaveValue('13');
+    await taxDialog.getByRole('button', { name: 'Save Tax Rate' }).click();
+    await expect(page.getByRole('heading', { name: 'Edit Tax Rate' })).toBeHidden();
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('Tax (13%)')).toBeVisible();
+    await expect(originalLayout.locator('[data-testid="active-seat-detail"]').getByText('$3.25')).toBeVisible();
+
+    await originalLayout.getByRole('button', { name: 'Tax' }).click();
+    const savedSeatTaxDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Edit Tax Rate' }) });
+    const resetTaxButton = savedSeatTaxDialog.getByRole('button', { name: /Reset Seat 1 to Global/ });
+    const savedTaxButton = savedSeatTaxDialog.getByRole('button', { name: 'Save Tax Rate' });
+    const cancelTaxButton = savedSeatTaxDialog.getByRole('button', { name: 'Cancel' });
+    await expect(resetTaxButton).toBeVisible();
+    const resetTaxBox = await resetTaxButton.boundingBox();
+    const savedTaxBox = await savedTaxButton.boundingBox();
+    const cancelTaxBox = await cancelTaxButton.boundingBox();
+    expect(resetTaxBox).not.toBeNull();
+    expect(savedTaxBox).not.toBeNull();
+    expect(cancelTaxBox).not.toBeNull();
+    expect(resetTaxBox!.y).toBeLessThan(savedTaxBox!.y);
+    expect(Math.abs(savedTaxBox!.y - cancelTaxBox!.y)).toBeLessThanOrEqual(6);
+    expect(savedTaxBox!.x).toBeLessThan(cancelTaxBox!.x);
+    await cancelTaxButton.click();
+    await expect(page.getByRole('heading', { name: 'Edit Tax Rate' })).toBeHidden();
+
+    await originalLayout.getByRole('button', { name: 'Seat 2 status' }).click();
+    await originalLayout.getByRole('button', { name: 'Tax' }).click();
+    const seatTwoTaxDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Edit Tax Rate' }) });
+    await expect(seatTwoTaxDialog.getByRole('button', { name: 'Edit tax for Seat 2' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(seatTwoTaxDialog.getByText(/Seat 2 uses global default/)).toBeVisible();
+    await seatTwoTaxDialog.getByRole('button', { name: 'Close tax rate' }).click();
+    await expect(page.getByRole('heading', { name: 'Edit Tax Rate' })).toBeHidden();
+    await originalLayout.getByRole('button', { name: 'Seat 1 status' }).click();
 
     await originalLayout.locator('.mc-menu-item').first().click();
     const addToSeatDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Add to Seat' }) });

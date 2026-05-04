@@ -233,6 +233,14 @@ Consolidated task tracking for the entire K one Golf platform (Backend, Frontend
   - [x] Preserved the existing tax-exempt gift card order behavior and amount reset after a successful add/cancel
   - [x] Added focused Playwright coverage for opening the modal, selecting a preset, adding a gift card, and verifying it appears on the destination seat
   - [x] Captured a review screenshot at `test-results/booking-detail-gift-card-modal-prototype.png`
+- [x] **Mission Control Booking Detail Tax Rate Modal** (2026-05-03)
+  - [x] Restored the Tax entry point in the visible Menu tools under Quick Actions
+  - [x] Restyled the Edit Tax Rate dialog with the shared MC dialog frame, header, body, footer, seat target selector, active/global rate summary, tax input, quick-select chips, and close control
+  - [x] Converted the local tax override from booking-wide to per-seat so each seat can use its own custom rate or the global default
+  - [x] Fixed custom per-seat tax rates so the displayed tax dollar amount recalculates, not only the tax-rate label
+  - [x] Placed the reset-to-global action above the footer row, with Save Tax Rate and Cancel side-by-side below it
+  - [x] Added focused Playwright coverage for opening the Tax modal, selecting Seat 1 at 13%, verifying `$3.25` tax on a `$25` item, and confirming Seat 2 still uses the global default
+  - [x] Captured review screenshots at `test-results/booking-detail-tax-rate-modal-prototype.png` and `test-results/booking-detail-per-seat-tax-modal-prototype.png`
 - [x] **Mission Control Collect Payment Modal** (2026-04-30)
   - [x] Replaced the legacy Collect Payment dialog with a compact MC payment surface
   - [x] Simplified the rejected two-column settlement design into a clear due/balance/method/amount/tip flow
